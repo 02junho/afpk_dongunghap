@@ -1,0 +1,15 @@
+{"id":"g01","cardKey":"raise_plan","a":"없어요. 그냥 다니려고요","b":"계획 없음","expect":{"verdict":"green"},"note":"표현만 다름"}
+{"id":"g02","cardKey":"raise_plan","a":"내년에 대리 달 것 같은데 연봉은 크게 안 올라요","b":"없어요","expect":{"verdict":"yellow"},"note":"승진이지만 연봉 영향 작다고 명시 → minor"}
+{"id":"g03","cardKey":"raise_plan","a":"이직 알아보는 중이에요. 연봉 20% 올려서","b":"없어요","expect":{"verdict":"red","redKind":"couple_conflict"},"note":"한쪽만 전제 깨짐. 자격 상실 직결"}
+{"id":"g04","cardKey":"raise_plan","a":"저 내년에 이직해요","b":"남편 이직 준비 중이에요","expect":{"verdict":"red","redKind":"plan_stale"},"note":"부부는 일치, 설계 전제가 낡음"}
+{"id":"g05","cardKey":"family_help","a":"1.5억 정도 해주신다고 했어요","b":"한 1억 5천?","expect":{"verdict":"green"},"note":"금액 표기 차이"}
+{"id":"g06","cardKey":"family_help","a":"1.5억이요","b":"그건 빌리는 거예요, 주시는 게 아니라","expect":{"verdict":"red","redKind":"couple_conflict"},"note":"증여 vs 차용 — 세금 설계가 통째로 바뀜. 금액이 같아도 major"}
+{"id":"g07","cardKey":"family_help","a":"잘 모르겠어요","b":"아직 얘기 안 해봤어요","expect":{"verdict":"yellow"},"note":"둘 다 유보 → minor"}
+{"id":"g08","cardKey":"risk","a":"집 살 돈은 예금에","b":"주택자금은 건드리지 말자고 했어요","expect":{"verdict":"green"},"note":"같은 뜻"}
+{"id":"g09","cardKey":"risk","a":"집 살 돈 일부는 ETF 해도 될 것 같은데","b":"예금이요","expect":{"verdict":"yellow"},"note":"한쪽이 조건부로 흔들림. 오탐 유도용 — LLM이 red로 가기 쉬움"}
+{"id":"g10","cardKey":"risk","a":"지금 반은 코인이에요","b":"예금이요","expect":{"verdict":"red","redKind":"couple_conflict"},"note":"전제 위반 + 서로 다름"}
+{"id":"g11","cardKey":"raise_plan","a":"내년 봄에 팀장 승진 예정","b":"2027년 3월에 승진한다고 들었어요","expect":{"verdict":"red","redKind":"plan_stale"},"note":"'내년 봄'='2027년 3월' 이걸 다르다고 하면 오탐. 둘 다 전제(승진 없음)와는 major"}
+{"id":"g12","cardKey":"family_help","a":"8천은 받았고 더는 없을 것 같아요","b":"1.5억 더 주신댔는데","expect":{"verdict":"red","redKind":"couple_conflict"},"note":"한쪽이 전제의 절반만 인지"}
+{"id":"g13","cardKey":"risk","a":"좀 무리해서라도 수익 내고 싶어요","b":"감당 가능한 선에서만요","expect":{"verdict":"yellow"},"note":"한국어 뉘앙스. 오탐/미탐 모두 가능 — 기록용"}
+{"id":"g14","cardKey":"raise_plan","a":"없음","b":"없음","expect":{"verdict":"green"},"note":"완전 동일"}
+{"id":"g15","cardKey":"family_help","a":"전세 때 8천 받았어요","b":"매수 때 1.5억 받기로 했어요","expect":{"verdict":"green"},"note":"전제의 서로 다른 절반을 말함 — 둘 다 전제와 일치. 서로 다르다고 red 주면 오탐"}
