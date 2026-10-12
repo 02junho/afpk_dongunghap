@@ -11,6 +11,8 @@ export interface Card {
   tolerance?: number
   /** choice일 때 선택지 */
   options?: string[]
+  /** number일 때 단위. 생략하면 원(krw). 나이·개수는 금액으로 표시하면 안 된다 */
+  unit?: 'krw' | 'age'
   /** 이 전제가 흔들리면 무너지는 것 — 결과 화면과 설계사 요약에 쓴다 */
   stake: string
 }

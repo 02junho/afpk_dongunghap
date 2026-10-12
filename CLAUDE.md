@@ -35,3 +35,7 @@ eval/          golden.jsonl · run.ts            scripts/    extract-cards.ts (�
 
 ## 커밋
 한국어 제목, 본문에 "왜". 테스트 통과 후에만.
+
+## 화면 스크린샷
+`npm run dev` 띄운 뒤 다른 터미널에서 `npm run shots` → `shots/` 에 9장. 포트 5180 고정.
+로컬 크로미움 경로가 다르면 `shoot.mjs`의 `executablePath`를 지우면 된다 (`npx playwright install chromium` 후).

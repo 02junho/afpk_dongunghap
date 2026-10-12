@@ -1,21 +1,44 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-/** 1주차: 로컬 상태만. 2주차에 Supabase members 연결. */
 export default function Join() {
   const nav = useNavigate()
   const [code, setCode] = useState('')
-  const [role, setRole] = useState<'husband' | 'wife'>('husband')
+  const [role, setRole] = useState<'husband' | 'wife' | null>(null)
+
+  function start() {
+    sessionStorage.setItem('me', JSON.stringify({ code, role }))
+    nav('/c/home')
+  }
+
   return (
-    <main className="couple">
-      <h1>돈궁합</h1>
-      <p className="muted">설계사에게 받은 커플 코드를 입력하세요</p>
-      <input inputMode="numeric" maxLength={6} placeholder="6자리" value={code} onChange={e => setCode(e.target.value)} />
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button className={role === 'husband' ? '' : 'ghost'} onClick={() => setRole('husband')}>남편</button>
-        <button className={role === 'wife' ? '' : 'ghost'} onClick={() => setRole('wife')}>아내</button>
+    <main className="phone">
+      <div className="phone-top">
+        <h1 className="wordmark">돈궁합</h1>
       </div>
-      <button disabled={code.length !== 6} onClick={() => { sessionStorage.setItem('me', JSON.stringify({ code, role })); nav('/c/home') }}>시작</button>
+      <div className="phone-body stack">
+        <div>
+          <h2 className="q">설계사에게 받은<br />코드를 넣어주세요</h2>
+          <p className="note">상담 때 안내받은 여섯 자리입니다.</p>
+        </div>
+        <input
+          className="field code-field"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="······"
+          aria-label="커플 코드 여섯 자리"
+          value={code}
+          onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+        />
+        <div>
+          <p className="meta" style={{ marginBottom: 10 }}>어느 분이세요?</p>
+          <div className="role-row">
+            <button className={`role ${role === 'husband' ? 'role-on' : ''}`} onClick={() => setRole('husband')}>남편</button>
+            <button className={`role ${role === 'wife' ? 'role-on' : ''}`} onClick={() => setRole('wife')}>아내</button>
+          </div>
+        </div>
+      </div>
+      <button className="btn btn-wide" disabled={code.length !== 6 || !role} onClick={start}>시작하기</button>
     </main>
   )
 }

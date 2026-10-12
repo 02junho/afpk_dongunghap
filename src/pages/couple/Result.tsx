@@ -1,41 +1,54 @@
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import seed from '../../data/seed-cards.json'
-import type { Card, Judgment } from '../../judge/index'
-import { requestJudgment } from '../../lib/api'
-
-const LABEL = { green: '두 분 생각이 같습니다', yellow: '조금 다르게 보고 계세요', red: '전제가 다릅니다' }
-const KIND = { couple_conflict: '설계사에게 전달되었습니다', plan_stale: '두 분은 같은 생각 — 설계안이 현실을 못 따라왔습니다. 설계사에게 전달되었습니다' }
+import { useState } from 'react'
+import { BASELINE, byKey, DEMO_ANSWERS, DEMO_JUDGMENTS, VERDICT_CLASS, VERDICT_TEXT, RED_TEXT } from '../../data/demo'
 
 export default function Result() {
-  const { id } = useParams()
-  const answers = JSON.parse(sessionStorage.getItem(`round:${id}`) ?? '{}') as Record<string, { husband: string; wife: string }>
-  const cards = (seed as Card[]).filter(c => answers[c.key])
-  const [js, setJs] = useState<Record<string, Judgment>>({})
+  const cards = BASELINE.map(byKey)
+  const [disputed, setDisputed] = useState<string[]>([])
 
-  useEffect(() => {
-    cards.forEach(async c => {
-      const j = await requestJudgment(c, answers[c.key].husband, answers[c.key].wife)
-      setJs(prev => ({ ...prev, [c.key]: j }))
-    })
-  }, [id])
+  const agreed = cards.filter(c => DEMO_JUDGMENTS[c.key].verdict === 'green').length
+  const KO = ['', '한', '두', '세', '네', '다섯']
 
   return (
-    <main className="couple">
-      <h1>결과</h1>
-      {cards.map(c => {
-        const j = js[c.key]
-        return (
-          <div className="card" key={c.key}>
-            <b>{c.label}</b> {j && <span className={`pill ${j.verdict}`}>{LABEL[j.verdict]}</span>}
-            <p className="muted">남편: {answers[c.key].husband}<br />아내: {answers[c.key].wife}</p>
-            {j?.verdict === 'red' && <p><b>{KIND[j.redKind!]}</b><br /><span className="muted">{c.stake}</span></p>}
-            {j?.verdict === 'yellow' && <p className="muted">오늘 저녁에 이 얘기 한 번만 해보세요: "{c.question}"</p>}
-            {j?.method === 'llm' && <button className="ghost" onClick={() => alert('disputes 테이블에 기록 (2주차)')}>이건 같은 뜻이에요</button>}
-            {!j && <p className="muted">판정 중…</p>}
-          </div>
-        )
-      })}
+    <main className="phone">
+      <div className="phone-top">
+        <h1 className="wordmark">돈궁합</h1>
+        <p className="meta">0회차 결과</p>
+      </div>
+      <div className="phone-body">
+        <h2 className="q">{KO[cards.length]} 가지 중 {KO[agreed]} 가지는<br />두 분 생각이 같았어요</h2>
+        <p className="note">나머지는 설계사에게 전달됐습니다. 다음 상담 때 같이 보실 거예요.</p>
+
+        <div style={{ marginTop: 38 }}>
+          {cards.map(c => {
+            const j = DEMO_JUDGMENTS[c.key]
+            const a = DEMO_ANSWERS[c.key]
+            const isDisputed = disputed.includes(c.key)
+            return (
+              <div className="result-item" key={c.key}>
+                <div className={`verdict ${isDisputed ? 'verdict-agree' : VERDICT_CLASS[j.verdict]}`}>
+                  <p className="verdict-label">{isDisputed ? '같은 뜻으로 정리했어요' : VERDICT_TEXT[j.verdict]}</p>
+                  <p className="result-head">{c.label}</p>
+                  <dl className="pair">
+                    <dt>현우</dt><dd>{a.husband}</dd>
+                    <dt>지우</dt><dd>{a.wife}</dd>
+                  </dl>
+                  {j.verdict === 'red' && !isDisputed && (
+                    <p className="consequence">
+                      {RED_TEXT[j.redKind!]}<br />{c.stake}
+                    </p>
+                  )}
+                </div>
+                {j.method === 'llm' && !isDisputed && (
+                  <button className="btn btn-quiet btn-small" style={{ marginTop: 12, marginLeft: 19 }}
+                    onClick={() => setDisputed([...disputed, c.key])}>
+                    이건 같은 뜻이에요
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </main>
   )
 }
