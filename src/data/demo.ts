@@ -55,7 +55,23 @@ export const typeLabel = (c: Card) =>
 
 /** 카드 값 사람이 읽는 형태. 금액은 억/만 단위로. */
 export function showValue(c: Card): string {
+  if (c.type === 'date') {
+    const m = String(c.plannedValue).match(/^(\d{4})-(\d{2})$/)
+    return m ? `${m[1]}년 ${Number(m[2])}월` : String(c.plannedValue)
+  }
   if (c.type !== 'number') return String(c.plannedValue)
   const n = Number(c.plannedValue)
   return c.unit === 'age' ? `만 ${n}세` : fmt(n)
 }
+
+export const CATEGORIES: Record<Card['category'], { label: string; bg: string; fg: string; short: string }> = {
+  housing:   { label: '주거',      short: '주거', bg: '#e9effd', fg: '#3f63c9' },
+  income:    { label: '소득·직업', short: '소득', bg: '#fdeae6', fg: '#c25a4a' },
+  children:  { label: '출산·양육', short: '양육', bg: '#fdf1dc', fg: '#a86a12' },
+  family:    { label: '양가 지원', short: '양가', bg: '#eee9fb', fg: '#6b4fc0' },
+  saving:    { label: '저축·투자', short: '저축', bg: '#e4f5ec', fg: '#1f7a52' },
+  insurance: { label: '보험',      short: '보험', bg: '#e6f3f8', fg: '#2a6f8a' },
+  retire:    { label: '은퇴',      short: '은퇴', bg: '#f3efe6', fg: '#7a6530' },
+  tax:       { label: '세금',      short: '세금', bg: '#f0f0f0', fg: '#555' },
+}
+export const CATEGORY_ORDER: Card['category'][] = ['housing','income','children','family','saving','insurance','retire','tax']

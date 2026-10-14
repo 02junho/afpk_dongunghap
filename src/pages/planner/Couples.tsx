@@ -14,25 +14,24 @@ export default function Couples() {
       <Rail />
       <main className="work">
         <h1 className="work-title">담당 커플</h1>
-        <p className="meta">코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
-        <div style={{ marginTop: 24 }}>
+        <p className="meta">입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
+        <div style={{ marginTop: 22 }}>
           {ROWS.map(r => (
-            <div className="queue-item" key={r.code}>
+            <div className="qcard" key={r.code}>
               <div className="queue-top">
-                <Link to="/p/queue" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{r.name}</Link>
-                {r.red > 0 && <span className="tag tag-conflict">처리 대기 {r.red}</span>}
+                <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
+                <Link to="/p/queue" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', textDecoration: 'none' }}>{r.name}</Link>
+                {r.red > 0 && <span className="chip chip-escalate">처리 대기 {r.red}</span>}
                 <span className="queue-couple">마지막 응답 {r.when}</span>
               </div>
               <dl className="pair" style={{ gridTemplateColumns: '80px 1fr' }}>
-                <dt>진행</dt><dd>{r.state}</dd>
-                <dt>코드</dt><dd style={{ letterSpacing: '0.12em' }}>{r.code}</dd>
+                <dt className="meta">진행</dt><dd>{r.state}</dd>
+                <dt className="meta">입장 코드</dt><dd style={{ letterSpacing: '0.12em' }}>{r.code}</dd>
               </dl>
             </div>
           ))}
         </div>
-        <div className="actions" style={{ marginTop: 28 }}>
-          <button className="btn btn-small">새 커플 등록하고 코드 발급</button>
-        </div>
+        <div className="actions" style={{ marginTop: 24 }}><button className="btn btn-small">새 커플 등록하고 코드 발급</button></div>
       </main>
     </div>
   )

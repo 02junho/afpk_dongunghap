@@ -16,11 +16,12 @@
 - **AI는 판별·분류·요약만.** 계산·재무 조언·자동 반영 금지. 이걸 어기면 기획의 핵심 주장이 무너진다.
 - **text 카드가 아니면 LLM을 호출하지 않는다.** number/date/choice는 `src/judge/deterministic.ts`.
 - 용어: 코드의 `planner` = UI의 **"설계사"**. "관리자"라고 쓰지 않는다 (심사위원이 재무설계사다).
+- **부부 화면에 판정·상대 답을 보여주지 않는다.** 결과는 설계사만. "앱은 듣고, 설계사가 말한다." (10.14 팀 결정, `docs/00` 참조)
 
 ## 명령
 ```
 npm test            # vitest. 바꾸기 전후 항상
-npm run dev         # /c/join (폰) · /p/queue (설계사)
+npm run dev         # /c/join (폰) · /p/couples (설계사)
 npm run eval        # golden set → 혼동행렬. LLM_API_KEY 없으면 mock
 npx tsc --noEmit    # 커밋 전
 ```
@@ -37,5 +38,5 @@ eval/          golden.jsonl · run.ts            scripts/    extract-cards.ts (�
 한국어 제목, 본문에 "왜". 테스트 통과 후에만.
 
 ## 화면 스크린샷
-`npm run dev` 띄운 뒤 다른 터미널에서 `npm run shots` → `shots/` 에 9장. 포트 5180 고정.
+`npm run dev` 띄운 뒤 다른 터미널에서 `npm run shots` → `shots/` 에 10장. 포트 5180 고정.
 로컬 크로미움 경로가 다르면 `shoot.mjs`의 `executablePath`를 지우면 된다 (`npx playwright install chromium` 후).

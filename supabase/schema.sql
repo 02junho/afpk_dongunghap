@@ -7,7 +7,8 @@ create type card_type as enum ('number','date','choice','text');
 create type verdict as enum ('green','yellow','red');
 create type red_kind as enum ('couple_conflict','plan_stale');
 create type round_status as enum ('open','judged','closed');
-create type round_kind as enum ('baseline','regular','event','reconfirm');
+create type round_kind as enum ('baseline','regular','event','factcheck');
+-- factcheck = 설계사가 🔴 카드 하나를 두 분께 다시 묻는 라운드. 재합의와 같은 장치.
 create type member_role as enum ('husband','wife');
 
 create table planners (
@@ -41,6 +42,7 @@ create table cards (
   couple_id uuid references couples(id) not null,
   key text not null,                 -- 'home_when'
   type card_type not null,
+  category text not null,            -- housing|income|children|family|saving|insurance|retire|tax
   archived_at timestamptz,
   created_at timestamptz default now(),
   unique (couple_id, key)
@@ -113,11 +115,11 @@ create table judgments (
   unique (round_id, card_version_id)
 );
 
--- "이건 같은 뜻이에요"
+-- "이건 같은 뜻이에요" — 부부는 판정을 보지 않으므로 설계사가 누른다 (전문가 라벨)
 create table disputes (
   id uuid primary key default gen_random_uuid(),
   judgment_id uuid references judgments(id) not null,
-  member_id uuid references members(id) not null,
+  planner_id uuid references planners(id) not null,
   note text,
   created_at timestamptz default now()
 );

@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { judge, resolve, parseWon, parseYearMonth, type Card } from '../index'
 import { parseOutput } from '../text-llm'
 
-const price: Card = { key: 'home_price', type: 'number', label: '목표 주택가격', question: '얼마짜리 집을 보고 계세요?', plannedValue: 600_000_000, tolerance: 0.05, stake: '신혼부부 구입자금 상한 6억' }
-const when: Card = { key: 'home_when', type: 'date', label: '주택 취득 시점', question: '언제쯤 집을 사실 계획인가요?', plannedValue: '2029-06', tolerance: 6, stake: '전세 만기·특례 기한' }
-const leave: Card = { key: 'leave_who', type: 'choice', label: '육아휴직 주체', question: '육아휴직은 누가?', plannedValue: '아내', options: ['남편', '아내', '둘 다', '미정'], stake: '외벌이 전환 현금흐름' }
+const price: Card = { key: 'home_price', category: 'housing', type: 'number', label: '목표 주택가격', question: '얼마짜리 집을 보고 계세요?', plannedValue: 600_000_000, tolerance: 0.05, stake: '신혼부부 구입자금 상한 6억' }
+const when: Card = { key: 'home_when', category: 'housing', type: 'date', label: '주택 취득 시점', question: '언제쯤 집을 사실 계획인가요?', plannedValue: '2029-06', tolerance: 6, stake: '전세 만기·특례 기한' }
+const leave: Card = { key: 'leave_who', category: 'children', type: 'choice', label: '육아휴직 주체', question: '육아휴직은 누가?', plannedValue: '아내', options: ['남편', '아내', '둘 다', '미정'], stake: '외벌이 전환 현금흐름' }
 
 describe('파서', () => {
   it('금액', () => {

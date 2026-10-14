@@ -1,12 +1,105 @@
 [
-  { "key": "home_when",   "type": "date",   "label": "주택 취득 시점",   "question": "언제쯤 집을 사실 계획인가요?",                 "plannedValue": "2029-06", "tolerance": 6,    "stake": "전세 만기(2027.10) 대응과 신생아 특례 접수 기한" },
-  { "key": "home_price",  "type": "number", "label": "목표 주택가격",   "question": "얼마짜리 집을 보고 계세요?",                   "plannedValue": 600000000, "tolerance": 0.05, "stake": "신혼부부 구입자금 상한 6억 — 1원만 넘어도 자격 상실" },
-  { "key": "child_when",  "type": "date",   "label": "첫 출산 시점",     "question": "아이는 언제쯤 계획하고 계세요?",               "plannedValue": "2027-09", "tolerance": 6,    "stake": "신생아 특례 접수 기한(출산일+2년)과 매수 시점의 정합성" },
-  { "key": "income",      "type": "number", "label": "부부 합산 소득",   "question": "두 분 합쳐서 세전 연소득이 얼마쯤 되세요?",     "plannedValue": 76000000,  "tolerance": 0.05, "stake": "소득 상한 8,500만원까지 여유 900만원" },
-  { "key": "raise_plan",  "type": "text",   "label": "승진·이직 계획",   "question": "2년 안에 승진이나 이직 계획이 있으세요?",       "plannedValue": "없음. 현 직장 유지, 연봉 상승은 물가 수준",  "stake": "한 명이 연봉 +500만원이면 신혼부부 구입자금 자격 상실" },
-  { "key": "family_help", "type": "text",   "label": "양가 지원",       "question": "집 살 때 부모님 도움은 어느 정도 기대하세요?",   "plannedValue": "전세 때 8,000만원 받았고, 매수 시 1.5억 추가 지원 예정", "stake": "혼인 증여재산공제 창구(2027.10)와 차용 설계" },
-  { "key": "leave_who",   "type": "choice", "label": "육아휴직 주체",   "question": "육아휴직은 누가 쓰실 생각이세요?",             "plannedValue": "아내", "options": ["남편", "아내", "둘 다", "미정"], "stake": "외벌이 전환 기간의 현금흐름과 보장 공백" },
-  { "key": "saving",      "type": "number", "label": "월 저축액",       "question": "지금 한 달에 얼마나 저축하고 계세요?",         "plannedValue": 1320000,   "tolerance": 0.15, "stake": "2029년 자기자금 2.5억 달성 여부" },
-  { "key": "risk",        "type": "text",   "label": "투자 성향",       "question": "모아둔 돈, 어떻게 굴리고 싶으세요?",           "plannedValue": "남편은 적극 투자 선호, 아내는 원금 보전 선호. 주택자금은 안전자산으로 합의", "stake": "단기(주택) 자금의 자산배분 합의" },
-  { "key": "retire_age",  "type": "number", "label": "은퇴 목표 연령",   "question": "몇 살쯤 은퇴하고 싶으세요?",                   "plannedValue": 60, "unit": "age", "tolerance": 0.05, "stake": "연금계좌 납입을 주택 취득 전까지 유보할지 판단" }
+  {
+    "key": "home_when",
+    "type": "date",
+    "label": "주택 취득 시점",
+    "question": "언제쯤 집을 사실 계획인가요?",
+    "plannedValue": "2029-06",
+    "tolerance": 6,
+    "stake": "전세 만기(2027.10) 대응과 신생아 특례 접수 기한",
+    "category": "housing"
+  },
+  {
+    "key": "home_price",
+    "type": "number",
+    "label": "목표 주택가격",
+    "question": "얼마짜리 집을 보고 계세요?",
+    "plannedValue": 600000000,
+    "tolerance": 0.05,
+    "stake": "신혼부부 구입자금 상한 6억 — 1원만 넘어도 자격 상실",
+    "category": "housing"
+  },
+  {
+    "key": "child_when",
+    "type": "date",
+    "label": "첫 출산 시점",
+    "question": "아이는 언제쯤 계획하고 계세요?",
+    "plannedValue": "2027-09",
+    "tolerance": 6,
+    "stake": "신생아 특례 접수 기한(출산일+2년)과 매수 시점의 정합성",
+    "category": "children"
+  },
+  {
+    "key": "income",
+    "type": "number",
+    "label": "부부 합산 소득",
+    "question": "두 분 합쳐서 세전 연소득이 얼마쯤 되세요?",
+    "plannedValue": 76000000,
+    "tolerance": 0.05,
+    "stake": "소득 상한 8,500만원까지 여유 900만원",
+    "category": "income"
+  },
+  {
+    "key": "raise_plan",
+    "type": "text",
+    "label": "승진·이직 계획",
+    "question": "2년 안에 승진이나 이직 계획이 있으세요?",
+    "plannedValue": "없음. 현 직장 유지, 연봉 상승은 물가 수준",
+    "stake": "한 명이 연봉 +500만원이면 신혼부부 구입자금 자격 상실",
+    "category": "income"
+  },
+  {
+    "key": "family_help",
+    "type": "text",
+    "label": "양가 지원",
+    "question": "집 살 때 부모님 도움은 어느 정도 기대하세요?",
+    "plannedValue": "전세 때 8,000만원 받았고, 매수 시 1.5억 추가 지원 예정",
+    "stake": "혼인 증여재산공제 창구(2027.10)와 차용 설계",
+    "category": "family"
+  },
+  {
+    "key": "leave_who",
+    "type": "choice",
+    "label": "육아휴직 주체",
+    "question": "육아휴직은 누가 쓰실 생각이세요?",
+    "plannedValue": "아내",
+    "options": [
+      "남편",
+      "아내",
+      "둘 다",
+      "미정"
+    ],
+    "stake": "외벌이 전환 기간의 현금흐름과 보장 공백",
+    "category": "children"
+  },
+  {
+    "key": "saving",
+    "type": "number",
+    "label": "월 저축액",
+    "question": "지금 한 달에 얼마나 저축하고 계세요?",
+    "plannedValue": 1320000,
+    "tolerance": 0.15,
+    "stake": "2029년 자기자금 2.5억 달성 여부",
+    "category": "saving"
+  },
+  {
+    "key": "risk",
+    "type": "text",
+    "label": "투자 성향",
+    "question": "모아둔 돈, 어떻게 굴리고 싶으세요?",
+    "plannedValue": "남편은 적극 투자 선호, 아내는 원금 보전 선호. 주택자금은 안전자산으로 합의",
+    "stake": "단기(주택) 자금의 자산배분 합의",
+    "category": "saving"
+  },
+  {
+    "key": "retire_age",
+    "type": "number",
+    "label": "은퇴 목표 연령",
+    "question": "몇 살쯤 은퇴하고 싶으세요?",
+    "plannedValue": 60,
+    "unit": "age",
+    "tolerance": 0.05,
+    "stake": "연금계좌 납입을 주택 취득 전까지 유보할지 판단",
+    "category": "retire"
+  }
 ]

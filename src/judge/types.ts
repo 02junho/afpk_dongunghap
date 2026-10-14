@@ -1,8 +1,12 @@
 export type CardType = 'number' | 'date' | 'choice' | 'text'
 
+export type CardCategory = 'housing' | 'income' | 'children' | 'family' | 'saving' | 'insurance' | 'retire' | 'tax'
+
 export interface Card {
   key: string
   type: CardType
+  /** 큰 카테고리. 팀이 정하고, 세부 카드는 설계안에서 추출·분류된다 */
+  category: CardCategory
   label: string
   question: string
   /** 설계안에 박힌 전제값. number: 원, date: 'YYYY-MM', choice: 선택지 문자열, text: 서술 */

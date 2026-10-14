@@ -6,7 +6,7 @@ export default function Rail() {
   return (
     <nav className="rail">
       <div className="rail-top">
-        <p className="rail-title">돈궁합</p>
+        <p className="rail-title"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</p>
         <p className="rail-sub">설계사 콘솔 · 박성훈 AFPK</p>
       </div>
       <p className="rail-group">담당</p>

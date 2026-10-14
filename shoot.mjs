@@ -18,12 +18,13 @@ await shot('/c/join', '1-코드입력', async pg => {
   await pg.fill('input', '482913')
   await pg.click('text=남편')
 })
-await shot('/c/home', '2-홈')
+await shot('/c/home', '2-홈-맞춰보기')
+await shot('/c/home', '2b-홈-내설계', async pg => { await pg.click('text=내 설계') })
 await shot('/c/round/baseline', '3-문답', async pg => {
   await pg.fill('textarea', '2029년쯤 생각하고 있어요')
 })
 await shot('/c/wait/baseline', '4-대기')
-await shot('/c/result/baseline', '5-결과')
+await shot('/c/done/baseline', '5-전달완료')
 
 // 데스크톱
 const desk = await br.newContext({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 2 })
