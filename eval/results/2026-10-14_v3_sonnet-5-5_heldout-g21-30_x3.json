@@ -1,0 +1,149 @@
+{
+  "promptVersions": {
+    "judge": "v3",
+    "summary": "v1"
+  },
+  "model": "claude-sonnet-5-5",
+  "isBaseline": false,
+  "repeat": 3,
+  "total": 10,
+  "scored": 10,
+  "failures": [],
+  "verdictCorrect": 8,
+  "deviation": {
+    "scored": 20,
+    "correct": 14
+  },
+  "abAgree": {
+    "scored": 10,
+    "correct": 9
+  },
+  "fullCorrect": 6,
+  "verdictMatrix": {
+    "green": {
+      "green": 2,
+      "yellow": 1,
+      "red": 0
+    },
+    "yellow": {
+      "green": 0,
+      "yellow": 3,
+      "red": 0
+    },
+    "red": {
+      "green": 0,
+      "yellow": 0,
+      "red": 4
+    }
+  },
+  "deviationMatrix": {
+    "match": {
+      "match": 7,
+      "minor": 3,
+      "major": 1
+    },
+    "minor": {
+      "match": 0,
+      "minor": 3,
+      "major": 0
+    },
+    "major": {
+      "match": 0,
+      "minor": 2,
+      "major": 4
+    }
+  },
+  "misses": [
+    {
+      "id": "g23",
+      "card": "family_help",
+      "a": "1.5억은 받는데 증여세 때문에 차용증 쓴다고 하셨어요",
+      "b": "주시는 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "minor",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "남편은 1.5억을 받되 차용증을 쓴다고 해 금액은 맞지만 증여가 아닌 차용 형태이고, 아내는 증여라고 하여 남편의 차용 설명과 양립하지 않으며 전제의 증여/차용 구분이 흔들립니다."
+      },
+      "verdictOk": true,
+      "note": "[미학습] g06의 역할 반전. 남편은 차용으로, 아내는 증여로 인지"
+    },
+    {
+      "id": "g24",
+      "card": "raise_plan",
+      "a": "이직은 없는데 부업으로 월 100 정도 더 벌어요",
+      "b": "남편 부업하는 거 알아요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "남편은 이직 계획은 없지만 월 100만원 부업 소득을 말해 '연봉 상승은 물가 수준'이라는 전제와 다르고, 아내는 부업을 알고 있다고만 해 남편 답변과 충돌하지 않으며 금액은 확인하지 않았다."
+      },
+      "verdictOk": true,
+      "note": "[미학습] 승진·이직은 없지만 연 1,200만 소득 증가 — 여유 900만을 넘긴다. 전제가 못 담은 소득 경로, 부부는 일치"
+    },
+    {
+      "id": "g25",
+      "card": "raise_plan",
+      "a": "내년 초에 팀 옮기는데 연봉은 그대로예요",
+      "b": "부서 이동이지 이직은 아니에요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "두 사람 모두 이직이나 연봉 변동은 없다고 했지만 내년 초 팀·부서 이동이라는 전제에 없던 변화가 있어 minor이고, 두 답변은 동시에 참일 수 있어 양립합니다."
+      },
+      "verdictOk": false,
+      "note": "[미학습] 변화가 있어 보이지만 전제(현 직장·연봉 유지)는 그대로. 오탐 유도용"
+    },
+    {
+      "id": "g29",
+      "card": "risk",
+      "a": "주택자금 절반을 친구 사업에 투자했어요",
+      "b": "그거 저랑 상의 안 하고 한 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "남편은 안전자산으로 합의한 주택자금의 절반을 친구 사업에 투자해 합의와 다른 결정을 이미 내렸고, 아내는 투자 사실을 부정하지 않고 상의 없이 진행됐다고만 말해 두 답변은 동시에 참일 수 있으며 아내의 답변은 전제와 직접 비교하기 어려워 minor로 봅니다."
+      },
+      "verdictOk": false,
+      "note": "[미학습] 합의 위반 + 아내는 합의 유지. 전형적 부부 불일치"
+    }
+  ],
+  "unstable": []
+}

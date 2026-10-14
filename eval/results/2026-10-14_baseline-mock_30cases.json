@@ -1,0 +1,732 @@
+{
+  "promptVersions": {
+    "judge": "v3",
+    "summary": "v1"
+  },
+  "model": "mock(키워드 겹침)",
+  "isBaseline": true,
+  "repeat": 1,
+  "total": 30,
+  "scored": 30,
+  "failures": [],
+  "verdictCorrect": 6,
+  "deviation": {
+    "scored": 60,
+    "correct": 19
+  },
+  "abAgree": {
+    "scored": 30,
+    "correct": 10
+  },
+  "fullCorrect": 0,
+  "verdictMatrix": {
+    "green": {
+      "green": 0,
+      "yellow": 0,
+      "red": 11
+    },
+    "yellow": {
+      "green": 0,
+      "yellow": 0,
+      "red": 6
+    },
+    "red": {
+      "green": 0,
+      "yellow": 0,
+      "red": 13
+    }
+  },
+  "deviationMatrix": {
+    "match": {
+      "match": 0,
+      "minor": 1,
+      "major": 32
+    },
+    "minor": {
+      "match": 0,
+      "minor": 0,
+      "major": 7
+    },
+    "major": {
+      "match": 0,
+      "minor": 1,
+      "major": 19
+    }
+  },
+  "misses": [
+    {
+      "id": "g01",
+      "card": "raise_plan",
+      "a": "없어요. 그냥 다니려고요",
+      "b": "계획 없음",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "표현만 다름"
+    },
+    {
+      "id": "g02",
+      "card": "raise_plan",
+      "a": "내년에 대리 달 것 같은데 연봉은 크게 안 올라요",
+      "b": "없어요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "승진이지만 연봉 영향 작다고 명시 → minor. 아내 '없어요'는 자기 계획을 말한 것이지 남편 승진을 부정한 게 아니다 → 양립 가능(true). [10.14 라벨 정정: false→true, v2 abAgree 정의와 일관되게]"
+    },
+    {
+      "id": "g03",
+      "card": "raise_plan",
+      "a": "이직 알아보는 중이에요. 연봉 20% 올려서",
+      "b": "없어요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": true,
+      "note": "한쪽만 전제 깨짐. 소득 여유 900만원을 소진할 수 있는 규모"
+    },
+    {
+      "id": "g04",
+      "card": "raise_plan",
+      "a": "저 내년에 이직해요",
+      "b": "남편 이직 준비 중이에요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "부부는 일치, 설계 전제가 낡음"
+    },
+    {
+      "id": "g05",
+      "card": "family_help",
+      "a": "1.5억 정도 해주신다고 했어요",
+      "b": "한 1억 5천?",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "금액 표기 차이. 물음표는 구어체 확인조이지 유보가 아님 (v3 규칙)"
+    },
+    {
+      "id": "g06",
+      "card": "family_help",
+      "a": "1.5억이요",
+      "b": "그건 빌리는 거예요, 주시는 게 아니라",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "match",
+        "bVsPlan": "major",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": true,
+      "note": "증여 vs 차용 — 세금 설계가 통째로 바뀜. 금액이 같아도 major. abAgree 는 '부정'의 전형"
+    },
+    {
+      "id": "g07",
+      "card": "family_help",
+      "a": "잘 모르겠어요",
+      "b": "아직 얘기 안 해봤어요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "minor",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "둘 다 유보 → minor. '모르겠다'는 부정이 아니므로 abAgree true"
+    },
+    {
+      "id": "g08",
+      "card": "risk",
+      "a": "집 살 돈은 예금에",
+      "b": "주택자금은 건드리지 말자고 했어요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "같은 뜻"
+    },
+    {
+      "id": "g09",
+      "card": "risk",
+      "a": "집 살 돈 일부는 ETF 해도 될 것 같은데",
+      "b": "예금이요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "한쪽이 조건부로 흔들림. 오탐 유도용 — v2는 red 로 갔고 v3 규칙(부분적 제안=minor)으로 잡힘"
+    },
+    {
+      "id": "g10",
+      "card": "risk",
+      "a": "지금 반은 코인이에요",
+      "b": "예금이요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": true,
+      "note": "질문이 '모아둔 돈'이므로 주택자금이다. 절반이 코인 = 안전자산 합의 위반 → major. v3 모델은 '주택자금인지 불분명'이라며 minor — 미탐 방향. 라벨 유지 [10.14 검토]"
+    },
+    {
+      "id": "g11",
+      "card": "raise_plan",
+      "a": "내년 봄에 팀장 승진 예정",
+      "b": "2027년 3월에 승진한다고 들었어요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "'내년 봄'='2027년 3월' 이걸 다르다고 하면 오탐. 둘 다 전제(승진 없음)와는 major"
+    },
+    {
+      "id": "g12",
+      "card": "family_help",
+      "a": "8천은 받았고 더는 없을 것 같아요",
+      "b": "1.5억 더 주신댔는데",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": true,
+      "note": "한쪽이 추가 지원을 부정 → 전제의 절반을 깬다"
+    },
+    {
+      "id": "g13",
+      "card": "risk",
+      "a": "좀 무리해서라도 수익 내고 싶어요",
+      "b": "감당 가능한 선에서만요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "한국어 뉘앙스. 전제가 이미 '남편 적극/아내 보전'을 담고 있고 어느 답도 주택자금 안전자산 합의를 부정하지 않는다 → 🟢. [10.14 라벨 정정: 🟡→🟢. 처음부터 기록용이었고 규칙서(합의 기준)와 일관되게]"
+    },
+    {
+      "id": "g14",
+      "card": "raise_plan",
+      "a": "없음",
+      "b": "없음",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "완전 동일"
+    },
+    {
+      "id": "g15",
+      "card": "family_help",
+      "a": "전세 때 8천 받았어요",
+      "b": "매수 때 1.5억 받기로 했어요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "minor",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "전제의 서로 다른 절반을 말함 — 둘 다 전제와 일치. abAgree 정의('양립 가능한가')의 핵심 케이스"
+    },
+    {
+      "id": "g16",
+      "card": "family_help",
+      "a": "1.5억 주시는데 차용증 쓰기로 했어요",
+      "b": "빌리는 걸로 정리했어요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "부부는 일치, 전제(증여)가 낡음 → 전제 폐기. g06과 짝 — 같은 사실, 다른 판정"
+    },
+    {
+      "id": "g17",
+      "card": "risk",
+      "a": "주택자금은 예금, 나머지는 ETF 하려고요",
+      "b": "집 살 돈만 안전하게 두면 돼요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "서로 다른 범위를 말하지만 양립 가능 → green. abAgree 정의 테스트"
+    },
+    {
+      "id": "g18",
+      "card": "raise_plan",
+      "a": "회사가 어려워서 연봉 동결될 것 같아요",
+      "b": "오를 일은 없죠",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "'동결'은 '물가 수준 상승'과 방향이 같다(큰 인상 없음). 전제(현 직장 유지·큰 인상 없음)는 그대로이고 자격 요건에도 영향 없음 → 🟢. [10.14 라벨 정정: 🟡→🟢]"
+    },
+    {
+      "id": "g19",
+      "card": "risk",
+      "a": "지금 자산 거의 다 코인이에요",
+      "b": "저도 비중 큰 거 알아요. 둘이 합의한 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "둘 다 전제 위반 + 서로 일치 → 전제 폐기. g10과 짝"
+    },
+    {
+      "id": "g20",
+      "card": "raise_plan",
+      "a": "이직은 안 하는데 와이프가 복직하면 소득이 늘어요",
+      "b": "제가 내년에 복직해요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "질문(승진·이직)에 없는 소득 증가 경로. 전제가 못 담은 사실 → 전제 폐기"
+    },
+    {
+      "id": "g21",
+      "card": "family_help",
+      "a": "2억까지 해주신대요",
+      "b": "1.5억이라고 들었는데요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습 10.14] 금액이 전제보다 큼 — 방향 같고 정도 다름 → minor. 2억 vs 1.5억은 동시에 참일 수 없음 → false"
+    },
+    {
+      "id": "g22",
+      "card": "family_help",
+      "a": "매수 때 도움은 없을 거예요. 전세 때로 끝이에요",
+      "b": "저도 그렇게 알아요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "minor",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] 추가 지원 1.5억을 둘 다 부정 → 전제 폐기. 필요대출이 1.5억 늘어 한도 부족이 커진다"
+    },
+    {
+      "id": "g23",
+      "card": "family_help",
+      "a": "1.5억은 받는데 증여세 때문에 차용증 쓴다고 하셨어요",
+      "b": "주시는 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": true,
+      "note": "[미학습] g06의 역할 반전. 남편은 차용으로, 아내는 증여로 인지"
+    },
+    {
+      "id": "g24",
+      "card": "raise_plan",
+      "a": "이직은 없는데 부업으로 월 100 정도 더 벌어요",
+      "b": "남편 부업하는 거 알아요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] 승진·이직은 없지만 연 1,200만 소득 증가 — 여유 900만을 넘긴다. 전제가 못 담은 소득 경로, 부부는 일치"
+    },
+    {
+      "id": "g25",
+      "card": "raise_plan",
+      "a": "내년 초에 팀 옮기는데 연봉은 그대로예요",
+      "b": "부서 이동이지 이직은 아니에요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] 변화가 있어 보이지만 전제(현 직장·연봉 유지)는 그대로. 오탐 유도용"
+    },
+    {
+      "id": "g26",
+      "card": "raise_plan",
+      "a": "회사에서 승진 제안이 왔는데 거절했어요",
+      "b": "승진하면 연봉 올라서 대출 안 된다고 거절했대요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] '승진' 단어가 있지만 결론은 전제 유지. 키워드로 읽으면 틀린다"
+    },
+    {
+      "id": "g27",
+      "card": "risk",
+      "a": "집 살 돈은 예금이고, 월급 일부로 미국 주식 조금 해요",
+      "b": "주식은 남편 용돈으로만 하기로 했어요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] 주택자금 안전자산 합의 유지. 용돈 범위 주식은 합의 밖 영역"
+    },
+    {
+      "id": "g28",
+      "card": "risk",
+      "a": "집 사기 전까지 다 예금으로 묶자고 했어요",
+      "b": "저는 반 정도는 채권 ETF도 괜찮다고 봐요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "match",
+        "bVsPlan": "minor",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] 아내가 안전자산 범위 안에서 변경 제안(채권 ETF). 전제를 뒤집은 건 아님 → minor. '다 예금' vs '반은 ETF' → false"
+    },
+    {
+      "id": "g29",
+      "card": "risk",
+      "a": "주택자금 절반을 친구 사업에 투자했어요",
+      "b": "그거 저랑 상의 안 하고 한 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": true,
+      "note": "[미학습] 합의 위반 + 아내는 합의 유지. 전형적 부부 불일치"
+    },
+    {
+      "id": "g30",
+      "card": "family_help",
+      "a": "부모님이 집값 오르면 더 주신다고는 했는데 정해진 건 없어요",
+      "b": "1.5억은 확정이고 그 이상은 모르겠어요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "mock"
+      },
+      "verdictOk": false,
+      "note": "[미학습] 남편은 금액을 정하지 않음(유보) → minor. 아내는 전제 그대로. 서로 모순 없음 → true"
+    }
+  ],
+  "unstable": []
+}

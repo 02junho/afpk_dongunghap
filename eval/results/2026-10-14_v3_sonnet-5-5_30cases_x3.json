@@ -1,0 +1,192 @@
+{
+  "promptVersions": {
+    "judge": "v3",
+    "summary": "v1"
+  },
+  "model": "claude-sonnet-5-5",
+  "isBaseline": false,
+  "repeat": 3,
+  "total": 30,
+  "scored": 30,
+  "failures": [],
+  "verdictCorrect": 26,
+  "deviation": {
+    "scored": 60,
+    "correct": 52
+  },
+  "abAgree": {
+    "scored": 30,
+    "correct": 28
+  },
+  "fullCorrect": 24,
+  "verdictMatrix": {
+    "green": {
+      "green": 9,
+      "yellow": 2,
+      "red": 0
+    },
+    "yellow": {
+      "green": 0,
+      "yellow": 6,
+      "red": 0
+    },
+    "red": {
+      "green": 0,
+      "yellow": 1,
+      "red": 12
+    }
+  },
+  "deviationMatrix": {
+    "match": {
+      "match": 28,
+      "minor": 4,
+      "major": 1
+    },
+    "minor": {
+      "match": 0,
+      "minor": 7,
+      "major": 0
+    },
+    "major": {
+      "match": 0,
+      "minor": 3,
+      "major": 17
+    }
+  },
+  "misses": [
+    {
+      "id": "g10",
+      "card": "risk",
+      "a": "지금 반은 코인이에요",
+      "b": "예금이요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편은 자산의 절반이 코인이라고 현재 보유 상태만 말했고 주택자금 배분에 대해서는 언급하지 않아 합의를 뒤집은 것은 아니지만 합의가 흔들릴 여지가 있으며, 아내의 예금은 안전자산 합의와 일치하고 두 답변은 동시에 참일 수 있습니다."
+      },
+      "verdictOk": false,
+      "note": "질문이 '모아둔 돈'이므로 주택자금이다. 절반이 코인 = 안전자산 합의 위반 → major. v3 모델은 '주택자금인지 불분명'이라며 minor — 미탐 방향. 라벨 유지 [10.14 검토]"
+    },
+    {
+      "id": "g13",
+      "card": "risk",
+      "a": "좀 무리해서라도 수익 내고 싶어요",
+      "b": "감당 가능한 선에서만요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편은 '무리해서라도 수익'이라며 적극 성향을 말했을 뿐 주택자금 안전자산 합의를 직접 뒤집지는 않아 minor이고, 아내의 '감당 가능한 선'은 원금 보전 선호와 같은 방향이라 match이며, 두 답변은 동시에 참일 수 있어 양립합니다."
+      },
+      "verdictOk": false,
+      "note": "한국어 뉘앙스. 전제가 이미 '남편 적극/아내 보전'을 담고 있고 어느 답도 주택자금 안전자산 합의를 부정하지 않는다 → 🟢. [10.14 라벨 정정: 🟡→🟢. 처음부터 기록용이었고 규칙서(합의 기준)와 일관되게]"
+    },
+    {
+      "id": "g23",
+      "card": "family_help",
+      "a": "1.5억은 받는데 증여세 때문에 차용증 쓴다고 하셨어요",
+      "b": "주시는 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "minor",
+        "bVsPlan": "major",
+        "abAgree": false,
+        "reason": "남편은 1.5억을 받되 증여세 때문에 차용증을 쓴다고 해 금액은 맞지만 차용 설계라 증여 전제와 조금 다르고, 아내는 증여라고 하여 남편의 차용 설명과 서로 배제되므로 양립하지 않는다."
+      },
+      "verdictOk": true,
+      "note": "[미학습] g06의 역할 반전. 남편은 차용으로, 아내는 증여로 인지"
+    },
+    {
+      "id": "g24",
+      "card": "raise_plan",
+      "a": "이직은 없는데 부업으로 월 100 정도 더 벌어요",
+      "b": "남편 부업하는 거 알아요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "major",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "남편은 이직 계획은 없다고 했지만 월 100만원 부업 수입을 말해 '연봉 상승은 물가 수준'이라는 전제와 다르고, 아내는 부업 사실만 알고 있다고 했을 뿐 금액은 말하지 않아 전제와 조금 다르며, 두 답변은 서로 충돌하지 않습니다."
+      },
+      "verdictOk": true,
+      "note": "[미학습] 승진·이직은 없지만 연 1,200만 소득 증가 — 여유 900만을 넘긴다. 전제가 못 담은 소득 경로, 부부는 일치"
+    },
+    {
+      "id": "g25",
+      "card": "raise_plan",
+      "a": "내년 초에 팀 옮기는데 연봉은 그대로예요",
+      "b": "부서 이동이지 이직은 아니에요",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "두 사람 모두 이직은 아니고 내년 초 부서·팀 이동이 있다고 했으며 연봉 변동은 남편만 '그대로'라고 밝혀, 승진·이직 없음 전제와 방향은 같으나 인사 이동이 있다는 점이 조금 달라 minor이고 서로 모순되지 않습니다."
+      },
+      "verdictOk": false,
+      "note": "[미학습] 변화가 있어 보이지만 전제(현 직장·연봉 유지)는 그대로. 오탐 유도용"
+    },
+    {
+      "id": "g29",
+      "card": "risk",
+      "a": "주택자금 절반을 친구 사업에 투자했어요",
+      "b": "그거 저랑 상의 안 하고 한 거예요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "plan_stale",
+        "aVsPlan": "major",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "남편은 안전자산으로 합의된 주택자금의 절반을 친구 사업에 투자해 합의와 다른 결정을 이미 내렸고, 아내는 투자 여부나 금액을 부정하지 않고 상의 절차만 문제 삼아 전제와의 일치 여부가 불분명하므로 minor이며, 두 답변은 동시에 참일 수 있어 양립합니다."
+      },
+      "verdictOk": false,
+      "note": "[미학습] 합의 위반 + 아내는 합의 유지. 전형적 부부 불일치"
+    }
+  ],
+  "unstable": []
+}
