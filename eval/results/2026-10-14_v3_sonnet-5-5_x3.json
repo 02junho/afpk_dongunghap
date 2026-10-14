@@ -1,0 +1,144 @@
+{
+  "promptVersions": {
+    "judge": "v3",
+    "summary": "v1"
+  },
+  "model": "claude-sonnet-5-5",
+  "isBaseline": false,
+  "repeat": 3,
+  "total": 20,
+  "scored": 20,
+  "failures": [],
+  "verdictCorrect": 18,
+  "deviation": {
+    "scored": 40,
+    "correct": 37
+  },
+  "abAgree": {
+    "scored": 20,
+    "correct": 17
+  },
+  "fullCorrect": 16,
+  "verdictMatrix": {
+    "green": {
+      "green": 6,
+      "yellow": 0,
+      "red": 0
+    },
+    "yellow": {
+      "green": 1,
+      "yellow": 4,
+      "red": 0
+    },
+    "red": {
+      "green": 0,
+      "yellow": 1,
+      "red": 8
+    }
+  },
+  "deviationMatrix": {
+    "match": {
+      "match": 19,
+      "minor": 0,
+      "major": 0
+    },
+    "minor": {
+      "match": 2,
+      "minor": 5,
+      "major": 0
+    },
+    "major": {
+      "match": 0,
+      "minor": 1,
+      "major": 13
+    }
+  },
+  "misses": [
+    {
+      "id": "g02",
+      "card": "raise_plan",
+      "a": "내년에 대리 달 것 같은데 연봉은 크게 안 올라요",
+      "b": "없어요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편은 내년 대리 승진을 말했지만 연봉은 크게 오르지 않는다고 해 전제(승진 없음, 연봉은 물가 수준)와 방향은 비슷하되 승진 시점이 달라 minor, 아내는 계획이 없다고 해 전제와 같고 두 답변은 동시에 참일 수 있습니다."
+      },
+      "verdictOk": true,
+      "note": "승진이지만 연봉 영향 작다고 명시 → minor. 아내는 승진 자체를 부정 → abAgree false"
+    },
+    {
+      "id": "g10",
+      "card": "risk",
+      "a": "지금 반은 코인이에요",
+      "b": "예금이요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편의 '지금 반은 코인'은 적극 투자 성향에는 맞지만 주택자금을 안전자산으로 두기로 한 합의와 어긋날 수 있는지는 불분명하여 minor, 아내의 '예금'은 안전자산 합의와 같은 뜻이며 두 답변은 동시에 참일 수 있습니다."
+      },
+      "verdictOk": false,
+      "note": "전제 위반 + 서로 다름"
+    },
+    {
+      "id": "g13",
+      "card": "risk",
+      "a": "좀 무리해서라도 수익 내고 싶어요",
+      "b": "감당 가능한 선에서만요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편은 무리해서라도 수익을 내고 싶다고 했지만 주택자금을 안전자산으로 둔다는 합의를 직접 부정하지는 않아 소폭 흔들리는 수준(minor)이고, 아내는 감당 가능한 선이라는 원금 보전 성향으로 전제와 같으며, 두 사람의 답변은 투자 성향 차이일 뿐 동시에 참일 수 있습니다."
+      },
+      "verdictOk": true,
+      "note": "한국어 뉘앙스. 오탐/미탐 모두 가능 — 기록용"
+    },
+    {
+      "id": "g18",
+      "card": "raise_plan",
+      "a": "회사가 어려워서 연봉 동결될 것 같아요",
+      "b": "오를 일은 없죠",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "minor",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편은 연봉 동결, 아내는 연봉 상승 없음이라고 답해 둘 다 승진·이직 없이 현 직장을 유지한다는 전제와 같은 뜻이며 서로 모순되지 않습니다."
+      },
+      "verdictOk": false,
+      "note": "전제(물가 수준 상승)와 방향이 다르지만 자격에는 유리. 부부는 일치 → 🟡"
+    }
+  ],
+  "unstable": []
+}

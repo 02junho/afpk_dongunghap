@@ -1,0 +1,187 @@
+{
+  "promptVersions": {
+    "judge": "v2",
+    "summary": "v1"
+  },
+  "model": "claude-sonnet-5-5",
+  "isBaseline": false,
+  "repeat": 3,
+  "total": 20,
+  "scored": 20,
+  "failures": [],
+  "verdictCorrect": 16,
+  "deviation": {
+    "scored": 40,
+    "correct": 35
+  },
+  "abAgree": {
+    "scored": 20,
+    "correct": 17
+  },
+  "fullCorrect": 14,
+  "verdictMatrix": {
+    "green": {
+      "green": 5,
+      "yellow": 1,
+      "red": 0
+    },
+    "yellow": {
+      "green": 1,
+      "yellow": 3,
+      "red": 1
+    },
+    "red": {
+      "green": 0,
+      "yellow": 1,
+      "red": 8
+    }
+  },
+  "deviationMatrix": {
+    "match": {
+      "match": 18,
+      "minor": 1,
+      "major": 0
+    },
+    "minor": {
+      "match": 2,
+      "minor": 4,
+      "major": 1
+    },
+    "major": {
+      "match": 0,
+      "minor": 1,
+      "major": 13
+    }
+  },
+  "misses": [
+    {
+      "id": "g02",
+      "card": "raise_plan",
+      "a": "내년에 대리 달 것 같은데 연봉은 크게 안 올라요",
+      "b": "없어요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편은 내년 대리 승진을 말했지만 연봉은 크게 오르지 않는다고 해 전제와 방향은 비슷하되 승진이라는 점이 달라 minor이고, 아내는 계획이 없다고 해 전제와 같으며, 두 답변은 동시에 참일 수 있습니다."
+      },
+      "verdictOk": true,
+      "note": "승진이지만 연봉 영향 작다고 명시 → minor. 아내는 승진 자체를 부정 → abAgree false"
+    },
+    {
+      "id": "g05",
+      "card": "family_help",
+      "a": "1.5억 정도 해주신다고 했어요",
+      "b": "한 1억 5천?",
+      "expect": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "match",
+        "bVsPlan": "minor",
+        "abAgree": true,
+        "reason": "남편은 매수 시 1.5억 지원이라는 전제와 같은 금액을 말했고, 아내도 같은 금액(1억 5천)을 언급했으나 물음표가 붙은 불확실한 표현이라 minor이며, 두 답변은 서로 양립합니다."
+      },
+      "verdictOk": false,
+      "note": "금액 표기 차이"
+    },
+    {
+      "id": "g09",
+      "card": "risk",
+      "a": "집 살 돈 일부는 ETF 해도 될 것 같은데",
+      "b": "예금이요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false,
+        "reason": "남편은 주택자금 일부를 ETF(위험자산)로 굴리자고 해 '주택자금은 안전자산' 합의와 다르고, 아내의 예금 답변은 전제와 같으며 두 사람의 답은 주택자금 운용 방식에서 서로 배치됩니다."
+      },
+      "verdictOk": false,
+      "note": "한쪽이 조건부로 흔들림. 오탐 유도용 — LLM이 red로 가기 쉬움"
+    },
+    {
+      "id": "g10",
+      "card": "risk",
+      "a": "지금 반은 코인이에요",
+      "b": "예금이요",
+      "expect": {
+        "verdict": "red",
+        "redKind": "couple_conflict",
+        "aVsPlan": "major",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편의 '자산 절반이 코인'은 적극 투자 선호라는 전제와 방향은 같지만, 주택자금을 안전자산으로 합의한 부분과 충돌할 수 있어 정도 차이(minor)로 보았고, 아내의 '예금'은 원금 보전 선호와 같은 뜻이며 두 답변은 서로를 부정하지 않아 동시에 참일 수 있습니다."
+      },
+      "verdictOk": false,
+      "note": "전제 위반 + 서로 다름"
+    },
+    {
+      "id": "g13",
+      "card": "risk",
+      "a": "좀 무리해서라도 수익 내고 싶어요",
+      "b": "감당 가능한 선에서만요",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": false
+      },
+      "got": {
+        "verdict": "green",
+        "aVsPlan": "match",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편의 적극 투자 선호와 아내의 원금 보전 선호는 각각 전제와 같은 뜻이고, 두 답변은 서로를 부정하지 않아 동시에 참일 수 있습니다."
+      },
+      "verdictOk": false,
+      "note": "한국어 뉘앙스. 오탐/미탐 모두 가능 — 기록용"
+    },
+    {
+      "id": "g18",
+      "card": "raise_plan",
+      "a": "회사가 어려워서 연봉 동결될 것 같아요",
+      "b": "오를 일은 없죠",
+      "expect": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "minor",
+        "abAgree": true
+      },
+      "got": {
+        "verdict": "yellow",
+        "aVsPlan": "minor",
+        "bVsPlan": "match",
+        "abAgree": true,
+        "reason": "남편의 연봉 동결 전망은 승진·이직 없음 및 연봉 상승 없음과 방향은 같지만 전제의 '물가 수준 상승'과는 정도가 약간 다르고, 아내의 '오를 일은 없다'는 전제와 같은 뜻이며 두 답변은 동시에 참일 수 있습니다."
+      },
+      "verdictOk": true,
+      "note": "전제(물가 수준 상승)와 방향이 다르지만 자격에는 유리. 부부는 일치 → 🟡"
+    }
+  ],
+  "unstable": []
+}
