@@ -28,7 +28,7 @@ function devJudgeApi(): Plugin {
           const { createLlmClient, mockLlm } = await import('./src/judge/text-llm')
           const key = process.env.LLM_API_KEY
           const llm = key
-            ? createLlmClient({ apiKey: key, model: process.env.LLM_MODEL!, baseUrl: process.env.LLM_BASE_URL })
+            ? createLlmClient({ apiKey: key, model: process.env.LLM_MODEL!, baseUrl: process.env.LLM_BASE_URL, workspaceId: process.env.LLM_WORKSPACE_ID })
             : mockLlm
           if (!key) server.config.logger.warn('⚠ LLM_API_KEY 없음 → mock 판정 (품질 측정 아님)')
           send(200, await judge(card, a, b, llm, { previousVerdict }))

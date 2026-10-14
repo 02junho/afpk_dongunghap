@@ -24,6 +24,7 @@
 ```
 npm test                    # vitest. 바꾸기 전후 항상 (67건)
 npm run dev                 # /c/join (폰) · /p/couples (설계사). /api/judge 는 dev 미들웨어가 처리
+npm run ping                # LLM 연결 확인. eval 전에 먼저
 npm run eval                # golden set → 혼동행렬 2개. LLM_API_KEY 없으면 mock
 npm run eval -- --repeat=3  # 자기일관성까지.  --mock 은 베이스라인
 npx tsc --noEmit            # 커밋 전

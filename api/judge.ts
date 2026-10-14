@@ -29,7 +29,7 @@ function llmEnv() {
   const apiKey = process.env.LLM_API_KEY
   const model = process.env.LLM_MODEL
   if (!apiKey || !model) return null
-  return { apiKey, model, baseUrl: process.env.LLM_BASE_URL }
+  return { apiKey, model, baseUrl: process.env.LLM_BASE_URL, workspaceId: process.env.LLM_WORKSPACE_ID }
 }
 
 export default async function handler(req: Request): Promise<Response> {

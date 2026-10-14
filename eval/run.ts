@@ -42,7 +42,7 @@ for (const r of rows) if (!cards.has(r.cardKey)) throw new Error(`golden ${r.id}
 const useMock = FORCE_MOCK || !process.env.LLM_API_KEY
 const llm = useMock
   ? mockLlm
-  : createLlmClient({ apiKey: process.env.LLM_API_KEY!, model: process.env.LLM_MODEL!, baseUrl: process.env.LLM_BASE_URL })
+  : createLlmClient({ apiKey: process.env.LLM_API_KEY!, model: process.env.LLM_MODEL!, baseUrl: process.env.LLM_BASE_URL, workspaceId: process.env.LLM_WORKSPACE_ID })
 const modelLabel = useMock ? 'mock(키워드 겹침)' : (process.env.LLM_MODEL ?? '(모델 미지정)')
 if (useMock && !FORCE_MOCK) console.warn('⚠ LLM_API_KEY 없음 → mock 으로 돕니다')
 if (!useMock && !process.env.LLM_MODEL) {

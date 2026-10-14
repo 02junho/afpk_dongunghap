@@ -13,8 +13,23 @@ import { buildPrompt, buildSummaryPrompt } from './prompt'
  *     effort 를 low 로 두고, max_tokens 는 thinking 몫까지 넉넉히 잡는다.
  *   · 에러 메시지는 `LLM <status>: ...` 형식으로 통일한다 — eval/errors.ts 가 이 접두사로 분류한다.
  */
-export function createLlmClient(env: { apiKey: string; model: string; baseUrl?: string }): LlmClient {
-  const client = new Anthropic({ apiKey: env.apiKey, baseURL: env.baseUrl })
+export interface LlmEnv {
+  apiKey: string
+  model: string
+  baseUrl?: string
+  /**
+   * 사용자 키(sk-ant-usr-…)는 워크스페이스에 묶여 있지 않아 이 헤더가 없으면 400 이다.
+   * 워크스페이스 키(sk-ant-api03-…)를 쓰면 필요 없다. 콘솔 → Workspaces → ID (wrkspc_…).
+   */
+  workspaceId?: string
+}
+
+export function createLlmClient(env: LlmEnv): LlmClient {
+  const client = new Anthropic({
+    apiKey: env.apiKey,
+    baseURL: env.baseUrl,
+    defaultHeaders: env.workspaceId ? { 'anthropic-workspace-id': env.workspaceId } : undefined,
+  })
 
   async function call(prompt: string, maxTokens: number): Promise<string> {
     let res: Anthropic.Message

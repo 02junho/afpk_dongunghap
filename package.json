@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "eval": "tsx eval/run.ts",
     "extract-cards": "tsx scripts/extract-cards.ts",
-    "shots": "node shoot.mjs"
+    "shots": "node shoot.mjs",
+    "ping": "node scripts/ping-llm.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

@@ -35,7 +35,11 @@ JSON 배열만 출력하세요. 최대 20장.
 [설계안]
 ${doc}`
 
-const client = new Anthropic({ apiKey: process.env.LLM_API_KEY, baseURL: process.env.LLM_BASE_URL })
+const client = new Anthropic({
+  apiKey: process.env.LLM_API_KEY,
+  baseURL: process.env.LLM_BASE_URL,
+  defaultHeaders: process.env.LLM_WORKSPACE_ID ? { 'anthropic-workspace-id': process.env.LLM_WORKSPACE_ID } : undefined,
+})
 const res = await client.messages.create({
   model: process.env.LLM_MODEL,
   max_tokens: 16000,
