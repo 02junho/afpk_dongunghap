@@ -1,34 +1,35 @@
-import { Link } from 'react-router-dom'
-import { selectedCouple } from './demo'
+import Rail from './Rail'
 
-/**
- * 변경 이력. 누가 언제 무엇을 왜 바꿨는지.
- * 3주 범위에서는 **DB에만 남기는 것**이 결정이었지만(docs/01), 읽기 전용 목록은
- * card_versions 한 번 조회로 끝나므로 화면을 비워두지 않는다.
- * 2주차: select * from card_versions where card_id in (...) order by created_at desc
- */
-const ROWS = [
-  { at: '2026-10-11 14:02', who: '데모 설계사', card: '주택 취득 시점', from: '2029-06', to: '2030-03', reason: '전세 만기 연장으로 매수 시점 조정', state: '동의 대기' },
-  { at: '2026-10-02 09:41', who: '데모 설계사', card: '부부 합산 소득', from: '7,400만', to: '7,600만', reason: '아내 연봉 인상 반영', state: '활성' },
-  { at: '2026-09-28 18:20', who: '데모 설계사', card: '카드 10장', from: '—', to: 'v1', reason: '최초 설정', state: '활성' },
+const LOG = [
+  { when: '2026-10-12 14:20', who: '박성훈 AFPK', what: '승진·이직 계획', from: '없음. 현 직장 유지', to: '남편 2027년 상반기 이직 예정', why: '0회차에서 두 분 모두 이직을 전제로 답함', state: '재합의 대기', cls: 'chip-talk' },
+  { when: '2026-09-30 11:05', who: '박성훈 AFPK', what: '목표 주택가격', from: '6.5억원', to: '6억원', why: '신혼부부 구입자금 상한에 맞춤', state: '반영됨', cls: 'chip-agree' },
+  { when: '2026-09-28 16:42', who: '박성훈 AFPK', what: '카드 10장 최초 설정', from: '—', to: 'v1', why: '설계안 확정', state: '반영됨', cls: 'chip-agree' },
 ]
 
 export default function History() {
-  const couple = selectedCouple()
   return (
-    <main className="planner">
-      <h1>변경 이력 · {couple.label}</h1>
-      <p className="muted">
-        카드 값은 덮어쓰지 않습니다. 모든 수정은 새 버전이고, 과거 버전은 삭제되지 않습니다.
-        · <Link to="/p/couples">커플 바꾸기</Link>
-      </p>
-      {ROWS.map((r, i) => (
-        <div className="card" key={i}>
-          <b>{r.card}</b> <span className="muted">{r.at} · {r.who}</span>
-          <p className="muted" style={{ margin: '6px 0' }}>{r.from} → <b>{r.to}</b> · {r.state}</p>
-          <p style={{ margin: 0 }}>사유: {r.reason}</p>
+    <div className="console">
+      <Rail />
+      <main className="work">
+        <h1 className="work-title">변경 이력</h1>
+        <p className="meta">카드 값은 덮어쓰지 않습니다. 모든 버전이 남습니다.</p>
+        <div style={{ marginTop: 22 }}>
+          {LOG.map((l, i) => (
+            <div className="qcard" key={i}>
+              <div className="queue-top">
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{l.what}</span>
+                <span className={`chip ${l.cls}`}>{l.state}</span>
+                <span className="queue-couple">{l.when} · {l.who}</span>
+              </div>
+              <dl className="pair" style={{ gridTemplateColumns: '60px 1fr' }}>
+                <dt className="meta">이전</dt><dd style={{ color: 'var(--muted)' }}>{l.from}</dd>
+                <dt className="meta">이후</dt><dd>{l.to}</dd>
+                <dt className="meta">이유</dt><dd>{l.why}</dd>
+              </dl>
+            </div>
+          ))}
         </div>
-      ))}
-    </main>
+      </main>
+    </div>
   )
 }

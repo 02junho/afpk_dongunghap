@@ -62,9 +62,9 @@ export function parseCount(s: string | number): number {
   return Number.isFinite(n) ? n : NaN
 }
 
-/** 카드의 unit 에 맞는 숫자 파서 */
+/** 카드의 unit 에 맞는 숫자 파서. unit 이 없으면 금액(krw)이다. */
 export function parseNumeric(card: Pick<Card, 'unit'>, s: string | number): number {
-  return (card.unit ?? 'won') === 'won' ? parseWon(s) : parseCount(s)
+  return (card.unit ?? 'krw') === 'krw' ? parseWon(s) : parseCount(s)
 }
 
 /** '2029', '2029년', '2029-06', '2029년 6월', '내후년' → 'YYYY-MM' 또는 null */

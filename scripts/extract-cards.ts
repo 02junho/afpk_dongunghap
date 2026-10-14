@@ -15,7 +15,9 @@ const prompt = `다음은 재무설계사가 작성한 부부 재무설계안입
 이 전제가 흔들리면 무엇이 무너지는지(stake)를 적습니다. 숫자는 원 단위 정수, 시점은 YYYY-MM.
 
 필드:
-  key, type, label, question, plannedValue, stake  (필수)
+  key, type, category, label, question, plannedValue, stake  (필수)
+  category    housing | income | children | family | saving | insurance | retire | tax 중 하나
+              (주거 / 소득·직업 / 출산·양육 / 양가 지원 / 저축·투자 / 보험 / 은퇴 / 세금)
   tolerance   number면 허용 비율(0.05 = ±5%), date면 허용 개월(6)
   unit        type=number 일 때 "won" | "age" | "count" | "percent"  (금액이 아니면 반드시 적을 것)
   options     type=choice 일 때 선택지 배열

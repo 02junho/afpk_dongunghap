@@ -1,19 +1,25 @@
 -- 돈궁합 스키마. docs/03_설계사_갱신흐름.md 와 같이 읽을 것.
 -- 원칙: 카드는 정체성, 값은 버전. 삭제 없음. 부부 답변은 누구도 수정 불가.
+--       부부는 판정·상대 답을 보지 않는다 (10.14 팀 결정) — 결과는 설계사만 읽는다.
 -- RLS는 supabase/rls.sql. 적용 순서: schema.sql → rls.sql → seed.sql
 
 create extension if not exists "pgcrypto";
 
 create type card_type as enum ('number','date','choice','text');
-create type number_unit as enum ('won','age','count','percent');
+create type card_category as enum ('housing','income','children','family','saving','insurance','retire','tax');
+create type number_unit as enum ('krw','age','count','percent');
 create type verdict as enum ('green','yellow','red');
 -- repeated_yellow = 같은 카드가 2회 연속 🟡 → 승격 (docs/03 §갱신 없이 끝나는 경우)
 create type red_kind as enum ('couple_conflict','plan_stale','repeated_yellow');
 create type round_status as enum ('open','judged','closed');
-create type round_kind as enum ('baseline','regular','event','reconfirm');
+-- factcheck = 설계사가 🔴 카드 하나를 두 분께 다시 묻는 라운드. 재합의와 같은 장치 (10.14).
+create type round_kind as enum ('baseline','regular','event','factcheck');
 create type member_role as enum ('husband','wife');
--- 설계사가 🔴 건을 닫은 이유. false_positive 가 golden set 최고 품질 소스다 (전문가 라벨)
-create type resolution as enum ('card_updated','false_positive','no_action');
+-- 설계사가 큐에서 건을 닫은 이유. 버튼 그대로다:
+--   factcheck      [두 분께 먼저 묻기]  → factcheck 라운드 생성
+--   consult        [상담 때 다루기]     → 앱 밖 안건
+--   false_positive [이건 같은 뜻이에요] → AI 오판. golden set 최고 품질 소스 (전문가 라벨)
+create type resolution as enum ('factcheck','consult','false_positive');
 
 create table planners (
   id uuid primary key default gen_random_uuid(),
@@ -34,7 +40,7 @@ create table members (
   id uuid primary key default gen_random_uuid(),
   couple_id uuid references couples(id) not null,
   -- 익명 로그인(supabase anonymous sign-in)으로 받은 uid. /c/join 에서 코드 검증 후 연결한다.
-  -- RLS가 auth.uid() 로 동작하려면 이 값이 반드시 채워져야 한다. docs/00 §다음 할 일 3번.
+  -- RLS가 auth.uid() 로 동작하려면 이 값이 반드시 채워져야 한다. docs/00 §다음 할 일.
   auth_user_id uuid unique,
   role member_role not null,
   display_name text,
@@ -48,7 +54,8 @@ create table cards (
   couple_id uuid references couples(id) not null,
   key text not null,                 -- 'home_when'
   type card_type not null,
-  unit number_unit,                  -- type='number' 일 때만. 없으면 'won'
+  category card_category not null,   -- 큰 묶음 8개. 팀이 정한다 (docs/01)
+  unit number_unit,                  -- type='number' 일 때만. 없으면 'krw'
   archived_at timestamptz,
   created_at timestamptz default now(),
   unique (couple_id, key)
@@ -69,13 +76,13 @@ create table card_versions (
   reason text not null,              -- 왜 바꿨는가. v1은 '최초 설정'
   created_by uuid references planners(id),
   created_at timestamptz default now(),
-  -- 부부가 이 버전에 동의(0회차 또는 재합의 라운드 완료)한 시각.
+  -- 부부가 이 버전에 동의(0회차 또는 factcheck 라운드 완료)한 시각.
   -- null = 아직 전제가 아니다. 설계사가 저장만 한 상태.
   activated_at timestamptz,
   unique (card_id, version)
 );
 
--- 참고 문서. 앱은 읽지 않는다. (docs/03 의 'plan_versions' = 이 테이블의 version)
+-- 참고 문서. 앱은 읽지 않는다. (docs/03 의 "설계안 버전" = 이 테이블의 version)
 create table plan_documents (
   id uuid primary key default gen_random_uuid(),
   couple_id uuid references couples(id) not null,
@@ -117,8 +124,7 @@ create table judgments (
   a_vs_plan text not null check (a_vs_plan in ('match','minor','major','unparsed')),
   b_vs_plan text not null check (b_vs_plan in ('match','minor','major','unparsed')),
   ab_agree boolean not null,
-  -- 판정 시점의 답변 스냅샷. 부부·설계사는 answers 를 직접 읽지 않는다 (rls.sql 참조).
-  -- 여기에 남겨두면 이의 제기 → golden 후보 추출도 조인 없이 된다.
+  -- 판정 시점의 답변 스냅샷. 설계사 큐는 이걸 읽는다. answers 원본은 아무도 직접 읽지 않는다 (rls.sql).
   a_text text,
   b_text text,
   reason text,
@@ -130,21 +136,21 @@ create table judgments (
   planner_summary text,              -- 🔴일 때 AI 3줄 요약 (AI 활용 2번)
   summary_prompt_version text,
   resolved_at timestamptz,           -- 설계사가 처리한 시각
-  resolution resolution,             -- 왜 닫았는가
+  resolution resolution,             -- 어느 버튼으로 닫았나
   resolution_note text,
   created_at timestamptz default now(),
   unique (round_id, card_version_id),
   constraint resolution_needs_time check ((resolved_at is null) = (resolution is null))
 );
 
--- "이건 같은 뜻이에요"
+-- "이건 같은 뜻이에요" — 부부는 판정을 보지 않으므로 **설계사**가 누른다 (전문가 라벨).
+-- resolution='false_positive' 와 같은 사건이지만, 메모와 시각을 따로 남겨 eval 러너가 읽는다.
 create table disputes (
   id uuid primary key default gen_random_uuid(),
   judgment_id uuid references judgments(id) not null,
-  member_id uuid references members(id) not null,
+  planner_id uuid references planners(id) not null,
   note text,
-  -- 판정 당시의 method/verdict 스냅샷. eval 러너가 조인 없이 golden 후보를 뽑는다.
-  -- 결정적 판정의 오탐은 파서 테스트 케이스가 되고, llm 오탐은 golden set 행이 된다.
+  -- 판정 당시의 method/verdict 스냅샷. 결정적 오탐은 파서 테스트 케이스가, llm 오탐은 golden 행이 된다.
   judgment_method text,
   judgment_verdict verdict,
   created_at timestamptz default now()
@@ -153,7 +159,7 @@ create table disputes (
 create table notifications (
   id uuid primary key default gen_random_uuid(),
   member_id uuid references members(id) not null,
-  kind text not null,                -- 'round_open' | 'card_changed' | 'result'
+  kind text not null,                -- 'round_open' | 'card_changed' | 'factcheck'
   payload jsonb,
   sent_at timestamptz,
   created_at timestamptz default now()
@@ -182,9 +188,9 @@ end $$;
 create trigger card_versions_append_only before update on card_versions
   for each row execute function card_versions_guard();
 
--- 현재 활성 버전 (부부에게 묻는 전제)
+-- 현재 활성 버전 (부부에게 묻는 전제. [내 설계] 탭도 이걸 읽는다)
 create view active_cards as
-select c.id as card_id, c.couple_id, c.key, c.type, c.unit, cv.*
+select c.id as card_id, c.couple_id, c.key, c.type, c.category, c.unit, cv.*
 from cards c
 join lateral (
   select * from card_versions v where v.card_id = c.id and v.activated_at is not null
@@ -194,7 +200,7 @@ where c.archived_at is null;
 
 -- 최신 버전 (활성 여부 무관). 설계사 콘솔은 '저장했지만 아직 동의 전'인 버전도 봐야 한다.
 create view latest_cards as
-select c.id as card_id, c.couple_id, c.key, c.type, c.unit,
+select c.id as card_id, c.couple_id, c.key, c.type, c.category, c.unit,
        cv.*, (cv.activated_at is null) as pending
 from cards c
 join lateral (
@@ -205,7 +211,7 @@ where c.archived_at is null;
 
 -- 카드별 판정 이력 (2연속 🟡 승격 판단용). card_version 이 아니라 card 기준으로 본다.
 create view card_verdict_history as
-select cv.card_id, c.couple_id, c.key, r.opened_at, j.*
+select cv.card_id, c.couple_id, c.key, c.category, r.kind as round_kind, r.opened_at, j.*
 from judgments j
 join rounds r on r.id = j.round_id
 join card_versions cv on cv.id = j.card_version_id

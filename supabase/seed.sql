@@ -2,25 +2,25 @@
 -- schema.sql → rls.sql 다음에 실행. (service_role 또는 SQL Editor 에서)
 --
 -- activated_at 을 now() 로 박는 것은 **데모 단축**이다. 실제 흐름에서 v1 은
--- 0회차 라운드를 부부가 끝내야 활성화된다 (docs/03 §갱신 흐름 6번).
-insert into planners (id, name) values ('00000000-0000-0000-0000-000000000001', '데모 설계사');
+-- 0회차 라운드를 부부가 끝내야 활성화된다 (docs/03 §갱신 흐름).
+insert into planners (id, name) values ('00000000-0000-0000-0000-000000000001', '박성훈 AFPK');
 insert into couples (id, planner_id, invite_code, label) values ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', '482913', '김현우·박지우');
 insert into members (couple_id, role, display_name) values
   ('00000000-0000-0000-0000-000000000010', 'husband', '현우'),
   ('00000000-0000-0000-0000-000000000010', 'wife', '지우');
 
 with c as (
-  insert into cards (couple_id, key, type, unit) values
-    ('00000000-0000-0000-0000-000000000010','home_when','date',   null),
-    ('00000000-0000-0000-0000-000000000010','home_price','number','won'),
-    ('00000000-0000-0000-0000-000000000010','child_when','date',  null),
-    ('00000000-0000-0000-0000-000000000010','income','number',    'won'),
-    ('00000000-0000-0000-0000-000000000010','raise_plan','text',  null),
-    ('00000000-0000-0000-0000-000000000010','family_help','text', null),
-    ('00000000-0000-0000-0000-000000000010','leave_who','choice', null),
-    ('00000000-0000-0000-0000-000000000010','saving','number',    'won'),
-    ('00000000-0000-0000-0000-000000000010','risk','text',        null),
-    ('00000000-0000-0000-0000-000000000010','retire_age','number','age')
+  insert into cards (couple_id, key, type, category, unit) values
+    ('00000000-0000-0000-0000-000000000010','home_when',  'date',   'housing',  null),
+    ('00000000-0000-0000-0000-000000000010','home_price', 'number', 'housing',  'krw'),
+    ('00000000-0000-0000-0000-000000000010','child_when', 'date',   'children', null),
+    ('00000000-0000-0000-0000-000000000010','income',     'number', 'income',   'krw'),
+    ('00000000-0000-0000-0000-000000000010','raise_plan', 'text',   'income',   null),
+    ('00000000-0000-0000-0000-000000000010','family_help','text',   'family',   null),
+    ('00000000-0000-0000-0000-000000000010','leave_who',  'choice', 'children', null),
+    ('00000000-0000-0000-0000-000000000010','saving',     'number', 'saving',   'krw'),
+    ('00000000-0000-0000-0000-000000000010','risk',       'text',   'saving',   null),
+    ('00000000-0000-0000-0000-000000000010','retire_age', 'number', 'retire',   'age')
   returning id, key
 )
 insert into card_versions (card_id, version, label, question, planned_value, tolerance, options, allow_condition, stake, reason, created_by, activated_at)

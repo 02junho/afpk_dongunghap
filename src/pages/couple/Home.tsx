@@ -1,17 +1,58 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { CARDS, CATEGORIES, showValue } from '../../data/demo'
 
+/** 탭 두 개 — [내 설계] 평소에 보는 화면 / [맞춰보기] 점검 질문. 예슬 제안 반영. */
 export default function Home() {
-  const me = JSON.parse(sessionStorage.getItem('me') ?? '{}')
+  const nav = useNavigate()
+  const me = JSON.parse(sessionStorage.getItem('me') ?? '{"role":"husband"}')
+  const him = me.role !== 'wife'
+  const [tab, setTab] = useState<'plan' | 'match'>('match')
+
   return (
-    <main className="couple">
-      <h1>안녕하세요, {me.role === 'wife' ? '지우' : '현우'}님</h1>
-      <p className="muted">설계사가 설정한 전제 10개 중 <b>3개</b>를 먼저 확인합니다</p>
-      <div className="card">
-        <b>0회차 · 합의 확인</b>
-        <p className="muted">서로의 답은 둘 다 제출한 뒤에만 보입니다. 약 3분.</p>
-        <Link to="/c/round/baseline"><button>시작하기</button></Link>
+    <main className="phone">
+      <div className="phone-top">
+        <h1 className="wordmark"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</h1>
+        <span className={`avatar ${him ? 'avatar-him' : 'avatar-her'}`}>{him ? '현' : '지'}</span>
       </div>
-      <p className="muted" style={{ marginTop: 32 }}>합의율 · 진척률은 2주차에</p>
+      <div className="phone-body">
+        <div className="tabs" role="tablist">
+          <button role="tab" className={`tab ${tab === 'plan' ? 'tab-on' : ''}`} onClick={() => setTab('plan')}>내 설계</button>
+          <button role="tab" className={`tab ${tab === 'match' ? 'tab-on' : ''}`} onClick={() => setTab('match')}>맞춰보기<span className="dot-alert" /></button>
+        </div>
+
+        {tab === 'plan' ? (
+          <>
+            <div className="bubble" style={{ marginBottom: 14 }}>
+              <p className="meta">2029년 내 집까지</p>
+              <p style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 0' }}>자기자금 2.5억 중 <span style={{ color: 'var(--him)' }}>1.4억</span></p>
+              <div className="progress"><div style={{ width: '56%' }} /></div>
+            </div>
+            {CARDS.slice(0, 5).map(c => {
+              const cat = CATEGORIES[c.category]
+              return (
+                <div className="plan-card" key={c.key}>
+                  <span className="cat" style={{ background: cat.bg, color: cat.fg }}>{cat.short}</span>
+                  <div><p className="k">{c.label}</p><p className="v">{showValue(c)}</p></div>
+                </div>
+              )
+            })}
+            <p className="note">설계사님이 잡아준 전제예요. 바뀌면 여기서 먼저 알려드려요.</p>
+          </>
+        ) : (
+          <>
+            <h2 className="q">설계사님이 두 분 말씀을<br />같게 들었는지<br />세 가지만 맞춰볼게요</h2>
+            <div className="bubble" style={{ marginTop: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
+                <div><p style={{ margin: 0, fontWeight: 700 }}>0회차 · 3문항</p><p className="meta">약 3분 · 따로 답하고, 설계사님만 봐요</p></div>
+              </div>
+            </div>
+            <p className="note">설계가 맞는지 보는 게 아니에요. 두 분이 같게 알고 계신지 보는 거예요.</p>
+          </>
+        )}
+      </div>
+      {tab === 'match' && <button className="btn btn-wide" onClick={() => nav('/c/round/baseline')}>시작하기</button>}
     </main>
   )
 }

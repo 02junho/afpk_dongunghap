@@ -1,64 +1,38 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { addCouple, listCouples, selectCouple, type DemoCouple } from './demo'
+import { Link } from 'react-router-dom'
+import Rail from './Rail'
 
-/**
- * 설계사 콘솔의 첫 화면. 설계사 1명 : 커플 N쌍 이므로 커플 선택이 모든 화면의 컨텍스트다.
- * 커플 발급(코드 6자리)도 여기서 한다 — "설계사 경유 설치"의 시작점.
- * UI에서 '관리자'라는 말은 쓰지 않는다 (docs/00).
- */
+const ROWS = [
+  { name: '김현우 · 박지우', code: '482913', state: '0회차 완료', red: 2, when: '오늘' },
+  { name: '정도윤 · 한서현', code: '730254', state: '정기 3회차', red: 0, when: '3일 전' },
+  { name: '오재민 · 류하경', code: '619478', state: '설계 직후 · 0회차 대기', red: 0, when: '어제' },
+  { name: '배준서 · 문예린', code: '305126', state: '정기 7회차', red: 1, when: '11일 전' },
+]
+
 export default function Couples() {
-  const nav = useNavigate()
-  const [couples, setCouples] = useState<DemoCouple[]>(listCouples())
-  const [label, setLabel] = useState('')
-  const [issued, setIssued] = useState<DemoCouple | null>(null)
-
-  function create() {
-    const c = addCouple(label.trim())
-    setCouples(listCouples())
-    setIssued(c)
-    setLabel('')
-  }
-
-  function open(c: DemoCouple, to: string) {
-    selectCouple(c.id)
-    nav(to)
-  }
-
   return (
-    <main className="planner">
-      <h1>설계사 콘솔 · 담당 커플</h1>
-      <p className="muted">커플을 고르면 아래 화면들이 그 커플의 컨텍스트로 열립니다.</p>
-
-      {couples.map(c => (
-        <div className="card" key={c.id}>
-          <b>{c.label || '(이름 미입력)'}</b> <span className="muted">코드 {c.inviteCode}</span>
-          <p className="muted">카드 {c.cardCount}장 · 처리 대기 {c.openRed}건</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => open(c, '/p/queue')}>처리 대기 →</button>
-            <button className="ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => open(c, '/p/cards')}>카드 →</button>
-            <button className="ghost" style={{ width: 'auto', marginTop: 0 }} onClick={() => open(c, '/p/history')}>변경 이력 →</button>
-          </div>
+    <div className="console">
+      <Rail />
+      <main className="work">
+        <h1 className="work-title">담당 커플</h1>
+        <p className="meta">입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
+        <div style={{ marginTop: 22 }}>
+          {ROWS.map(r => (
+            <div className="qcard" key={r.code}>
+              <div className="queue-top">
+                <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
+                <Link to="/p/queue" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', textDecoration: 'none' }}>{r.name}</Link>
+                {r.red > 0 && <span className="chip chip-escalate">처리 대기 {r.red}</span>}
+                <span className="queue-couple">마지막 응답 {r.when}</span>
+              </div>
+              <dl className="pair" style={{ gridTemplateColumns: '80px 1fr' }}>
+                <dt className="meta">진행</dt><dd>{r.state}</dd>
+                <dt className="meta">입장 코드</dt><dd style={{ letterSpacing: '0.12em' }}>{r.code}</dd>
+              </dl>
+            </div>
+          ))}
         </div>
-      ))}
-
-      <h2>새 커플</h2>
-      <div className="card">
-        <label className="muted">두 분 이름</label>
-        <input value={label} onChange={e => setLabel(e.target.value)} placeholder="예: 김현우·박지우" />
-        <button disabled={!label.trim()} onClick={create}>커플 코드 발급</button>
-        {issued && (
-          <>
-            <p style={{ fontSize: 28, letterSpacing: 4, margin: '16px 0 4px' }}><b>{issued.inviteCode}</b></p>
-            <p className="muted">
-              이 코드를 두 분께 알려주세요. 각자 폰에서 <b>{location.origin}/c/join</b> 을 열고 코드를 입력하면,
-              홈 화면에 추가 안내가 이어집니다. (iOS는 공유 → 홈 화면에 추가)
-            </p>
-          </>
-        )}
-      </div>
-
-      <p className="muted"><Link to="/c/join">부부 화면 미리보기 →</Link></p>
-    </main>
+        <div className="actions" style={{ marginTop: 24 }}><button className="btn btn-small">새 커플 등록하고 코드 발급</button></div>
+      </main>
+    </div>
   )
 }

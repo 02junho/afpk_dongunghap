@@ -3,11 +3,11 @@ import { judge, resolve, escalate, parseWon, parseCount, parseYearMonth, type Ca
 import { parseOutput, mockLlm } from '../text-llm'
 import { buildPrompt, PROMPT_VERSIONS } from '../prompt'
 
-const price: Card = { key: 'home_price', type: 'number', label: '목표 주택가격', question: '얼마짜리 집을 보고 계세요?', plannedValue: 600_000_000, tolerance: 0.05, unit: 'won', stake: '신혼부부 구입자금 상한 6억' }
-const when: Card = { key: 'home_when', type: 'date', label: '주택 취득 시점', question: '언제쯤 집을 사실 계획인가요?', plannedValue: '2029-06', tolerance: 6, allowCondition: true, stake: '전세 만기·특례 기한' }
-const leave: Card = { key: 'leave_who', type: 'choice', label: '육아휴직 주체', question: '육아휴직은 누가?', plannedValue: '아내', options: ['남편', '아내', '둘 다', '미정'], stake: '외벌이 전환 현금흐름' }
-const saving: Card = { key: 'saving', type: 'number', label: '월 저축액', question: '한 달에 얼마나 저축하세요?', plannedValue: 1_320_000, tolerance: 0.15, unit: 'won', stake: '2029년 자기자금 2.5억 달성' }
-const retire: Card = { key: 'retire_age', type: 'number', label: '은퇴 목표 연령', question: '몇 살쯤 은퇴하고 싶으세요?', plannedValue: 60, tolerance: 0.05, unit: 'age', stake: '연금 납입 유보 판단' }
+const price: Card = { key: 'home_price', category: 'housing', type: 'number', unit: 'krw', label: '목표 주택가격', question: '얼마짜리 집을 보고 계세요?', plannedValue: 600_000_000, tolerance: 0.05, stake: '신혼부부 구입자금 상한 6억' }
+const when: Card = { key: 'home_when', category: 'housing', type: 'date', label: '주택 취득 시점', question: '언제쯤 집을 사실 계획인가요?', plannedValue: '2029-06', tolerance: 6, allowCondition: true, stake: '전세 만기·특례 기한' }
+const leave: Card = { key: 'leave_who', category: 'children', type: 'choice', label: '육아휴직 주체', question: '육아휴직은 누가?', plannedValue: '아내', options: ['남편', '아내', '둘 다', '미정'], stake: '외벌이 전환 현금흐름' }
+const saving: Card = { key: 'saving', category: 'saving', type: 'number', unit: 'krw', label: '월 저축액', question: '한 달에 얼마나 저축하세요?', plannedValue: 1_320_000, tolerance: 0.15, stake: '2029년 자기자금 2.5억 달성' }
+const retire: Card = { key: 'retire_age', category: 'retire', type: 'number', unit: 'age', label: '은퇴 목표 연령', question: '몇 살쯤 은퇴하고 싶으세요?', plannedValue: 60, tolerance: 0.05, stake: '연금 납입 유보 판단' }
 
 describe('파서 — 금액', () => {
   it('단위가 명시된 금액', () => {
@@ -132,7 +132,7 @@ describe('결정적 카드', () => {
     expect((await judge(leave, '아내', '남편')).verdict).toBe('red')
   })
   it('text 카드는 LlmClient 없이 판정하지 않는다', async () => {
-    const t: Card = { key: 't', type: 'text', label: 'x', question: 'x', plannedValue: 'x', stake: 'x' }
+    const t: Card = { key: 't', category: 'income', type: 'text', label: 'x', question: 'x', plannedValue: 'x', stake: 'x' }
     await expect(judge(t, 'a', 'b')).rejects.toThrow('LlmClient')
   })
   it('결정적 판정은 promptVersion 을 남기지 않는다 (LLM을 안 썼으므로)', async () => {
@@ -142,7 +142,7 @@ describe('결정적 카드', () => {
 
 describe('LLM 경로', () => {
   it('text 카드는 method=llm + promptVersion 기록', async () => {
-    const t: Card = { key: 'raise_plan', type: 'text', label: '승진·이직', question: 'x', plannedValue: '없음', stake: 'x' }
+    const t: Card = { key: 'raise_plan', category: 'income', type: 'text', label: '승진·이직', question: 'x', plannedValue: '없음', stake: 'x' }
     const j = await judge(t, '없음', '없음', mockLlm)
     expect(j.method).toBe('llm')
     expect(j.promptVersion).toBe(PROMPT_VERSIONS.judge)

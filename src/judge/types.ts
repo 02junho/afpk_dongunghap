@@ -1,25 +1,29 @@
 export type CardType = 'number' | 'date' | 'choice' | 'text'
 
+/** 큰 카테고리 8개. 팀이 정하고(AFPK 7과목 + 양가), 세부 카드는 설계안에서 추출·분류된다 */
+export type CardCategory = 'housing' | 'income' | 'children' | 'family' | 'saving' | 'insurance' | 'retire' | 'tax'
+
 /**
- * number 카드의 값이 무엇인지. 같은 'number'라도 금액과 나이는 파싱 규칙이 다르다.
+ * number 카드의 값이 무엇인지. 같은 'number'라도 금액과 나이는 파싱·표시 규칙이 다르다.
  * ('60' 은 나이로는 60, 금액으로는 60원일 수 없다 → 금액은 단위 없는 1~4자리를 거부한다)
  */
-export type NumberUnit = 'won' | 'age' | 'count' | 'percent'
+export type NumberUnit = 'krw' | 'age' | 'count' | 'percent'
 
 export interface Card {
   key: string
   type: CardType
+  category: CardCategory
   label: string
   question: string
   /** 설계안에 박힌 전제값. number: 원, date: 'YYYY-MM', choice: 선택지 문자열, text: 서술 */
   plannedValue: string | number
   /** number: 허용 비율(0.1 = ±10%) / date: 허용 개월 / choice·text: 무시 */
   tolerance?: number
-  /** number일 때 값의 종류. 없으면 'won' */
+  /** number일 때 값의 종류. 없으면 'krw'(원). 나이·개수는 금액으로 파싱·표시하면 안 된다 */
   unit?: NumberUnit
   /** choice일 때 선택지 */
   options?: string[]
-  /** 이 전제가 흔들리면 무너지는 것 — 결과 화면과 설계사 요약에 쓴다 */
+  /** 이 전제가 흔들리면 무너지는 것 — 설계사 큐와 AI 요약에 쓴다 (부부 화면엔 안 보인다) */
   stake: string
   /**
    * date 카드에서 "정확한 시점 대신 조건으로" 답하는 걸 허용할지.
