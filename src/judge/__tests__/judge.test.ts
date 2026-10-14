@@ -1,18 +1,44 @@
 import { describe, it, expect } from 'vitest'
-import { judge, resolve, parseWon, parseYearMonth, type Card } from '../index'
-import { parseOutput } from '../text-llm'
+import { judge, resolve, escalate, parseWon, parseCount, parseYearMonth, type Card, type Judgment } from '../index'
+import { parseOutput, mockLlm } from '../text-llm'
+import { buildPrompt, PROMPT_VERSIONS } from '../prompt'
 
-const price: Card = { key: 'home_price', type: 'number', label: '목표 주택가격', question: '얼마짜리 집을 보고 계세요?', plannedValue: 600_000_000, tolerance: 0.05, stake: '신혼부부 구입자금 상한 6억' }
-const when: Card = { key: 'home_when', type: 'date', label: '주택 취득 시점', question: '언제쯤 집을 사실 계획인가요?', plannedValue: '2029-06', tolerance: 6, stake: '전세 만기·특례 기한' }
+const price: Card = { key: 'home_price', type: 'number', label: '목표 주택가격', question: '얼마짜리 집을 보고 계세요?', plannedValue: 600_000_000, tolerance: 0.05, unit: 'won', stake: '신혼부부 구입자금 상한 6억' }
+const when: Card = { key: 'home_when', type: 'date', label: '주택 취득 시점', question: '언제쯤 집을 사실 계획인가요?', plannedValue: '2029-06', tolerance: 6, allowCondition: true, stake: '전세 만기·특례 기한' }
 const leave: Card = { key: 'leave_who', type: 'choice', label: '육아휴직 주체', question: '육아휴직은 누가?', plannedValue: '아내', options: ['남편', '아내', '둘 다', '미정'], stake: '외벌이 전환 현금흐름' }
+const saving: Card = { key: 'saving', type: 'number', label: '월 저축액', question: '한 달에 얼마나 저축하세요?', plannedValue: 1_320_000, tolerance: 0.15, unit: 'won', stake: '2029년 자기자금 2.5억 달성' }
+const retire: Card = { key: 'retire_age', type: 'number', label: '은퇴 목표 연령', question: '몇 살쯤 은퇴하고 싶으세요?', plannedValue: 60, tolerance: 0.05, unit: 'age', stake: '연금 납입 유보 판단' }
 
-describe('파서', () => {
-  it('금액', () => {
+describe('파서 — 금액', () => {
+  it('단위가 명시된 금액', () => {
     expect(parseWon('6억')).toBe(6e8)
     expect(parseWon('6억 2천만')).toBe(6.2e8)
     expect(parseWon('62,000만원')).toBe(6.2e8)
     expect(parseWon('620000000')).toBe(6.2e8)
+    expect(parseWon('8,000만원')).toBe(8e7)
+    expect(parseWon('1.5억')).toBe(1.5e8)
+  })
+  it('억 뒤의 "천"은 "천만" — 조용히 사라지면 안 된다', () => {
+    expect(parseWon('6억 2천')).toBe(6.2e8)
+    expect(parseWon('1억5천')).toBe(1.5e8)
+  })
+  it('모호한 입력은 NaN — 틀린 숫자보다 파싱 실패가 낫다', () => {
+    expect(parseWon('6천')).toBeNaN() // 6천원? 6천만원?
+    expect(parseWon('6')).toBeNaN() // 금액이 6원일 수는 없다
+    expect(parseWon('600')).toBeNaN()
     expect(parseWon('모르겠어요')).toBeNaN()
+  })
+  it('0은 유효한 금액 — 저축 못 하고 있어요', () => {
+    expect(parseWon('0')).toBe(0)
+    expect(parseWon('0원')).toBe(0)
+  })
+})
+
+describe('파서 — 나이·시점', () => {
+  it('나이는 단위 없는 숫자를 받는다', () => {
+    expect(parseCount('60')).toBe(60)
+    expect(parseCount('65세')).toBe(65)
+    expect(parseCount('예순')).toBeNaN()
   })
   it('시점', () => {
     expect(parseYearMonth('2029년')).toBe('2029-06')
@@ -26,15 +52,40 @@ describe('파서', () => {
 describe('3자 비교 → 신호등', () => {
   it('둘 다 전제와 같음 → 🟢', () => expect(resolve('match', 'match', true).verdict).toBe('green'))
   it('한쪽 minor → 🟡', () => expect(resolve('minor', 'match', true).verdict).toBe('yellow'))
-  it('한쪽 major → 🔴 부부 불일치', () => expect(resolve('major', 'match', false)).toEqual({ verdict: 'red', redKind: 'couple_conflict' }))
-  it('둘 다 major인데 서로 일치 → 🔴 전제 폐기 (부부는 같은 생각, 설계가 낡음)', () =>
+  it('한쪽 major + 서로 다름 → 🔴 부부 불일치', () =>
+    expect(resolve('major', 'match', false)).toEqual({ verdict: 'red', redKind: 'couple_conflict' }))
+  it('한쪽 major 인데 서로 일치 → 🔴 전제 폐기 (부부 싸움으로 보고하면 안 된다)', () =>
+    expect(resolve('major', 'minor', true)).toEqual({ verdict: 'red', redKind: 'plan_stale' }))
+  it('둘 다 major인데 서로 일치 → 🔴 전제 폐기', () =>
     expect(resolve('major', 'major', true)).toEqual({ verdict: 'red', redKind: 'plan_stale' }))
   it('둘 다 major, 서로도 다름 → 🔴 부부 불일치', () =>
     expect(resolve('major', 'major', false)).toEqual({ verdict: 'red', redKind: 'couple_conflict' }))
+  it('해석 불가가 섞이면 🟡 — major 로도 match 로도 가지 않는다', () => {
+    expect(resolve('unparsed', 'match', true).verdict).toBe('yellow')
+    expect(resolve('major', 'unparsed', false).verdict).toBe('yellow')
+  })
+})
+
+describe('2연속 🟡 → 🔴 승격', () => {
+  const y: Judgment = { verdict: 'yellow', aVsPlan: 'minor', bVsPlan: 'match', abAgree: true, reason: '', method: 'deterministic' }
+  it('직전이 🟡이면 승격되고 red_kind 가 붙는다', () => {
+    const e = escalate(y, 'yellow')
+    expect(e.verdict).toBe('red')
+    expect(e.redKind).toBe('repeated_yellow')
+  })
+  it('직전이 🟢이면 그대로 🟡', () => expect(escalate(y, 'green').verdict).toBe('yellow'))
+  it('직전 기록이 없으면 그대로 🟡', () => expect(escalate(y).verdict).toBe('yellow'))
+  it('🟢은 승격 대상이 아니다', () =>
+    expect(escalate({ ...y, verdict: 'green' }, 'yellow').verdict).toBe('green'))
+  it('judge() 가 previousVerdict 를 받아 승격한다', async () => {
+    const j = await judge(when, '2029년', '2030년', undefined, { previousVerdict: 'yellow' })
+    expect(j.verdict).toBe('red')
+    expect(j.redKind).toBe('repeated_yellow')
+  })
 })
 
 describe('결정적 카드', () => {
-  it('number: 6억 vs 6억 2천 → 🟡 (허용 5%, 3.3% 차이는 match… 둘 다 match면 🟢)', async () => {
+  it('number: 6억 vs 6억 2천만 → 둘 다 허용 5% 안 → 🟢', async () => {
     const j = await judge(price, '6억', '6억 2천만')
     expect(j.method).toBe('deterministic')
     expect(j.verdict).toBe('green')
@@ -44,22 +95,59 @@ describe('결정적 카드', () => {
   })
   it('number: 둘 다 7억 → 🔴 전제 폐기', async () => {
     const j = await judge(price, '7억', '7억 정도')
-    expect(j.verdict).toBe('red'); expect(j.redKind).toBe('plan_stale')
+    expect(j.verdict).toBe('red')
+    expect(j.redKind).toBe('plan_stale')
+  })
+  it('number: 모호한 금액은 🟡 + 사람이 봐야 함 (🔴으로 가지 않는다)', async () => {
+    const j = await judge(price, '6억', '6천')
+    expect(j.verdict).toBe('yellow')
+    expect(j.needsReview).toBe(true)
+    expect(j.bVsPlan).toBe('unparsed')
+  })
+  it('number: 둘 다 "0원" 저축 → 🔴 전제 폐기 (부부 불일치가 아니다)', async () => {
+    const j = await judge(saving, '0', '0원')
+    expect(j.verdict).toBe('red')
+    expect(j.redKind).toBe('plan_stale')
+    expect(j.abAgree).toBe(true)
+  })
+  it('number(age): 60세 vs 62 → 🟢 (나이를 금액 규칙으로 파싱하지 않는다)', async () => {
+    const j = await judge(retire, '60세', '62') // 금액 규칙이면 둘 다 unparsed → 🟡이 되어버린다
+    expect(j.aVsPlan).toBe('match')
+    expect(j.bVsPlan).toBe('match') // ±5% = ±3년
+    expect(j.verdict).toBe('green')
+  })
+  it('number(age): 60 vs 67 → 🔴 (허용 범위의 2배 초과)', async () => {
+    expect((await judge(retire, '60', '67')).verdict).toBe('red')
   })
   it('date: 2029 vs 2030 → 🟡 (12개월 = 허용 6개월의 2배 이내)', async () => {
     expect((await judge(when, '2029년', '2030년')).verdict).toBe('yellow')
   })
-  it('date: 파싱 불가 → 🟡 + 사유', async () => {
+  it('date: 조건부 답변 → 🟡 + 조건부라고 사유에 남는다', async () => {
     const j = await judge(when, '2029년', '애 낳고 나서')
-    expect(j.verdict).toBe('yellow'); expect(j.reason).toContain('해석')
+    expect(j.verdict).toBe('yellow')
+    expect(j.needsReview).toBe(true)
+    expect(j.reason).toContain('조건')
   })
   it('choice: 아내 vs 남편 → 🔴', async () => {
     expect((await judge(leave, '아내', '남편')).verdict).toBe('red')
   })
+  it('text 카드는 LlmClient 없이 판정하지 않는다', async () => {
+    const t: Card = { key: 't', type: 'text', label: 'x', question: 'x', plannedValue: 'x', stake: 'x' }
+    await expect(judge(t, 'a', 'b')).rejects.toThrow('LlmClient')
+  })
+  it('결정적 판정은 promptVersion 을 남기지 않는다 (LLM을 안 썼으므로)', async () => {
+    expect((await judge(price, '6억', '6억')).promptVersion).toBeUndefined()
+  })
 })
 
-describe('LLM 출력 파싱', () => {
-  it('정상', () => {
+describe('LLM 경로', () => {
+  it('text 카드는 method=llm + promptVersion 기록', async () => {
+    const t: Card = { key: 'raise_plan', type: 'text', label: '승진·이직', question: 'x', plannedValue: '없음', stake: 'x' }
+    const j = await judge(t, '없음', '없음', mockLlm)
+    expect(j.method).toBe('llm')
+    expect(j.promptVersion).toBe(PROMPT_VERSIONS.judge)
+  })
+  it('정상 출력 파싱', () => {
     expect(parseOutput('{"aVsPlan":"match","bVsPlan":"minor","abAgree":true,"reason":"ok"}').bVsPlan).toBe('minor')
   })
   it('앞뒤 잡담 섞여도 JSON만 뽑음', () => {
@@ -67,5 +155,17 @@ describe('LLM 출력 파싱', () => {
   })
   it('형식 오류는 throw — 조용히 🟢 되면 안 됨', () => {
     expect(() => parseOutput('{"aVsPlan":"yes"}')).toThrow()
+  })
+})
+
+describe('프롬프트', () => {
+  it('abAgree 의 정의가 프롬프트에 들어 있다 (v1의 누락 지점)', () => {
+    const p = buildPrompt({ label: 'x', question: 'x', plannedValue: 'x', stake: 'x' }, 'a', 'b')
+    expect(p).toContain('동시에 참일 수 있는가')
+  })
+  it('전제·답변이 프롬프트에 그대로 들어간다', () => {
+    const p = buildPrompt({ label: '승진', question: '계획?', plannedValue: '없음', stake: '자격 상실' }, '이직해요', '없어요')
+    expect(p).toContain('이직해요')
+    expect(p).toContain('자격 상실')
   })
 })

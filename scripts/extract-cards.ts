@@ -13,6 +13,16 @@ const prompt = `다음은 재무설계사가 작성한 부부 재무설계안입
 전제란: 이 값이 바뀌면 설계안의 결론이 바뀌는 사실·계획입니다 (시점, 금액, 선택, 계획).
 각 카드는 type을 number/date/choice/text 중 하나로 두고, 부부에게 물어볼 자연스러운 한국어 질문(question)과,
 이 전제가 흔들리면 무엇이 무너지는지(stake)를 적습니다. 숫자는 원 단위 정수, 시점은 YYYY-MM.
+
+필드:
+  key, type, label, question, plannedValue, stake  (필수)
+  tolerance   number면 허용 비율(0.05 = ±5%), date면 허용 개월(6)
+  unit        type=number 일 때 "won" | "age" | "count" | "percent"  (금액이 아니면 반드시 적을 것)
+  options     type=choice 일 때 선택지 배열
+  allowCondition  type=date 일 때, "애 낳고 나서" 같은 조건부 답변을 허용할지 (true/false)
+
+stake 에는 **근거가 되는 숫자**를 함께 적습니다 ("상한까지 여유 900만원" 처럼).
+근거 숫자를 확인할 수 없으면 추측하지 말고 "(확인 필요)"라고 적으세요.
 JSON 배열만 출력하세요. 최대 20장.
 
 [설계안]

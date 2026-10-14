@@ -32,9 +32,19 @@ describe('세 개의 벽 — 신혼부부전용 구입자금', () => {
   it('벽 1: 소득 여유가 900만원뿐이다', () => {
     expect(e.incomeHeadroom).toBe(만(900))
   })
-  it('벽 1: 한 명이 500만원만 올라도 탈락 — "승진하면 집을 못 산다"', () => {
+  /**
+   * 카드 stake 문구가 기대는 숫자다. 여기가 바뀌면 seed-cards.json 의
+   * income·raise_plan stake 와 eval/golden.jsonl g03 note 도 같이 바꿔야 한다.
+   * (초기 설계안의 "+500만원이면 자격 상실"은 틀렸다 — 여유가 900만원이다)
+   */
+  it('벽 1: 경계는 +900만원이다. 딱 900만은 적격, 1원 더는 탈락', () => {
     expect(survivesRaise('newlywed', client, purchase, 만(500)).eligible).toBe(true)
+    expect(survivesRaise('newlywed', client, purchase, 만(900)).eligible).toBe(true)
+    expect(survivesRaise('newlywed', client, purchase, 만(900) + 1).eligible).toBe(false)
     expect(survivesRaise('newlywed', client, purchase, 만(1_000)).eligible).toBe(false)
+  })
+  it('벽 1: 어느 쪽이 올라도 합산 기준이므로 같다', () => {
+    expect(survivesRaise('newlywed', client, purchase, 만(1_000), 1).eligible).toBe(false)
   })
   it('벽 2: 한도 3.2억 < 필요 3.6248억 → 4,248만 부족', () => {
     expect(NEED - e.limit).toBe(만(4_248))
