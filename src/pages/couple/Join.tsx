@@ -1,9 +1,15 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
+/**
+ * 입장 코드는 설계사가 /p/couples 에서 발급해 상담 자리에서 알려준다.
+ * 링크로 보내면(`/c/join?code=482913`) 코드가 미리 채워져 역할만 고르면 된다 — 카톡 한 번이면 끝.
+ * 2주차: 시작하기 → 익명 로그인 → join_couple(code, role) RPC (supabase/rls.sql).
+ */
 export default function Join() {
   const nav = useNavigate()
-  const [code, setCode] = useState('')
+  const [params] = useSearchParams()
+  const [code, setCode] = useState((params.get('code') ?? '').replace(/\D/g, '').slice(0, 6))
   const [role, setRole] = useState<'husband' | 'wife' | null>(null)
 
   return (

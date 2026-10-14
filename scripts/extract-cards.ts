@@ -4,9 +4,14 @@
  *   LLM_API_KEY=... LLM_MODEL=... npm run extract-cards -- ./설계안.md > draft.json
  */
 import { readFileSync } from 'node:fs'
+import Anthropic from '@anthropic-ai/sdk'
 
 const path = process.argv[2]
 if (!path) { console.error('사용법: npm run extract-cards -- <파일>'); process.exit(1) }
+if (!process.env.LLM_API_KEY || !process.env.LLM_MODEL) {
+  console.error('LLM_API_KEY / LLM_MODEL 이 필요합니다 (.env 참조)')
+  process.exit(1)
+}
 const doc = readFileSync(path, 'utf8')
 
 const prompt = `다음은 재무설계사가 작성한 부부 재무설계안입니다. 이 설계안이 기대고 있는 "전제"를 카드로 추출하세요.
@@ -19,7 +24,7 @@ const prompt = `다음은 재무설계사가 작성한 부부 재무설계안입
   category    housing | income | children | family | saving | insurance | retire | tax 중 하나
               (주거 / 소득·직업 / 출산·양육 / 양가 지원 / 저축·투자 / 보험 / 은퇴 / 세금)
   tolerance   number면 허용 비율(0.05 = ±5%), date면 허용 개월(6)
-  unit        type=number 일 때 "won" | "age" | "count" | "percent"  (금액이 아니면 반드시 적을 것)
+  unit        type=number 일 때 "krw" | "age" | "count" | "percent"  (금액이 아니면 반드시 적을 것)
   options     type=choice 일 때 선택지 배열
   allowCondition  type=date 일 때, "애 낳고 나서" 같은 조건부 답변을 허용할지 (true/false)
 
@@ -30,12 +35,14 @@ JSON 배열만 출력하세요. 최대 20장.
 [설계안]
 ${doc}`
 
-const res = await fetch(`${process.env.LLM_BASE_URL ?? 'https://api.anthropic.com'}/v1/messages`, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json', 'x-api-key': process.env.LLM_API_KEY!, 'anthropic-version': '2023-06-01' },
-  body: JSON.stringify({ model: process.env.LLM_MODEL, max_tokens: 4000, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
+const client = new Anthropic({ apiKey: process.env.LLM_API_KEY, baseURL: process.env.LLM_BASE_URL })
+const res = await client.messages.create({
+  model: process.env.LLM_MODEL,
+  max_tokens: 16000,
+  output_config: { effort: 'medium' },
+  messages: [{ role: 'user', content: prompt }],
 })
-const data = await res.json()
-const text = data.content?.map((c: any) => c.text ?? '').join('') ?? ''
+if (res.stop_reason !== 'end_turn') console.error(`⚠ stop_reason=${res.stop_reason}`)
+const text = res.content.filter(b => b.type === 'text').map(b => b.text).join('')
 const m = text.match(/\[[\s\S]*\]/)
 console.log(m ? m[0] : text)
