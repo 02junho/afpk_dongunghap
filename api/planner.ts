@@ -15,6 +15,8 @@ export const config = { runtime: 'edge' }
 
 const DEMO_COUPLE = '00000000-0000-0000-0000-000000000010'
 const RESOLUTIONS = ['factcheck', 'consult', 'false_positive'] as const
+/** 0회차가 묻는 순서. 주거 → 소득 → 양가 (src/data/demo.ts BASELINE 과 같다) */
+const BASELINE_KEYS = ['home_when', 'raise_plan', 'family_help']
 
 function bad(message: string, status = 400) {
   return Response.json({ error: message }, { status })
@@ -90,12 +92,13 @@ export default async function handler(req: Request): Promise<Response> {
       return Response.json({ rounds: data })
     }
     case 'new_round': {
-      // 리허설용: 직전 0회차와 같은 카드로 새 라운드를 연다. 열린 라운드가 있으면 그걸 돌려준다.
+      // 리허설용: 0회차 3장을 **묻는 순서대로** 다시 연다. 열린 라운드가 있으면 그걸 돌려준다.
       const { data: open } = await sb.from('rounds').select('id').eq('couple_id', coupleId).eq('status', 'open').limit(1)
       if (open?.length) return Response.json({ roundId: open[0].id, reused: true })
-      const { data: last } = await sb.from('rounds').select('card_version_ids').eq('couple_id', coupleId).eq('kind', 'baseline').order('opened_at', { ascending: false }).limit(1)
-      const ids = last?.[0]?.card_version_ids
-      if (!ids?.length) return bad('기준이 될 0회차가 없습니다', 404)
+      const { data: active } = await sb.from('active_cards').select('id, key').eq('couple_id', coupleId).in('key', BASELINE_KEYS)
+      const byKey = new Map((active ?? []).map(c => [c.key, c.id]))
+      const ids = BASELINE_KEYS.map(k => byKey.get(k)).filter(Boolean)
+      if (ids.length !== BASELINE_KEYS.length) return bad('0회차 카드(활성 버전)가 모자랍니다', 404)
       const { data: r, error } = await sb.from('rounds').insert({ couple_id: coupleId, kind: 'baseline', card_version_ids: ids }).select('id').single()
       if (error) return bad(error.message, 500)
       return Response.json({ roundId: r.id })

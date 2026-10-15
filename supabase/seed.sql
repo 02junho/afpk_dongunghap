@@ -49,10 +49,10 @@ from c join (values
    '연금계좌 납입을 주택 취득 전까지 유보할지 판단')
 ) as v(key, label, question, planned_value, tolerance, options, allow_condition, stake) on v.key = c.key;
 
--- 0회차 라운드 (home_when · raise_plan · family_help 3장)
+-- 0회차 라운드 (home_when · raise_plan · family_help 3장, 이 순서로 묻는다)
 insert into rounds (couple_id, kind, card_version_ids)
 select '00000000-0000-0000-0000-000000000010', 'baseline',
-       array_agg(cv.id order by cv.label)
+       array_agg(cv.id order by array_position(array['home_when','raise_plan','family_help'], c.key))
 from card_versions cv join cards c on c.id = cv.card_id
 where c.couple_id = '00000000-0000-0000-0000-000000000010'
   and c.key in ('home_when','raise_plan','family_help');
