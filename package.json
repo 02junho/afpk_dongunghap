@@ -13,7 +13,7 @@
     "extract-cards": "tsx scripts/extract-cards.ts",
     "shots": "node shoot.mjs",
     "ping": "node scripts/ping-llm.mjs",
-    "sql:bundle": "cat supabase/schema.sql supabase/rls.sql supabase/seed.sql > supabase/_all.sql && echo \"supabase/_all.sql 생성 — pbcopy < supabase/_all.sql 로 복사해서 SQL Editor 에 붙여넣기\""
+    "sql:bundle": "cat supabase/reset.sql supabase/schema.sql supabase/rls.sql supabase/seed.sql > supabase/_all.sql && echo \"supabase/_all.sql 생성 (reset 포함, 다시 돌려도 됨) — pbcopy < supabase/_all.sql\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

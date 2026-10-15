@@ -87,7 +87,7 @@ create policy cv_planner_all on card_versions for all
 create policy cv_member_read on card_versions for select using (
   (select couple_id from cards where id = card_id) = my_couple_id()
   and (activated_at is not null
-       or exists (select 1 from rounds r where r.couple_id = my_couple_id() and card_version_id = any (r.card_version_ids)))
+       or exists (select 1 from rounds r where r.couple_id = my_couple_id() and card_versions.id = any (r.card_version_ids)))
 );
 
 create policy docs_planner_all on plan_documents for all

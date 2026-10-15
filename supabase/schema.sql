@@ -189,8 +189,9 @@ create trigger card_versions_append_only before update on card_versions
   for each row execute function card_versions_guard();
 
 -- 현재 활성 버전 (부부에게 묻는 전제. [내 설계] 탭도 이걸 읽는다)
+-- cv.* 에 card_id 가 이미 있으므로 c.id 를 따로 뽑지 않는다 (중복 컬럼 오류)
 create view active_cards as
-select c.id as card_id, c.couple_id, c.key, c.type, c.category, c.unit, cv.*
+select c.couple_id, c.key, c.type, c.category, c.unit, cv.*
 from cards c
 join lateral (
   select * from card_versions v where v.card_id = c.id and v.activated_at is not null
@@ -200,7 +201,7 @@ where c.archived_at is null;
 
 -- 최신 버전 (활성 여부 무관). 설계사 콘솔은 '저장했지만 아직 동의 전'인 버전도 봐야 한다.
 create view latest_cards as
-select c.id as card_id, c.couple_id, c.key, c.type, c.category, c.unit,
+select c.couple_id, c.key, c.type, c.category, c.unit,
        cv.*, (cv.activated_at is null) as pending
 from cards c
 join lateral (
