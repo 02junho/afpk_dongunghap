@@ -6,3 +6,4 @@ dev-dist
 eval/out
 shots
 .vercel
+supabase/_all.sql
