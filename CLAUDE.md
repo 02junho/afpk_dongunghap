@@ -42,6 +42,7 @@ eval/          golden.jsonl · run.ts (테스트 12)  scripts/    extract-cards.
 
 ## 커밋
 한국어 제목, 본문에 "왜". 테스트 통과 후에만.
+**`Co-Authored-By` · `Claude-Session` 트레일러를 넣지 않는다.** GitHub Contributors 에 claude 가 뜬다. 작성자는 항상 02junho.
 
 ## 화면 스크린샷
 `npm run dev -- --port 5180` 띄운 뒤 다른 터미널에서 `npm run shots` → `shots/` 에 10장.
