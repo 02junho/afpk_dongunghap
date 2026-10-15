@@ -53,8 +53,9 @@ npm run shots                 # 스크린샷 (dev 를 5180 포트로 띄운 뒤)
 - [x] 부부 5화면 · 설계사 콘솔 4화면 (10.14 디자인) · PWA 아이콘
 - [x] 실제 LLM 측정 — v2 16/20 → v3 18/20 → **미학습 10건 8/10 (중간 라벨 14/20)**, 베이스라인 6/30. [docs/05](docs/05_평가기록.md)
 - [ ] v4 (abAgree 를 '입장의 양립'으로) → 새 미학습 g31~g40 으로 측정
-- [ ] Supabase 적용 (schema → rls → seed) · 익명 로그인
-- [ ] 판정을 서버로 이동 — docs/04 §A
+- [x] Supabase 적용 · 익명 로그인 · **서버 판정 · 폰 2대** (10.15) — `npm run ping:db`, `npm run sim`
+- [x] 배포 https://afpk-dongunghap.vercel.app (GitHub `02junho/afpk_dongunghap` push → 자동)
+- [ ] 설계사 콘솔 실연결 (cards 저장 → factcheck 라운드, history, couples) · 설계사 이메일 로그인
 
 ## 규칙
 
