@@ -20,8 +20,9 @@ function devApi(): Plugin {
     configureServer(server) {
       // .env 의 서버용 변수(LLM_*, SUPABASE_SERVICE_ROLE_KEY, PLANNER_PASSCODE)를 핸들러가 읽게 한다.
       // Vite 는 VITE_ 접두사만 브라우저로 보내고, 나머지는 여기서만 process.env 에 올린다. 셸에서 source 한 값이 우선.
+      // VITE_ 도 올린다 — 핸들러가 SUPABASE_URL 대신 VITE_SUPABASE_URL 을 읽는다 (Vercel 도 함수에 전부 노출한다)
       const fileEnv = loadEnv(server.config.mode, server.config.root, '')
-      for (const [k, v] of Object.entries(fileEnv)) if (!k.startsWith('VITE_')) process.env[k] ??= v
+      for (const [k, v] of Object.entries(fileEnv)) process.env[k] ??= v
       process.env.ALLOW_DEMO_JUDGE ??= '1'
       if (!process.env.LLM_API_KEY) {
         process.env.LLM_MOCK = '1'
