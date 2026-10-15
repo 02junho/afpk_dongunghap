@@ -6,7 +6,8 @@ import './styles.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* v7 동작을 미리 켠다 — 콘솔 경고 제거. 라우트 구조상 영향 없음 */}
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

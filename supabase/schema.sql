@@ -222,3 +222,10 @@ join cards c on c.id = cv.card_id;
 create view planner_queue as
 select * from card_verdict_history
 where resolved_at is null and (verdict = 'red' or needs_review);
+
+-- ⚠ 뷰는 기본적으로 만든 사람(postgres) 권한으로 실행돼 RLS 를 우회한다.
+-- security_invoker 를 켜야 호출자의 RLS 가 적용된다. 안 켜면 publishable 키만으로 판정·답변이 전부 보인다.
+alter view active_cards set (security_invoker = true);
+alter view latest_cards set (security_invoker = true);
+alter view card_verdict_history set (security_invoker = true);
+alter view planner_queue set (security_invoker = true);
