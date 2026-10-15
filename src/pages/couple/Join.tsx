@@ -1,16 +1,39 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { isLive, joinCouple } from '../../lib/db'
+import { saveMe, type Role } from '../../lib/session'
 
 /**
  * 입장 코드는 설계사가 /p/couples 에서 발급해 상담 자리에서 알려준다.
  * 링크로 보내면(`/c/join?code=482913`) 코드가 미리 채워져 역할만 고르면 된다 — 카톡 한 번이면 끝.
- * 2주차: 시작하기 → 익명 로그인 → join_couple(code, role) RPC (supabase/rls.sql).
+ * live: 시작하기 → 익명 로그인 → join_couple(code, role) RPC (supabase/rls.sql). 이후 이 폰이 곧 신원.
  */
 export default function Join() {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const [code, setCode] = useState((params.get('code') ?? '').replace(/\D/g, '').slice(0, 6))
-  const [role, setRole] = useState<'husband' | 'wife' | null>(null)
+  const [role, setRole] = useState<Role | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function start() {
+    if (!role) return
+    setErr('')
+    if (!isLive()) {
+      saveMe({ role, code, live: false, names: { husband: '현우', wife: '지우' } })
+      return nav('/c/home')
+    }
+    setBusy(true)
+    try {
+      const { coupleId, memberId, names } = await joinCouple(code, role)
+      saveMe({ role, code, live: true, coupleId, memberId, names })
+      nav('/c/home')
+    } catch (e) {
+      setErr((e as Error).message.includes('찾을 수 없') ? '코드를 다시 확인해 주세요.' : (e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <main className="phone">
@@ -32,9 +55,11 @@ export default function Join() {
           </button>
         </div>
         <p className="note" style={{ marginTop: 24 }}>두 분의 답변은 설계사님만 봅니다. 서로에게는 보이지 않아요.</p>
+        {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
       </div>
-      <button className="btn btn-wide" disabled={code.length !== 6 || !role}
-        onClick={() => { sessionStorage.setItem('me', JSON.stringify({ code, role })); nav('/c/home') }}>시작하기</button>
+      <button className="btn btn-wide" disabled={code.length !== 6 || !role || busy} onClick={start}>
+        {busy ? '연결 중…' : '시작하기'}
+      </button>
     </main>
   )
 }

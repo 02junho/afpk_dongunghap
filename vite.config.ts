@@ -1,42 +1,57 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 /**
- * dev 에서도 /api/judge 가 돌게 한다. 없으면 vite 가 SPA fallback 으로 index.html 을
- * 200 으로 돌려주고, text 카드가 "판정 중…"에서 멈춘다 (원인을 찾기 어려운 실패).
- * 이 핸들러는 **node 쪽에서만** 돈다 — 키는 브라우저로 가지 않는다.
- * 배포는 api/judge.ts (Vercel edge) 가 처리한다. 둘의 동작을 같게 유지할 것.
+ * dev 에서도 /api/* 가 돌게 한다 — 배포에서 쓰는 edge 핸들러(api/*.ts)를 그대로 호출한다.
+ * 없으면 vite 가 SPA fallback 으로 index.html 을 200 으로 돌려주고, 원인을 찾기 어려운 실패가 된다.
+ * 핸들러는 node 쪽에서만 돈다 — 키는 브라우저로 가지 않는다. dev/prod 동작이 같아야 한다.
+ *
+ * dev 편의: ALLOW_DEMO_JUDGE 가 없으면 1 로, LLM 키가 없으면 LLM_MOCK=1 로 둔다 (경로 확인용).
  */
-function devJudgeApi(): Plugin {
+function devApi(): Plugin {
+  const handlers: Record<string, () => Promise<{ default: (req: Request) => Promise<Response> }>> = {
+    judge: () => import('./api/judge'),
+    planner: () => import('./api/planner'),
+  }
   return {
-    name: 'dev-judge-api',
+    name: 'dev-api',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use('/api/judge', async (req, res) => {
-        const send = (code: number, body: unknown) => {
-          res.statusCode = code
-          res.setHeader('content-type', 'application/json')
-          res.end(JSON.stringify(body))
-        }
-        if (req.method !== 'POST') return send(405, { error: 'POST only' })
+      // .env 의 서버용 변수(LLM_*, SUPABASE_SERVICE_ROLE_KEY, PLANNER_PASSCODE)를 핸들러가 읽게 한다.
+      // Vite 는 VITE_ 접두사만 브라우저로 보내고, 나머지는 여기서만 process.env 에 올린다. 셸에서 source 한 값이 우선.
+      const fileEnv = loadEnv(server.config.mode, server.config.root, '')
+      for (const [k, v] of Object.entries(fileEnv)) if (!k.startsWith('VITE_')) process.env[k] ??= v
+      process.env.ALLOW_DEMO_JUDGE ??= '1'
+      if (!process.env.LLM_API_KEY) {
+        process.env.LLM_MOCK = '1'
+        server.config.logger.warn('⚠ LLM_API_KEY 없음 → text 카드는 mock 판정 (품질 측정 아님)')
+      }
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) server.config.logger.warn('⚠ SUPABASE_SERVICE_ROLE_KEY 없음 → 라운드 판정·설계사 API 는 500')
+      if (!process.env.PLANNER_PASSCODE) { process.env.PLANNER_PASSCODE = 'dev'; server.config.logger.info('ℹ PLANNER_PASSCODE 없음 → dev 에서는 "dev"') }
+
+      server.middlewares.use(async (req, res, next) => {
+        const m = req.url?.match(/^\/api\/([a-z]+)(?:\?|$)/)
+        if (!m || !handlers[m[1]]) return next()
         try {
           const chunks: Buffer[] = []
           for await (const c of req) chunks.push(c as Buffer)
-          const { card, a, b, previousVerdict } = JSON.parse(Buffer.concat(chunks).toString())
-          const { judge } = await import('./src/judge/index')
-          const { createLlmClient, mockLlm } = await import('./src/judge/text-llm')
-          const key = process.env.LLM_API_KEY
-          const llm = key
-            ? createLlmClient({ apiKey: key, model: process.env.LLM_MODEL!, baseUrl: process.env.LLM_BASE_URL, workspaceId: process.env.LLM_WORKSPACE_ID })
-            : mockLlm
-          if (!key) server.config.logger.warn('⚠ LLM_API_KEY 없음 → mock 판정 (품질 측정 아님)')
-          send(200, await judge(card, a, b, llm, { previousVerdict }))
-        } catch (e) {
-          send(200, {
-            verdict: 'yellow', aVsPlan: 'unparsed', bVsPlan: 'unparsed', abAgree: false,
-            reason: `판정 실패: ${(e as Error).message}`, method: 'llm', needsReview: true,
+          const headers = new Headers()
+          for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') headers.set(k, v)
+          const request = new Request(`http://localhost${req.url}`, {
+            method: req.method,
+            headers,
+            body: chunks.length ? Buffer.concat(chunks) : undefined,
           })
+          const mod = await handlers[m[1]]()
+          const response = await mod.default(request)
+          res.statusCode = response.status
+          response.headers.forEach((v, k) => res.setHeader(k, v))
+          res.end(Buffer.from(await response.arrayBuffer()))
+        } catch (e) {
+          res.statusCode = 500
+          res.setHeader('content-type', 'application/json')
+          res.end(JSON.stringify({ error: `dev api: ${(e as Error).message}` }))
         }
       })
     },
@@ -46,7 +61,7 @@ function devJudgeApi(): Plugin {
 export default defineConfig({
   plugins: [
     react(),
-    devJudgeApi(),
+    devApi(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {

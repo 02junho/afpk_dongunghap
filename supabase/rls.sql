@@ -58,17 +58,19 @@ create policy members_read on members for select using (couple_id = my_couple_id
 
 -- 입장 코드로 커플을 찾는 것은 RPC 로만 허용한다 (테이블 전체 스캔을 열지 않는다).
 -- /c/join 은 이 함수만 호출한다: 코드 + 역할 → 내 익명 uid 연결.
+-- 기기를 바꾸거나 같은 기기에서 역할을 바꿔도 다시 연결된다. 익명 uid 는 앱을 지우면 바뀌므로
+-- "이미 연결됨"으로 막으면 부부가 다시 못 들어온다. 데모 범위: 입장 코드를 아는 사람 = 그 사람.
 create or replace function join_couple(code text, want_role member_role)
 returns uuid language plpgsql security definer as $$
 declare cid uuid; mid uuid;
 begin
+  if auth.uid() is null then raise exception '로그인이 필요합니다'; end if;
   select id into cid from couples where invite_code = code;
   if cid is null then raise exception '코드를 찾을 수 없습니다'; end if;
   select id into mid from members where couple_id = cid and role = want_role;
   if mid is null then raise exception '역할이 없습니다'; end if;
-  update members set auth_user_id = auth.uid()
-    where id = mid and (auth_user_id is null or auth_user_id = auth.uid());
-  if not found then raise exception '이미 다른 기기가 연결되어 있습니다'; end if;
+  update members set auth_user_id = null where auth_user_id = auth.uid() and id <> mid; -- 이전 역할 해제
+  update members set auth_user_id = auth.uid() where id = mid;
   return cid;
 end $$;
 revoke all on function join_couple(text, member_role) from public;

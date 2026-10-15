@@ -2,19 +2,22 @@ import type { Card, Judgment, Verdict } from '../judge/index'
 import { judge } from '../judge/index'
 
 /**
- * text 카드는 서버(/api/judge)로, 나머지는 브라우저에서 바로. 키가 브라우저에 가지 않는다.
+ * 서버(/api/*) 호출. 키는 전부 서버에 있다.
  *
- * ⚠ 2주차에 **판정 전체를 서버로 옮긴다.** 지금은 브라우저가 두 답변을 모두 쥐고 있어야
- * 결정적 비교를 할 수 있는데, 그러면 '상대 답변은 둘 다 제출한 뒤에만 보인다'를
- * DB로 보장할 수 없다 (supabase/rls.sql 머리말). 서버 판정으로 바꾸면 부부에게는
- * answers select 를 아예 닫고 judgments 만 열 수 있다.
+ * live(2주차): 판정은 서버가 라운드 단위로 한다 (triggerJudge). 브라우저는 판정 결과를 받지 않는다.
+ * 데모(1주차): 한 기기에서 카드 1장씩 판정한다 (requestJudgment). ALLOW_DEMO_JUDGE=1 일 때만.
  */
-export async function requestJudgment(
-  card: Card,
-  a: string,
-  b: string,
-  previousVerdict?: Verdict,
-): Promise<Judgment> {
+
+/** 라운드 판정을 서버에 요청한다. 양쪽이 다 답하지 않았으면 서버가 pending 으로 돌려준다. 멱등. */
+export async function triggerJudge(roundId: string): Promise<{ ok: boolean; judged?: number; pending?: boolean; already?: boolean; error?: string }> {
+  const res = await fetch('/api/judge', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ roundId }) })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return { ok: false, error: data.error ?? `HTTP ${res.status}` }
+  return { ok: true, ...data }
+}
+
+/** 1주차 데모 경로. text 카드는 서버, 나머지는 브라우저. */
+export async function requestJudgment(card: Card, a: string, b: string, previousVerdict?: Verdict): Promise<Judgment> {
   if (card.type !== 'text') return judge(card, a, b, undefined, { previousVerdict })
   const res = await fetch('/api/judge', {
     method: 'POST',
@@ -23,15 +26,10 @@ export async function requestJudgment(
   })
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    // 서버 설정 실패를 🟢으로 둔갑시키지 않는다. 사람이 봐야 한다.
     return {
-      verdict: 'yellow',
-      aVsPlan: 'unparsed',
-      bVsPlan: 'unparsed',
-      abAgree: false,
+      verdict: 'yellow', aVsPlan: 'unparsed', bVsPlan: 'unparsed', abAgree: false,
       reason: `판정 서버 응답 ${res.status}${detail ? ` · ${detail.slice(0, 80)}` : ''}`,
-      method: 'llm',
-      needsReview: true,
+      method: 'llm', needsReview: true,
     }
   }
   return res.json()
@@ -40,11 +38,24 @@ export async function requestJudgment(
 /** 🔴·확인 필요 건의 설계사용 3줄 요약. 꺼져 있으면 null. */
 export async function requestSummary(card: Card, a: string, b: string, judgment: Judgment): Promise<string | null> {
   const res = await fetch('/api/judge', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ mode: 'summary', card, a, b, judgment }),
   })
   if (!res.ok) return null
   const { summary } = (await res.json()) as { summary?: string }
   return summary ?? null
+}
+
+/** 설계사 콘솔 API. passcode 는 sessionStorage 에 둔다 (브라우저 탭 동안만). */
+export const PLANNER_PASS_KEY = 'planner:passcode'
+
+export async function plannerApi<T = any>(action: string, params: Record<string, unknown> = {}): Promise<T> {
+  const passcode = sessionStorage.getItem(PLANNER_PASS_KEY) ?? ''
+  const res = await fetch('/api/planner', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ passcode, action, ...params }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+  return data as T
 }
