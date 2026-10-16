@@ -1,37 +1,116 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
+import { DEMO_COUPLE, usePlanner, type CoupleRow } from './planner'
 
-const ROWS = [
-  { name: '김현우 · 박지우', code: '482913', state: '0회차 완료', red: 2, when: '오늘' },
-  { name: '정도윤 · 한서현', code: '730254', state: '정기 3회차', red: 0, when: '3일 전' },
-  { name: '오재민 · 류하경', code: '619478', state: '설계 직후 · 0회차 대기', red: 0, when: '어제' },
-  { name: '배준서 · 문예린', code: '305126', state: '정기 7회차', red: 1, when: '11일 전' },
+const DEMO_ROWS: CoupleRow[] = [
+  DEMO_COUPLE,
+  { id: 'demo-2', label: '정도윤 · 한서현', code: '730254', husband: '도윤', wife: '서현', state: '정기 3회차', lastAt: null, pending: 0 },
+  { id: 'demo-3', label: '오재민 · 류하경', code: '619478', husband: '재민', wife: '하경', state: '설계 직후 · 0회차 대기', lastAt: null, pending: 0 },
+  { id: 'demo-4', label: '배준서 · 문예린', code: '305126', husband: '준서', wife: '예린', state: '정기 7회차', lastAt: null, pending: 1 },
 ]
 
+/**
+ * 설계사 콘솔 첫 화면. 설계사 1명 : 커플 N쌍 — 여기서 고른 커플이 나머지 화면의 컨텍스트다.
+ * 입장 코드 발급이 "설계사 경유 설치"의 시작점. live 면 DB(couples/members), 아니면 데모 4쌍.
+ */
 export default function Couples() {
+  const nav = useNavigate()
+  const p = usePlanner()
+  const [rows, setRows] = useState<CoupleRow[]>(DEMO_ROWS)
+  const [err, setErr] = useState('')
+  const [form, setForm] = useState({ label: '', husband: '', wife: '' })
+  const [issued, setIssued] = useState<{ label: string; code: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
+    try { setRows((await p.call<{ items: CoupleRow[] }>('couples')).items); setErr('') }
+    catch (e) { setErr((e as Error).message) }
+  }
+  useEffect(() => { void load() }, [p.live, p.pass])
+
+  function open(c: CoupleRow, to: string) { p.setCouple(c); nav(to) }
+
+  async function create() {
+    const label = form.label.trim() || [form.husband.trim(), form.wife.trim()].filter(Boolean).join(' · ')
+    if (!label) return
+    if (!p.live || !p.pass) {
+      const code = String(100000 + Math.floor(Math.random() * 900000))
+      setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '설계 직후 · 0회차 대기', lastAt: null, pending: 0 }])
+      setIssued({ label, code }); setForm({ label: '', husband: '', wife: '' })
+      return
+    }
+    setBusy(true)
+    try {
+      const { code } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife })
+      setIssued({ label, code }); setForm({ label: '', husband: '', wife: '' })
+      await load()
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
+
+  const joinUrl = (code: string) => `${location.origin}/c/join?code=${code}`
+
   return (
     <div className="console">
       <Rail />
       <main className="work">
         <h1 className="work-title">담당 커플</h1>
-        <p className="meta">입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
+        <p className="meta">커플을 고르면 처리 대기·가정 카드·변경 이력이 그 커플 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
+        {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
+
         <div style={{ marginTop: 22 }}>
-          {ROWS.map(r => (
-            <div className="qcard" key={r.code}>
+          {rows.map(r => (
+            <div className="qcard" key={r.id} style={r.id === p.couple.id ? { outline: '2px solid var(--ink)' } : undefined}>
               <div className="queue-top">
                 <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
-                <Link to="/p/queue" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', textDecoration: 'none' }}>{r.name}</Link>
-                {r.red > 0 && <span className="chip chip-escalate">처리 대기 {r.red}</span>}
-                <span className="queue-couple">마지막 응답 {r.when}</span>
+                <button onClick={() => open(r, '/p/queue')} style={{ font: 'inherit', fontSize: 15, fontWeight: 700, color: 'var(--ink)', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>{r.label}</button>
+                {r.pending > 0 && <span className="chip chip-escalate">처리 대기 {r.pending}</span>}
+                {r.id === p.couple.id && <span className="chip chip-agree">보는 중</span>}
+                <span className="queue-couple">{r.lastAt ? `마지막 판정 ${new Date(r.lastAt).toLocaleDateString('ko-KR')}` : '아직 판정 없음'}</span>
               </div>
               <dl className="pair" style={{ gridTemplateColumns: '80px 1fr' }}>
                 <dt className="meta">진행</dt><dd>{r.state}</dd>
-                <dt className="meta">입장 코드</dt><dd style={{ letterSpacing: '0.12em' }}>{r.code}</dd>
+                <dt className="meta">입장 코드</dt>
+                <dd>
+                  <span style={{ letterSpacing: '0.12em', fontWeight: 700 }}>{r.code}</span>
+                  <span className="meta" style={{ marginLeft: 12 }}>{joinUrl(r.code)}</span>
+                  <button className="btn btn-quiet btn-small" style={{ marginLeft: 10, padding: '4px 10px', fontSize: 12 }}
+                    onClick={() => navigator.clipboard?.writeText(joinUrl(r.code))}>링크 복사</button>
+                </dd>
               </dl>
+              <div className="actions">
+                <button className="btn btn-small" onClick={() => open(r, '/p/queue')}>처리 대기</button>
+                <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/cards')}>가정 카드</button>
+                <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/history')}>변경 이력</button>
+              </div>
             </div>
           ))}
         </div>
-        <div className="actions" style={{ marginTop: 24 }}><button className="btn btn-small">새 커플 등록하고 코드 발급</button></div>
+
+        <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 커플</h2>
+        <div className="editor" style={{ maxWidth: 560 }}>
+          <label className="label" htmlFor="h">남편 이름</label>
+          <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
+          <label className="label" htmlFor="w">아내 이름</label>
+          <input id="w" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.wife} onChange={e => setForm(f => ({ ...f, wife: e.target.value }))} placeholder="예: 지우" />
+          <label className="label" htmlFor="l">표시 이름 (비우면 "남편 · 아내")</label>
+          <input id="l" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="예: 김현우 · 박지우" />
+          <p className="will">발급하면 기본 가정 카드 10장(데모 세트)이 v1으로 들어가고 0회차가 열립니다. 설계안 문서에서 카드를 뽑는 건 공모전 후.</p>
+          <div className="actions">
+            <button className="btn btn-small" disabled={busy || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
+              {busy ? '발급 중…' : '새 커플 등록하고 코드 발급'}
+            </button>
+          </div>
+          {issued && (
+            <div style={{ marginTop: 18 }}>
+              <p className="meta">{issued.label}</p>
+              <p style={{ fontSize: 32, letterSpacing: '0.2em', fontWeight: 700, margin: '4px 0' }}>{issued.code}</p>
+              <p className="note">이 코드를 두 분께 알려주세요. 링크로 보내면 코드가 채워진 채 열립니다: <b>{joinUrl(issued.code)}</b></p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )

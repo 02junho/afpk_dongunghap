@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
 import {
   byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, KIND_CHIP, loadLiveRound, showAnswer,
 } from '../../data/demo'
-import { PLANNER_PASS_KEY, plannerApi } from '../../lib/api'
-import { isLive } from '../../lib/db'
 import type { Card, Judgment, RedKind } from '../../judge/index'
+import { usePlanner } from './planner'
 
 /** 큐를 닫는 버튼 셋 = judgments.resolution 값 그대로 */
 type Resolution = 'factcheck' | 'consult' | 'false_positive'
 const RESOLVED = {
-  factcheck: { text: '두 분께 묻는 중', cls: 'chip-talk' },
+  factcheck: { text: '카드 고치러 감', cls: 'chip-talk' },
   consult: { text: '상담 안건', cls: 'chip-agree' },
   false_positive: { text: '같은 뜻으로 정리', cls: 'chip-agree' },
 } as const
@@ -37,15 +36,15 @@ interface Item {
 
 /**
  * 🔴 전부 + 자동 판정이 안 된 🟡(확인 필요)이 올라온다.
- * live: /api/planner (service_role, 설계사 코드). 데모: 고정 데이터 또는 한 기기 데모 결과.
+ * live: /api/planner (service_role, 설계사 코드 — Rail 이 받는다). 데모: 고정 데이터 또는 한 기기 데모 결과.
  * "이건 같은 뜻이에요"(AI 오판 표시)는 부부가 아니라 설계사가 누른다 — 부부는 판정을 보지 않으므로.
  */
 export default function Queue() {
-  const live = isLive()
-  const [pass, setPass] = useState(() => sessionStorage.getItem(PLANNER_PASS_KEY) ?? '')
-  const [passDraft, setPassDraft] = useState('')
+  const nav = useNavigate()
+  const p = usePlanner()
   const [items, setItems] = useState<Item[] | null>(null)
   const [err, setErr] = useState('')
+  const [msg, setMsg] = useState('')
   const [done, setDone] = useState<Record<string, Resolution>>({})
   const [note, setNote] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -53,36 +52,26 @@ export default function Queue() {
   async function load() {
     setErr('')
     try {
-      const { items } = await plannerApi<{ items: any[] }>('queue')
+      const { items } = await p.call<{ items: any[] }>('queue')
       setItems(items.map(r => ({ ...r, roundLabel: r.roundKind === 'baseline' ? '0회차' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기' })))
-    } catch (e) {
-      setErr((e as Error).message)
-      if ((e as Error).message.includes('틀립니다')) { sessionStorage.removeItem(PLANNER_PASS_KEY); setPass('') }
-    }
+    } catch (e) { setErr((e as Error).message) }
   }
-
-  useEffect(() => {
-    if (live && pass) void load()
-  }, [live, pass])
-
-  function enter() {
-    sessionStorage.setItem(PLANNER_PASS_KEY, passDraft.trim())
-    setPass(passDraft.trim())
-  }
+  useEffect(() => { if (p.live && p.pass) void load(); else setItems(null) }, [p.live, p.pass, p.couple.id])
 
   async function resolve(it: Item, r: Resolution) {
-    if (live) {
+    if (p.live && p.pass) {
       setBusy(true)
-      try { await plannerApi('resolve', { judgmentId: it.id, resolution: r, note: note[it.id] ?? '' }) }
+      try { await p.call('resolve', { judgmentId: it.id, resolution: r, note: note[it.id] ?? '' }) }
       catch (e) { setErr((e as Error).message); setBusy(false); return }
       setBusy(false)
     }
     setDone(d => ({ ...d, [it.id]: r }))
+    if (r === 'factcheck') nav('/p/cards')
   }
 
   async function newRound() {
     setBusy(true)
-    try { await plannerApi('new_round'); setErr('새 0회차를 열었습니다. 부부 홈에서 시작할 수 있어요.') }
+    try { await p.call('new_round'); setMsg('새 0회차를 열었습니다. 부부 홈에서 시작할 수 있어요.') }
     catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
@@ -104,27 +93,19 @@ export default function Queue() {
     })
   })()
 
-  const showing: Item[] = live && pass ? (items ?? []) : demoItems
+  const liveMode = p.live && p.pass
+  const showing: Item[] = liveMode ? (items ?? []) : demoItems
   const open = showing.filter(i => !done[i.id])
 
   return (
     <div className="console">
       <Rail count={open.length} />
       <main className="work">
-        <h1 className="work-title">처리 대기 <span className="meta" style={{ fontSize: 15 }}>{open.length}건</span></h1>
+        <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length}건</span></h1>
         <p className="meta">전제가 깨진 건과, 자동으로 판정하지 못한 건만 올라옵니다. 두 분이 같게 본 항목은 여기 오지 않습니다.</p>
-
-        {live && !pass && (
-          <div className="qcard" style={{ marginTop: 22, maxWidth: 420 }}>
-            <p style={{ margin: '0 0 8px', fontWeight: 700 }}>설계사 코드</p>
-            <input className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} type="password" value={passDraft}
-              onChange={e => setPassDraft(e.target.value)} onKeyDown={e => e.key === 'Enter' && enter()} placeholder="상담소 코드" />
-            <div className="actions"><button className="btn btn-small" onClick={enter} disabled={!passDraft.trim()}>들어가기</button></div>
-            <p className="note">아래는 코드 입력 전 보이는 예시입니다.</p>
-          </div>
-        )}
-        {err && <p className="note" style={{ color: err.startsWith('새 0회차') ? 'var(--agree)' : 'var(--escalate)' }}>{err}</p>}
-        {live && pass && items === null && !err && <p className="note">불러오는 중…</p>}
+        {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
+        {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
+        {liveMode && items === null && !err && <p className="note">불러오는 중…</p>}
 
         <div style={{ marginTop: 22 }}>
           {showing.map(it => {
@@ -139,12 +120,12 @@ export default function Queue() {
                   <span style={{ fontSize: 16, fontWeight: 700 }}>{it.label}</span>
                   <span className={`chip ${chip.cls}`}>{chip.text}</span>
                   <span className="meta">{it.method === 'llm' ? `AI 판별 · 프롬프트 ${it.promptVersion ?? '-'}` : '규칙 판별'}</span>
-                  <span className="queue-couple">김현우 · 박지우 · {it.roundLabel}</span>
+                  <span className="queue-couple">{p.couple.label} · {it.roundLabel}</span>
                 </div>
                 <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
                   <dt className="meta" style={{ paddingTop: 3 }}>설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{it.planned}</dd>
-                  <dt><span className="avatar avatar-him">현</span></dt><dd>{it.a}</dd>
-                  <dt><span className="avatar avatar-her">지</span></dt><dd>{it.b}</dd>
+                  <dt><span className="avatar avatar-him">{p.couple.husband.slice(0, 1)}</span></dt><dd>{it.a}</dd>
+                  <dt><span className="avatar avatar-her">{p.couple.wife.slice(0, 1)}</span></dt><dd>{it.b}</dd>
                 </dl>
                 <p className="summary">
                   <span className="summary-by">{it.needsReview ? '자동 판정 불가 · ' : it.summary ? 'AI 요약 · ' : 'AI 판별 사유 · '}설계사 확인 필요</span>
@@ -152,13 +133,15 @@ export default function Queue() {
                 </p>
                 {!res && (
                   <>
-                    {live && pass && (
+                    {liveMode && (
                       <input className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)', marginTop: 12 }}
                         value={note[it.id] ?? ''} onChange={e => setNote(n => ({ ...n, [it.id]: e.target.value }))} placeholder="메모 (선택) — 왜 이렇게 닫는지 한 줄" />
                     )}
                     <div className="actions">
-                      <Link to="/p/cards"><button className="btn btn-small" disabled={busy} onClick={() => resolve(it, 'factcheck')}>두 분께 먼저 묻기</button></Link>
-                      <button className="btn btn-quiet btn-small" disabled={busy} onClick={() => resolve(it, 'consult')}>상담 때 다루기</button>
+                      <button className="btn btn-small" disabled={busy} title="가정 카드에서 전제를 고치면 두 분께 먼저 묻는 라운드가 열립니다"
+                        onClick={() => resolve(it, 'factcheck')}>두 분께 먼저 묻기</button>
+                      <button className="btn btn-quiet btn-small" disabled={busy} title="앱 밖에서. 다음 상담 안건으로"
+                        onClick={() => resolve(it, 'consult')}>상담 때 다루기</button>
                       <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy}
                         title="AI 오판 표시 — golden set 후보로 기록됩니다"
                         onClick={() => resolve(it, 'false_positive')}>이건 같은 뜻이에요</button>
@@ -168,10 +151,10 @@ export default function Queue() {
               </div>
             )
           })}
-          {!open.length && items !== null && <p className="note">처리할 건이 없습니다.</p>}
+          {!open.length && (!liveMode || items !== null) && <p className="note">처리할 건이 없습니다.</p>}
         </div>
 
-        {live && pass && (
+        {liveMode && (
           <div className="actions" style={{ marginTop: 28 }}>
             <button className="btn btn-quiet btn-small" disabled={busy} onClick={newRound}>0회차 다시 열기 (리허설)</button>
             <button className="btn btn-quiet btn-small" disabled={busy} onClick={load}>새로고침</button>

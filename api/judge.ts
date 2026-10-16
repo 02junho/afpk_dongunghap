@@ -54,7 +54,7 @@ async function judgeRound(roundId: string): Promise<Response> {
   const sb = serviceClient()
   if (!sb) return bad('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 가 설정되지 않았습니다', 500)
 
-  const { data: round, error: e1 } = await sb.from('rounds').select('id, couple_id, status, card_version_ids').eq('id', roundId).maybeSingle()
+  const { data: round, error: e1 } = await sb.from('rounds').select('id, couple_id, kind, status, card_version_ids').eq('id', roundId).maybeSingle()
   if (e1) return bad(e1.message, 500)
   if (!round) return bad('라운드 없음', 404)
   if (round.status !== 'open') return Response.json({ ok: true, already: true })
@@ -121,7 +121,19 @@ async function judgeRound(roundId: string): Promise<Response> {
     judged++
   }
   await sb.from('rounds').update({ status: 'judged', judged_at: new Date().toISOString() }).eq('id', roundId)
-  return Response.json({ ok: true, judged })
+
+  // ★ '먼저 묻기'(factcheck) 라운드: 두 사람이 새 전제와 맞게(🟢) 답하면 그 버전이 전제가 된다 (docs/03).
+  //   🟡·🔴이면 활성화하지 않고 큐로 간다 — 설계사가 다시 본다.
+  let activated = 0
+  if (round.kind === 'factcheck') {
+    const { data: js } = await sb.from('judgments').select('card_version_id, verdict').eq('round_id', roundId)
+    for (const j of js ?? []) {
+      if (j.verdict !== 'green') continue
+      const { error } = await sb.from('card_versions').update({ activated_at: new Date().toISOString() }).eq('id', j.card_version_id).is('activated_at', null)
+      if (!error) activated++
+    }
+  }
+  return Response.json({ ok: true, judged, activated })
 }
 
 export default async function handler(req: Request): Promise<Response> {
