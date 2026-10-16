@@ -21,9 +21,13 @@ let failed = false
 // 1) 서버 키
 try {
   const s = createClient(url, secret, { auth: { persistSession: false } })
-  const { count, error } = await s.from('cards').select('*', { count: 'exact', head: true })
+  const DEMO = '00000000-0000-0000-0000-000000000010'
+  const [{ count: demo, error }, { count: couples }] = await Promise.all([
+    s.from('cards').select('*', { count: 'exact', head: true }).eq('couple_id', DEMO),
+    s.from('couples').select('*', { count: 'exact', head: true }),
+  ])
   if (error) throw error
-  console.log(count === 10 ? `✓ secret 키 · cards ${count}장 (시드 OK)` : `⚠ secret 키 · cards ${count}장 — 10장이어야 한다`)
+  console.log(demo === 10 ? `✓ secret 키 · 시드 커플 카드 ${demo}장 · 커플 ${couples}쌍` : `⚠ secret 키 · 시드 커플 카드 ${demo}장 — 10장이어야 한다 (seed.sql 미적용?)`)
 } catch (e) {
   failed = true
   console.error(`✗ secret 키 실패: ${e.message ?? e}`)
