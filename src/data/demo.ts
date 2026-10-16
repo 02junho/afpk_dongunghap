@@ -34,12 +34,12 @@ export const DEMO_JUDGMENTS: Record<string, Judgment> = {
   raise_plan: {
     verdict: 'red', redKind: 'plan_stale', aVsPlan: 'major', bVsPlan: 'major', abAgree: true,
     reason: '두 분 다 이직을 전제하고 있으나 설계안은 현 직장 유지를 전제함',
-    method: 'llm', promptVersion: 'v2',
+    method: 'llm', promptVersion: 'v3',
   },
   family_help: {
     verdict: 'red', redKind: 'couple_conflict', aVsPlan: 'match', bVsPlan: 'major', abAgree: false,
     reason: '금액은 같으나 증여와 차용으로 성격이 갈림',
-    method: 'llm', promptVersion: 'v2',
+    method: 'llm', promptVersion: 'v3',
   },
   child_when: {
     verdict: 'yellow', aVsPlan: 'match', bVsPlan: 'unparsed', abAgree: false,
