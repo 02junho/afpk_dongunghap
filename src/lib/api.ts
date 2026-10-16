@@ -46,11 +46,14 @@ export async function requestSummary(card: Card, a: string, b: string, judgment:
   return summary ?? null
 }
 
-/** 설계사 콘솔 API. passcode 는 sessionStorage 에 둔다 (브라우저 탭 동안만). */
+/**
+ * 설계사 콘솔 API. passcode 는 localStorage — 설계사 노트북에서 탭을 새로 열어도 다시 묻지 않는다.
+ * (sessionStorage 는 탭마다 따로라 "새 탭 = 코드 재입력"이 됐다.) 레일의 "코드 잠그기"로 지운다.
+ */
 export const PLANNER_PASS_KEY = 'planner:passcode'
 
 export async function plannerApi<T = any>(action: string, params: Record<string, unknown> = {}): Promise<T> {
-  const passcode = sessionStorage.getItem(PLANNER_PASS_KEY) ?? ''
+  const passcode = localStorage.getItem(PLANNER_PASS_KEY) ?? ''
   const res = await fetch('/api/planner', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ passcode, action, ...params }),

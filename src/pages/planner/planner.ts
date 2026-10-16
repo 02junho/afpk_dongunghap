@@ -23,22 +23,22 @@ export interface CoupleRow {
 export const DEMO_COUPLE: CoupleRow = { id: '00000000-0000-0000-0000-000000000010', label: '김현우 · 박지우', code: '482913', husband: '현우', wife: '지우', state: '0회차 완료', lastAt: null, pending: 2 }
 
 export function loadCouple(): CoupleRow {
-  try { const raw = sessionStorage.getItem(COUPLE_KEY); if (raw) return JSON.parse(raw) } catch { /* 무시 */ }
+  try { const raw = localStorage.getItem(COUPLE_KEY); if (raw) return JSON.parse(raw) } catch { /* 무시 */ }
   return DEMO_COUPLE
 }
 
-// ── 공유 저장소 ──────────────────────────────────────────────────────────
+// ── 공유 저장소 (localStorage: 설계사 노트북에서 탭을 새로 열어도 유지) ──────
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach(l => l())
-const readPass = () => sessionStorage.getItem(PLANNER_PASS_KEY) ?? ''
+const readPass = () => localStorage.getItem(PLANNER_PASS_KEY) ?? ''
 
 export function setPlannerPass(p: string) {
-  if (p) sessionStorage.setItem(PLANNER_PASS_KEY, p)
-  else sessionStorage.removeItem(PLANNER_PASS_KEY)
+  if (p) localStorage.setItem(PLANNER_PASS_KEY, p)
+  else localStorage.removeItem(PLANNER_PASS_KEY)
   notify()
 }
 export function setPlannerCouple(c: CoupleRow) {
-  sessionStorage.setItem(COUPLE_KEY, JSON.stringify(c))
+  localStorage.setItem(COUPLE_KEY, JSON.stringify(c))
   notify()
 }
 
