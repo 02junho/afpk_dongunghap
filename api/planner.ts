@@ -12,10 +12,12 @@
  *   cards                                     카드 최신 버전 (동의 대기 포함)
  *   save_card { cardId, plannedValue, tolerance?, allowCondition?, reason }
  *                                             새 버전(v+1, 동의 대기) + 그 카드 1장짜리 factcheck 라운드
+ *   add_card { card, askNow? }                새 카드 + v1(바로 전제). askNow 면 그 1장으로 정기 라운드
  *   history                                   변경 이력 (card_versions)
  *   rounds / new_round                        라운드 목록 / 0회차 다시 열기 (리허설)
  */
 import { serviceClient, summarizeJudgment } from './judge'
+import { newCardKey, normalizeNewCard } from '../src/lib/card-form'
 
 export const config = { runtime: 'edge' }
 
@@ -198,6 +200,43 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: r, error: e4 } = await sb.from('rounds').insert({ couple_id: latest.couple_id, kind: 'factcheck', card_version_ids: [v.id] }).select('id').single()
         if (e4) return bad(e4.message, 500)
         return Response.json({ versionId: v.id, version: v.version, roundId: r.id })
+      }
+      case 'add_card': {
+        // 설계사가 카드 한 장을 직접 추가. v1 은 바로 전제가 된다 — 설계안에 이미 있는 값이니까 (docs/08 A안 Q4).
+        // 부부 확인은 값을 "바꿀 때"(save_card → factcheck)만 거친다.
+        const r = normalizeNewCard(body.card ?? {})
+        if (!r.ok) return bad(r.error)
+        const c = r.card
+        const { data: couple } = await sb.from('couples').select('id').eq('id', coupleId).maybeSingle()
+        if (!couple) return bad('부부를 찾을 수 없습니다', 404)
+        const pid = await plannerId(sb)
+        const { data: card, error: e1 } = await sb.from('cards')
+          .insert({ couple_id: coupleId, key: newCardKey(), type: c.type, category: c.category, unit: c.unit })
+          .select('id').single()
+        if (e1) return bad(e1.message, 500)
+        const { data: v, error: e2 } = await sb.from('card_versions').insert({
+          card_id: card.id, version: 1, label: c.label, question: c.question, planned_value: c.plannedValue,
+          tolerance: c.tolerance, options: c.options, allow_condition: c.allowCondition, stake: c.stake,
+          reason: '최초 설정 (설계사 추가)', created_by: pid, activated_at: new Date().toISOString(),
+        }).select('id').single()
+        if (e2) {
+          // 버전이 안 들어갔으면 빈 카드가 남지 않게 보관 처리 (삭제 대신 archived_at — CLAUDE.md)
+          await sb.from('cards').update({ archived_at: new Date().toISOString() }).eq('id', card.id)
+          return bad(e2.message, 500)
+        }
+        // 선택: 이 카드 한 장으로 두 분께 바로 묻기 (정기 라운드). 열린 라운드가 있으면 겹치지 않게 열지 않는다.
+        let roundId: string | null = null
+        let askSkipped: string | null = null
+        if (body.askNow) {
+          const { data: open } = await sb.from('rounds').select('id').eq('couple_id', coupleId).eq('status', 'open').limit(1)
+          if (open?.length) askSkipped = '이미 진행 중인 맞춰보기가 있어 묻기는 열지 않았습니다. 끝난 뒤 다시 여세요.'
+          else {
+            const { data: rd, error: e3 } = await sb.from('rounds').insert({ couple_id: coupleId, kind: 'regular', card_version_ids: [v.id] }).select('id').single()
+            if (e3) return bad(e3.message, 500)
+            roundId = rd.id
+          }
+        }
+        return Response.json({ cardId: card.id, versionId: v.id, roundId, askSkipped })
       }
       case 'history': {
         const { data: cards } = await sb.from('cards').select('id, key, type').eq('couple_id', coupleId)

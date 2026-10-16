@@ -26,6 +26,8 @@ export default function Home() {
 
   // 라운드 종류별 문구. factcheck = 설계사가 전제 하나를 바꾸려 해 두 분께 먼저 묻는 것 (docs/03)
   const isFactcheck = round !== null && round !== 'loading' && round.kind === 'factcheck'
+  // regular = 설계사가 카드를 추가하고 "바로 묻기"로 연 정기 맞춰보기
+  const isRegular = round !== null && round !== 'loading' && (round.kind === 'regular' || round.kind === 'event')
 
   const canStart = round !== null && round !== 'loading'
 
@@ -63,19 +65,21 @@ export default function Home() {
           <>
             {isFactcheck
               ? <h2 className="q">설계사님이 전제 하나를<br />바꾸려고 해요<br />두 분께 먼저 여쭤볼게요</h2>
-              : <h2 className="q">설계사님이 두 분 말씀을<br />같게 들었는지<br />세 가지만 맞춰볼게요</h2>}
+              : isRegular
+                ? <h2 className="q">설계사님이<br />두 분께 따로<br />여쭤볼 게 있어요</h2>
+                : <h2 className="q">설계사님이 두 분 말씀을<br />같게 들었는지<br />세 가지만 맞춰볼게요</h2>}
             <div className="bubble" style={{ marginTop: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700 }}>
                     {round === 'loading' ? '불러오는 중…'
-                      : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : `0회차 · ${round.count}문항`)
+                      : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : isRegular ? `정기 · ${round.count}문항` : `0회차 · ${round.count}문항`)
                       : '지금은 열린 맞춰보기가 없어요'}
                   </p>
                   <p className="meta">
                     {round && round !== 'loading'
-                      ? (isFactcheck ? '1분이면 돼요 · 두 분 다 답해야 바뀌어요' : '약 3분 · 따로 답하고, 설계사님만 봐요')
+                      ? (isFactcheck ? '1분이면 돼요 · 두 분 다 답해야 바뀌어요' : isRegular ? '1분이면 돼요 · 따로 답하고, 설계사님만 봐요' : '약 3분 · 따로 답하고, 설계사님만 봐요')
                       : '설계사님이 열어주시면 여기 빨간 점이 켜져요'}
                   </p>
                 </div>

@@ -4,6 +4,8 @@ import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
 import { parseWon, parseCount, type Card } from '../../judge/index'
 import { rowToCard } from '../../lib/cards'
 import { usePlanner } from './planner'
+import AddCard from './AddCard'
+import type { NewCard } from '../../lib/card-form'
 
 /**
  * 카테고리별 카드 목록 + 1장 수정. 수정 = 새 버전 (card_versions insert, 동의 대기). 사유 필수.
@@ -42,6 +44,30 @@ export default function Cards() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  async function add(card: NewCard, askNow: boolean) {
+    const asCard: Card = {
+      ...card, key: '', unit: card.unit ?? undefined, options: card.options ?? undefined, tolerance: card.tolerance ?? undefined,
+      plannedValue: card.type === 'number' ? Number(card.plannedValue) : card.plannedValue,
+    }
+    if (!p.live || !p.pass) {
+      const id = `demo-${Date.now()}`
+      setRows(rs => [...rs, { cardId: id, versionId: id, version: 1, pending: false, card: { ...asCard, key: id } }])
+      setMsg(`(데모) "${card.label}" v1 추가 — 실제로는 DB에 저장되고 바로 전제가 됩니다`)
+      setAdding(false)
+      return
+    }
+    setBusy(true); setErr('')
+    try {
+      const r = await p.call<{ roundId: string | null; askSkipped: string | null }>('add_card', { card, askNow })
+      setMsg(`"${card.label}" v1 추가 — 바로 전제가 됐습니다.` +
+        (r.roundId ? ' 두 분 폰에 1문항이 열렸습니다.' : r.askSkipped ? ` ${r.askSkipped}` : ''))
+      setAdding(false)
+      await load()
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
 
   async function load() {
     if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
@@ -54,7 +80,7 @@ export default function Cards() {
   useEffect(() => { void load() }, [p.live, p.pass, p.couple.id])
 
   function pick(r: Row) {
-    setSel(r)
+    setSel(r); setAdding(false)
     const c = r.card
     setValue(String(c.plannedValue))
     const f = toleranceField(c)
@@ -125,13 +151,13 @@ export default function Cards() {
               </div>
             ))}
             <div className="actions" style={{ marginTop: 16 }}>
-              <button className="btn btn-quiet btn-small" disabled title="공모전 후">카드 추가</button>
-              <button className="btn btn-quiet btn-small" disabled title="scripts/extract-cards.ts — UI 는 공모전 후">설계안에서 뽑기(초안)</button>
+              <button className="btn btn-small" onClick={() => { setAdding(true); setSel(null); setMsg('') }}>카드 추가</button>
+              <button className="btn btn-quiet btn-small" disabled title="방식 검토 중 — docs/08 B안">설계안에서 뽑기(초안)</button>
             </div>
           </div>
 
           <div className="editor">
-            {sel ? (() => {
+            {adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {
               const c = sel.card, cat = CATEGORIES[c.category]
               return (
                 <>

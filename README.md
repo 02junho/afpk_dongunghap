@@ -33,7 +33,7 @@ shoot.mjs       화면 스크린샷 10장 (playwright)
 
 ```bash
 npm i
-npm test                      # 엔진 19 + 판별기 36 + eval 12 = 67건
+npm test                      # 엔진 19 + 판별기 36 + eval 12 + 카드 추가 10 = 77건
 npm run dev                   # http://localhost:5173 → /c/join (폰) · /p/couples (설계사)
 npm run ping                  # LLM 연결 확인 (키·모델·워크스페이스). eval 전에 먼저
 npm run eval                  # LLM_API_KEY 없으면 mock
