@@ -9,6 +9,7 @@
 4. `docs/03_설계사_갱신흐름.md` — 카드 버전 모델. md 교체 아님
 5. `docs/04_설계검토_2026-10-11.md` — 검토에서 고친 것 · **남은 결정 3개**
 6. `docs/05_평가기록.md` — 프롬프트 버전별 실측 숫자. 고칠 때마다 한 블록
+7. `docs/06_보고서_초안.md` — 앱·AI·부록 3번 글 초안. 숫자는 05 에서만 가져온다
 
 ## 절대 규칙
 - **제도 수치는 `src/engine/programs.ts`에만.** 출처 URL + 확인일 필수. 블로그·뉴스 값 금지. 바꾸면 테스트도 같이.
@@ -45,5 +46,9 @@ eval/          golden.jsonl · run.ts (테스트 12)  scripts/    extract-cards.
 **`Co-Authored-By` · `Claude-Session` 트레일러를 넣지 않는다.** GitHub Contributors 에 claude 가 뜬다. 작성자는 항상 02junho.
 
 ## 화면 스크린샷
-`npm run dev -- --port 5180` 띄운 뒤 다른 터미널에서 `npm run shots` → `shots/` 에 10장.
-크로미움은 `npx playwright install chromium`. 다른 경로를 쓰려면 `PW_CHROMIUM=/path/to/chrome`.
+```
+VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run dev -- --port 5180 --host 127.0.0.1   # 데모 모드(예시 데이터)로
+SHOTS_BASE=http://127.0.0.1:5180 npm run shots                                             # 다른 터미널 → shots/ 10장
+```
+크로미움은 `npx playwright install chromium` 한 번. 다른 경로면 `PW_CHROMIUM=/path/to/chrome`.
+Supabase env 를 비우는 이유: 레일에 코드 입력칸이 뜨지 않고, 데이터가 늘 같아 보고서용으로 재현된다.
