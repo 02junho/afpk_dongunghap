@@ -59,8 +59,8 @@ export default function Couples() {
     <div className="console">
       <Rail />
       <main className="work">
-        <h1 className="work-title">담당 커플</h1>
-        <p className="meta">커플을 고르면 처리 대기·가정 카드·변경 이력이 그 커플 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
+        <h1 className="work-title">담당 부부</h1>
+        <p className="meta">부부를 고르면 처리 대기·가정 카드·변경 이력이 그 부부 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
 
         <div style={{ marginTop: 22 }}>
@@ -92,7 +92,7 @@ export default function Couples() {
           ))}
         </div>
 
-        <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 커플</h2>
+        <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
           <label className="label" htmlFor="h">남편 이름</label>
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
@@ -107,7 +107,7 @@ export default function Couples() {
           </p>
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
-              {busy ? '발급 중…' : '새 커플 등록하고 코드 발급'}
+              {busy ? '발급 중…' : '새 부부 등록하고 코드 발급'}
             </button>
           </div>
           {issued && (
