@@ -55,7 +55,8 @@ npm run shots                 # 스크린샷 (dev 를 5180 포트로 띄운 뒤)
 - [ ] v4 (abAgree 를 '입장의 양립'으로) → 새 미학습 g31~g40 으로 측정
 - [x] Supabase 적용 · 익명 로그인 · **서버 판정 · 폰 2대** (10.15) — `npm run ping:db`, `npm run sim`
 - [x] 배포 https://afpk-dongunghap.vercel.app (GitHub `02junho/afpk_dongunghap` push → 자동)
-- [ ] 설계사 콘솔 실연결 (cards 저장 → factcheck 라운드, history, couples) · 설계사 이메일 로그인
+- [x] 설계사 콘솔 실연결 (10.16) — 커플·코드 발급, 카드 저장 → **먼저 묻기 라운드 → 동의 시 활성화**, 이력
+- [ ] 설계사 이메일 로그인 (지금은 PLANNER_PASSCODE) · AI 요약(2번) 켜기 · [내 설계] 진척률
 
 ## 규칙
 
