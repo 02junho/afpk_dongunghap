@@ -23,7 +23,15 @@ export async function joinCouple(code: string, role: Role) {
     const { error } = await s.auth.signInAnonymously()
     if (error) throw new Error(`익명 로그인 실패: ${error.message}`)
   }
-  const { data: coupleId, error } = await s.rpc('join_couple', { code, want_role: role })
+  let { data: coupleId, error } = await s.rpc('join_couple', { code, want_role: role })
+  // 이 기기(uid)가 이미 다른 역할/커플에 묶여 있으면 — 새 익명 uid 로 갈아타고 한 번 더.
+  // (DB 의 join_couple 이 재연결 패치 전이어도 같은 폰으로 여러 커플을 시연할 수 있게)
+  if (error && /members_auth_user_id_key|이미 다른 기기/.test(error.message)) {
+    await s.auth.signOut()
+    const { error: e } = await s.auth.signInAnonymously()
+    if (e) throw new Error(`익명 로그인 실패: ${e.message}`)
+    ;({ data: coupleId, error } = await s.rpc('join_couple', { code, want_role: role }))
+  }
   if (error) throw new Error(error.message)
   const { data: members, error: e2 } = await s.from('members').select('id, role, display_name').eq('couple_id', coupleId)
   if (e2) throw new Error(e2.message)

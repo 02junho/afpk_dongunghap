@@ -32,10 +32,13 @@ export default function Couples() {
 
   function open(c: CoupleRow, to: string) { p.setCouple(c); nav(to) }
 
+  const needPass = p.live && !p.pass
+
   async function create() {
     const label = form.label.trim() || [form.husband.trim(), form.wife.trim()].filter(Boolean).join(' · ')
     if (!label) return
-    if (!p.live || !p.pass) {
+    if (needPass) { setErr('설계사 코드를 먼저 넣어야 실제로 발급됩니다 (왼쪽 레일).'); return }
+    if (!p.live) {
       const code = String(100000 + Math.floor(Math.random() * 900000))
       setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '설계 직후 · 0회차 대기', lastAt: null, pending: 0 }])
       setIssued({ label, code }); setForm({ label: '', husband: '', wife: '' })
@@ -97,9 +100,13 @@ export default function Couples() {
           <input id="w" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.wife} onChange={e => setForm(f => ({ ...f, wife: e.target.value }))} placeholder="예: 지우" />
           <label className="label" htmlFor="l">표시 이름 (비우면 "남편 · 아내")</label>
           <input id="l" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="예: 김현우 · 박지우" />
-          <p className="will">발급하면 기본 가정 카드 10장(데모 세트)이 v1으로 들어가고 0회차가 열립니다. 설계안 문서에서 카드를 뽑는 건 공모전 후.</p>
+          <p className="will">
+            {needPass
+              ? '⚠ 지금은 예시 모드입니다. 왼쪽 레일에 설계사 코드를 넣어야 실제로 발급됩니다.'
+              : '발급하면 기본 가정 카드 10장(데모 세트)이 v1으로 들어가고 0회차가 열립니다. 설계안 문서에서 카드를 뽑는 건 공모전 후.'}
+          </p>
           <div className="actions">
-            <button className="btn btn-small" disabled={busy || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
+            <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
               {busy ? '발급 중…' : '새 커플 등록하고 코드 발급'}
             </button>
           </div>

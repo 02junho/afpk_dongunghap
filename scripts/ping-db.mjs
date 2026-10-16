@@ -29,6 +29,17 @@ try {
   console.error(`✗ secret 키 실패: ${e.message ?? e}`)
 }
 
+// 1-b) join_couple 이 재연결 패치(patch-2026-10-15-join-rebind.sql) 버전인가
+//      서버 키는 auth.uid() 가 없다 → 새 버전은 '로그인이 필요합니다', 옛 버전은 다른 응답
+try {
+  const s = createClient(url, secret, { auth: { persistSession: false } })
+  const { error } = await s.rpc('join_couple', { code: '000000', want_role: 'husband' })
+  if (error?.message.includes('로그인이 필요')) console.log('✓ join_couple: 재연결 패치 적용됨')
+  else { failed = true; console.error(`✗ join_couple: 옛 버전 — supabase/patch-2026-10-15-join-rebind.sql 을 SQL Editor 에서 실행하세요 (응답: ${error?.message ?? 'uuid'})`) }
+} catch (e) {
+  console.error(`✗ join_couple 확인 실패: ${e.message ?? e}`)
+}
+
 // 2) 브라우저 키 (로그인 없음) — 아무것도 보이면 안 된다
 try {
   const a = createClient(url, anon, { auth: { persistSession: false } })
