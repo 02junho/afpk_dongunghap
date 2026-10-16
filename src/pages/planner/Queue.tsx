@@ -69,6 +69,15 @@ export default function Queue() {
     if (r === 'factcheck') nav('/p/cards')
   }
 
+  async function summarize(it: Item) {
+    setBusy(true)
+    try {
+      const { summary } = await p.call<{ summary: string }>('summarize', { judgmentId: it.id })
+      setItems(list => (list ?? []).map(x => x.id === it.id ? { ...x, summary } : x))
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
+
   async function newRound() {
     setBusy(true)
     try { await p.call('new_round'); setMsg('새 0회차를 열었습니다. 부부 홈에서 시작할 수 있어요.') }
@@ -127,8 +136,15 @@ export default function Queue() {
                   <dt><span className="avatar avatar-him">{p.couple.husband.slice(0, 1)}</span></dt><dd>{it.a}</dd>
                   <dt><span className="avatar avatar-her">{p.couple.wife.slice(0, 1)}</span></dt><dd>{it.b}</dd>
                 </dl>
-                <p className="summary">
-                  <span className="summary-by">{it.needsReview ? '자동 판정 불가 · ' : it.summary ? 'AI 요약 · ' : 'AI 판별 사유 · '}설계사 확인 필요</span>
+                <p className="summary" style={{ whiteSpace: 'pre-line' }}>
+                  <span className="summary-by">
+                    {it.summary ? 'AI 요약 · ' : it.needsReview ? '자동 판정 불가 · ' : 'AI 판별 사유 · '}설계사 확인 필요
+                    {liveMode && !it.summary && !res && (
+                      <button className="btn btn-quiet btn-small" style={{ marginLeft: 10, padding: '2px 10px', fontSize: 11 }} disabled={busy} onClick={() => summarize(it)}>
+                        AI 요약 만들기
+                      </button>
+                    )}
+                  </span>
                   {summary}
                 </p>
                 {!res && (

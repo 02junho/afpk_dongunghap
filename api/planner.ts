@@ -15,7 +15,7 @@
  *   history                                   변경 이력 (card_versions)
  *   rounds / new_round                        라운드 목록 / 0회차 다시 열기 (리허설)
  */
-import { serviceClient } from './judge'
+import { serviceClient, summarizeJudgment } from './judge'
 
 export const config = { runtime: 'edge' }
 
@@ -148,6 +148,11 @@ export default async function handler(req: Request): Promise<Response> {
           }
         })
         return Response.json({ items })
+      }
+      case 'summarize': {
+        if (typeof body.judgmentId !== 'string') return bad('judgmentId')
+        const r = await summarizeJudgment(body.judgmentId)
+        return r.error ? bad(r.error, 502) : Response.json(r)
       }
       case 'resolve': {
         const { judgmentId, resolution, note } = body

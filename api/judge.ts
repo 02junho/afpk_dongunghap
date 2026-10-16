@@ -43,6 +43,29 @@ function llmOrFail(): { llm: ReturnType<typeof createLlmClient> } | { error: Res
   return { llm: createLlmClient(env) }
 }
 
+/** 설계사 콘솔에서 요청하는 요약 (이미 판정된 건 1개). api/planner 가 호출한다. */
+export async function summarizeJudgment(judgmentId: string): Promise<{ summary?: string; error?: string }> {
+  if (process.env.ENABLE_PLANNER_SUMMARY !== '1') return { error: '요약 기능이 꺼져 있습니다 (ENABLE_PLANNER_SUMMARY=1)' }
+  const sb = serviceClient()
+  if (!sb) return { error: 'Supabase 서버 키 없음' }
+  const { data: j } = await sb.from('judgments').select('*, card_versions!inner(*, cards!inner(key, type, category, unit))').eq('id', judgmentId).maybeSingle()
+  if (!j) return { error: '판정 없음' }
+  const r = llmOrFail()
+  if ('error' in r) return { error: 'LLM 키 없음' }
+  const card = rowToCard(j.card_versions, j.card_versions.cards)
+  const judgment: Judgment = {
+    verdict: j.verdict, redKind: j.red_kind ?? undefined, aVsPlan: j.a_vs_plan, bVsPlan: j.b_vs_plan, abAgree: j.ab_agree,
+    reason: j.reason ?? '', method: j.method, promptVersion: j.prompt_version ?? undefined, needsReview: j.needs_review,
+  }
+  try {
+    const summary = await r.llm.summarize!({ card, a: j.a_text ?? '', b: j.b_text ?? '', judgment })
+    await sb.from('judgments').update({ planner_summary: summary, summary_prompt_version: PROMPT_VERSIONS.summary }).eq('id', judgmentId)
+    return { summary }
+  } catch (e) {
+    return { error: `요약 실패: ${(e as Error).message}` }
+  }
+}
+
 export function serviceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -96,11 +119,13 @@ async function judgeRound(roundId: string): Promise<Response> {
   for (const p of prevRows ?? []) if (!prevByCard.has(p.card_id)) prevByCard.set(p.card_id, p.verdict)
 
   let judged = 0
+  const toSummarize: { card: Card; a: string; b: string; j: Judgment; cvId: string }[] = []
   for (const cv of cvs ?? []) {
     const card: Card = rowToCard(cv, cv.cards)
     const ans = byCv.get(cv.id)!
     const a = ans.husband!, b = ans.wife!
     const j = await judge(card, a, b, card.type === 'text' ? llm : undefined, { previousVerdict: prevByCard.get(cv.card_id) })
+    if (j.verdict === 'red' || j.needsReview) toSummarize.push({ card, a, b, j, cvId: cv.id })
     const { error: e3 } = await sb.from('judgments').upsert({
       round_id: roundId,
       card_version_id: cv.id,
@@ -122,6 +147,23 @@ async function judgeRound(roundId: string): Promise<Response> {
   }
   await sb.from('rounds').update({ status: 'judged', judged_at: new Date().toISOString() }).eq('id', roundId)
 
+  // AI 활용 2번: 🔴·확인 필요 건에 설계사용 3줄 요약. 판별이 아니므로 카드 타입 무관.
+  // 입력에 판정이 이미 들어 있고 출력은 설계사가 읽는 문장일 뿐 — 판정을 바꾸지 못한다. 실패해도 판정은 그대로.
+  let summarized = 0
+  if (process.env.ENABLE_PLANNER_SUMMARY === '1' && toSummarize.length) {
+    const r = llmOrFail()
+    if (!('error' in r)) {
+      for (const t of toSummarize) {
+        try {
+          const summary = await r.llm.summarize!({ card: t.card, a: t.a, b: t.b, judgment: t.j })
+          await sb.from('judgments').update({ planner_summary: summary, summary_prompt_version: PROMPT_VERSIONS.summary })
+            .eq('round_id', roundId).eq('card_version_id', t.cvId)
+          summarized++
+        } catch { /* 요약 실패는 조용히 — 큐는 판별 사유로 대신 보여준다 */ }
+      }
+    }
+  }
+
   // ★ '먼저 묻기'(factcheck) 라운드: 두 사람이 새 전제와 맞게(🟢) 답하면 그 버전이 전제가 된다 (docs/03).
   //   🟡·🔴이면 활성화하지 않고 큐로 간다 — 설계사가 다시 본다.
   let activated = 0
@@ -133,7 +175,7 @@ async function judgeRound(roundId: string): Promise<Response> {
       if (!error) activated++
     }
   }
-  return Response.json({ ok: true, judged, activated })
+  return Response.json({ ok: true, judged, summarized, activated })
 }
 
 export default async function handler(req: Request): Promise<Response> {
