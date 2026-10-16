@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CARDS, CATEGORIES, showValue } from '../../data/demo'
+import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
 import { loadActiveCards, loadOpenRound } from '../../lib/db'
 import { loadMe, nameOf } from '../../lib/session'
 import type { Card } from '../../judge/index'
@@ -17,7 +17,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!me.live || !me.coupleId) return
-    loadActiveCards(me.coupleId).then(setCards).catch(() => {})
+    // DB 순서는 임의다 → 카테고리 순(주거→소득→…)으로 정렬해 시드와 같은 모양으로
+    loadActiveCards(me.coupleId)
+      .then(cs => setCards([...cs].sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key))))
+      .catch(() => {})
     loadOpenRound(me.coupleId).then(r => setRound(r ? { id: r.id, kind: r.kind, count: r.cards.length } : null)).catch(() => setRound(null))
   }, [me.live, me.coupleId])
 

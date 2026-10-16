@@ -75,6 +75,13 @@ export async function loadOpenRound(coupleId: string): Promise<OpenRound | null>
   }
 }
 
+/** 라운드 하나의 종류·문항 수 (판정이 끝난 라운드도). 대기·전달 화면 문구용 */
+export async function loadRoundInfo(roundId: string): Promise<{ kind: string; count: number; status: string } | null> {
+  const { data, error } = await sb().from('rounds').select('kind, status, card_version_ids').eq('id', roundId).maybeSingle()
+  if (error || !data) return null
+  return { kind: data.kind, status: data.status, count: (data.card_version_ids as string[]).length }
+}
+
 /** 내가 이 라운드에 이미 답한 카드 버전 id 들 (이어서 답하기) */
 export async function myAnswered(roundId: string, memberId: string): Promise<Set<string>> {
   const { data, error } = await sb().from('answers').select('card_version_id').eq('round_id', roundId).eq('member_id', memberId)

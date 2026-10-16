@@ -15,6 +15,7 @@ export default function Wait() {
   const me = loadMe()
   const partner = partnerRole(me.role)
   const [total, setTotal] = useState(3)
+  const [kind, setKind] = useState('baseline')
   const [done, setDone] = useState<Record<Role, number>>(me.live ? { husband: 0, wife: 0 } : { husband: 3, wife: 2 })
   const [err, setErr] = useState('')
 
@@ -28,7 +29,7 @@ export default function Wait() {
         const [r, p] = await Promise.all([loadOpenRound(me.coupleId!), roundProgress(id)])
         if (!alive) return
         const n = r?.id === id ? r.cards.length : total
-        if (r?.id === id) setTotal(n)
+        if (r?.id === id) { setTotal(n); setKind(r.kind) }
         setDone(p)
         if (p.husband >= n && p.wife >= n) {
           await triggerJudge(id) // 이미 판정됐으면 already, 아니면 지금 판정. 결과는 이 폰에 안 온다
@@ -55,7 +56,7 @@ export default function Wait() {
     <main className="phone">
       <div className="phone-top">
         <h1 className="wordmark"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</h1>
-        <p className="meta">0회차</p>
+        <p className="meta">{kind === 'factcheck' ? '먼저 묻기' : kind === 'baseline' ? '0회차' : '정기'}</p>
       </div>
       <div className="phone-body">
         <div className="done-mark">

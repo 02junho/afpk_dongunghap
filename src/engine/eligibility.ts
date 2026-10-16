@@ -49,5 +49,8 @@ export function survivesRaise(program: LoanProgram, h: Household, p: HomePurchas
   return checkEligibility(program, { ...h, incomes, annualIncome: incomes[0] + incomes[1] }, p)
 }
 
+/** 6억원 · 6.5억원 · 6.25억원 · 7,600만원 — 억 단위는 뒤 0 을 떼고 최대 소수 2자리 */
 export const fmt = (won: number) =>
-  won >= 100_000_000 ? `${(won / 100_000_000).toFixed(won % 100_000_000 ? 2 : 0)}억원` : `${Math.round(won / 10_000).toLocaleString()}만원`
+  won >= 100_000_000
+    ? `${parseFloat((won / 100_000_000).toFixed(2))}억원`
+    : `${Math.round(won / 10_000).toLocaleString()}만원`
