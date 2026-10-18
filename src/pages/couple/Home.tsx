@@ -96,6 +96,7 @@ export default function Home() {
             </p>
           </>
         )}
+        <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
       </div>
       {tab === 'match' && canStart && (
         <button className="btn btn-wide" onClick={() => nav(`/c/round/${(round as { id: string }).id}`)}>시작하기</button>

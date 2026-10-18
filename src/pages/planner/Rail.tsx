@@ -46,6 +46,7 @@ export default function Rail({ count }: { count?: number }) {
           )}
         </>
       )}
+      <p className="meta" style={{ padding: '24px 20px 0', fontSize: 11, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
     </nav>
   )
 }
