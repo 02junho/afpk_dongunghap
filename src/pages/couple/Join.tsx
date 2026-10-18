@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { isLive, joinCouple } from '../../lib/db'
 import { saveMe, type Role } from '../../lib/session'
+import InstallGuide from './InstallGuide'
 
 /**
  * 입장 코드는 설계사가 /p/couples 에서 발급해 상담 자리에서 알려준다.
@@ -43,15 +44,17 @@ export default function Join() {
       <div className="phone-body">
         <h2 className="q">설계사님께 받은<br />입장 코드를 넣어주세요</h2>
         <p className="note">상담 때 안내받은 여섯 자리예요.</p>
+        <InstallGuide code={code.length === 6 ? code : undefined} />
         <input className="field code-field" style={{ marginTop: 24 }} inputMode="numeric" maxLength={6} placeholder="······"
           aria-label="입장 코드 여섯 자리" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} />
         <p className="meta" style={{ margin: '28px 0 10px' }}>어느 분이세요?</p>
         <div className="role-row">
           <button className={`role ${role === 'husband' ? 'role-on' : ''}`} onClick={() => setRole('husband')}>
-            <span className="avatar avatar-him">현</span>남편
+            {/* 입장 전엔 누구인지 모른다 — 이름 대신 역할 첫 글자. 입장하면 홈에서 이름 첫 글자로 바뀐다 */}
+            <span className="avatar avatar-him">남</span>남편
           </button>
           <button className={`role ${role === 'wife' ? 'role-on' : ''}`} onClick={() => setRole('wife')}>
-            <span className="avatar avatar-her">지</span>아내
+            <span className="avatar avatar-her">아</span>아내
           </button>
         </div>
         <p className="note" style={{ marginTop: 24 }}>두 분의 답변은 설계사님만 봅니다. 서로에게는 보이지 않아요.</p>

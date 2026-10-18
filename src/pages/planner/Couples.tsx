@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
 import { DEMO_COUPLE, usePlanner, type CoupleRow } from './planner'
+import { inviteMessage } from '../../lib/install'
+
+/** 클립보드 복사. https·localhost 가 아니거나 권한이 없으면 숨은 textarea 로 한 번 더 시도 */
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true } catch { /* 아래로 */ }
+  try {
+    const t = document.createElement('textarea')
+    t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'
+    document.body.appendChild(t); t.select()
+    const ok = document.execCommand('copy'); t.remove(); return ok
+  } catch { return false }
+}
 
 const DEMO_ROWS: CoupleRow[] = [
   DEMO_COUPLE,
@@ -22,6 +34,7 @@ export default function Couples() {
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
   const [issued, setIssued] = useState<{ label: string; code: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState('')  // '<code>:link' | '<code>:msg'
 
   async function load() {
     if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
@@ -54,6 +67,19 @@ export default function Couples() {
   }
 
   const joinUrl = (code: string) => `${location.origin}/c/join?code=${code}`
+  async function copy(code: string, label: string, what: 'link' | 'msg') {
+    const ok = await copyText(what === 'link' ? joinUrl(code) : inviteMessage({ label, code, url: joinUrl(code) }))
+    setCopied(ok ? `${code}:${what}` : '')
+    if (!ok) setErr('복사하지 못했습니다. 링크를 직접 길게 눌러 복사해 주세요.')
+    else setTimeout(() => setCopied(c => (c === `${code}:${what}` ? '' : c)), 2000)
+  }
+  const copyBtn = (code: string, label: string, what: 'link' | 'msg') => (
+    <button className="btn btn-quiet btn-small" style={{ marginLeft: 8, padding: '4px 10px', fontSize: 12 }}
+      title={what === 'msg' ? '링크 + 홈 화면 추가 방법 + 입장 코드가 든 카톡용 안내문' : undefined}
+      onClick={() => void copy(code, label, what)}>
+      {copied === `${code}:${what}` ? '복사됨 ✓' : what === 'link' ? '링크 복사' : '안내문 복사'}
+    </button>
+  )
 
   return (
     <div className="console">
@@ -79,8 +105,8 @@ export default function Couples() {
                 <dd>
                   <span style={{ letterSpacing: '0.12em', fontWeight: 700 }}>{r.code}</span>
                   <span className="meta" style={{ marginLeft: 12 }}>{joinUrl(r.code)}</span>
-                  <button className="btn btn-quiet btn-small" style={{ marginLeft: 10, padding: '4px 10px', fontSize: 12 }}
-                    onClick={() => navigator.clipboard?.writeText(joinUrl(r.code))}>링크 복사</button>
+                  {copyBtn(r.code, r.label, 'link')}
+                  {copyBtn(r.code, r.label, 'msg')}
                 </dd>
               </dl>
               <div className="actions">
@@ -115,6 +141,11 @@ export default function Couples() {
               <p className="meta">{issued.label}</p>
               <p style={{ fontSize: 32, letterSpacing: '0.2em', fontWeight: 700, margin: '4px 0' }}>{issued.code}</p>
               <p className="note">이 코드를 두 분께 알려주세요. 링크로 보내면 코드가 채워진 채 열립니다: <b>{joinUrl(issued.code)}</b></p>
+              <div className="actions" style={{ marginTop: 10 }}>
+                {copyBtn(issued.code, issued.label, 'link')}
+                {copyBtn(issued.code, issued.label, 'msg')}
+              </div>
+              <p className="note">안내문에는 링크, 홈 화면에 추가하는 방법, 입장 코드가 들어 있습니다. 카톡에 그대로 붙여 넣으세요.</p>
             </div>
           )}
         </div>

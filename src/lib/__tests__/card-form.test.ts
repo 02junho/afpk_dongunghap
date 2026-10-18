@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeNewCard, newCardKey, splitOptions } from '../card-form'
 import { showPlanned } from '../../data/demo'
+import { inviteMessage } from '../install'
 
 const base = { category: 'housing', label: '전세 보증금', question: '전세 보증금은 얼마로 생각하나요?', stake: '자기자금을 뺀 나머지가 대출 금액' }
 
@@ -65,5 +66,16 @@ describe('보조 함수', () => {
   it('newCardKey: p_ 접두사, 템플릿 key 와 겹치지 않음', () => {
     expect(newCardKey(0, 0)).toBe('p_000')
     expect(newCardKey()).toMatch(/^p_[0-9a-z]+$/)
+  })
+})
+
+describe('inviteMessage — 설계사가 카톡으로 보내는 안내문', () => {
+  it('링크·코드·홈 화면 추가 방법·블라인드 안내가 다 들어간다', () => {
+    const m = inviteMessage({ label: '김현우 · 박지우', code: '482913', url: 'https://x.app/c/join?code=482913' })
+    expect(m).toContain('https://x.app/c/join?code=482913')
+    expect(m).toContain('입장 코드 482913')
+    expect(m).toContain('홈 화면에 추가')
+    expect(m).toContain('설계사만 봅니다')
+    expect(m.indexOf('홈 화면에 추가')).toBeLessThan(m.indexOf('입장 코드'))  // 추가 먼저, 입장은 아이콘에서
   })
 })

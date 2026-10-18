@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
 import { loadActiveCards, loadOpenRound } from '../../lib/db'
 import { clearMe, loadMe, nameOf } from '../../lib/session'
+import InstallGuide from './InstallGuide'
 import type { Card } from '../../judge/index'
 
 /** 탭 두 개 — [내 설계] 평소에 보는 화면 / [맞춰보기] 점검 질문. 예슬 제안 반영. */
@@ -38,6 +39,8 @@ export default function Home() {
         <span className={`avatar ${him ? 'avatar-him' : 'avatar-her'}`}>{nameOf(me, me.role).slice(0, 1)}</span>
       </div>
       <div className="phone-body">
+        {/* 브라우저로 입장한 경우에만 — 홈 화면 앱으로 열었으면 안 보인다 */}
+        {me.live && <InstallGuide code={me.code} compact />}
         <div className="tabs" role="tablist">
           <button role="tab" className={`tab ${tab === 'plan' ? 'tab-on' : ''}`} onClick={() => setTab('plan')}>내 설계</button>
           <button role="tab" className={`tab ${tab === 'match' ? 'tab-on' : ''}`} onClick={() => setTab('match')}>맞춰보기{canStart && <span className="dot-alert" />}</button>
@@ -96,22 +99,18 @@ export default function Home() {
             </p>
           </>
         )}
-        <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>
-          버전 {__BUILD_ID__}
-          {me.live && (
-            <>
-              {' · '}
-              {/* 역할을 잘못 골랐거나 폰을 넘겨줄 때. 로그아웃 메뉴가 아니라 조용한 링크로 둔다 */}
-              <button onClick={() => { clearMe(); nav('/c/join') }}
-                style={{ font: 'inherit', color: 'inherit', background: 'none', border: 0, padding: 0, textDecoration: 'underline', cursor: 'pointer' }}>
-                다시 입장하기
-              </button>
-            </>
-          )}
-        </p>
+        <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
       </div>
       {tab === 'match' && canStart && (
         <button className="btn btn-wide" onClick={() => nav(`/c/round/${(round as { id: string }).id}`)}>시작하기</button>
+      )}
+      {/* 역할을 잘못 골랐거나, 폰을 바꾸거나, 시연에서 한 폰으로 남편·아내를 번갈아 보여줄 때.
+          코드는 채워진 채로 입장 화면이 열린다 — 역할만 다시 고르면 된다 */}
+      {me.live && (
+        <button className="btn btn-wide btn-quiet" style={{ marginTop: 10 }}
+          onClick={() => { clearMe(); nav(me.code ? `/c/join?code=${me.code}` : '/c/join') }}>
+          다시 입장하기
+        </button>
       )}
     </main>
   )
