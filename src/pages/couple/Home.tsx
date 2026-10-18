@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
 import { loadActiveCards, loadOpenRound } from '../../lib/db'
-import { loadMe, nameOf } from '../../lib/session'
+import { clearMe, loadMe, nameOf } from '../../lib/session'
 import type { Card } from '../../judge/index'
 
 /** 탭 두 개 — [내 설계] 평소에 보는 화면 / [맞춰보기] 점검 질문. 예슬 제안 반영. */
@@ -96,7 +96,19 @@ export default function Home() {
             </p>
           </>
         )}
-        <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
+        <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>
+          버전 {__BUILD_ID__}
+          {me.live && (
+            <>
+              {' · '}
+              {/* 역할을 잘못 골랐거나 폰을 넘겨줄 때. 로그아웃 메뉴가 아니라 조용한 링크로 둔다 */}
+              <button onClick={() => { clearMe(); nav('/c/join') }}
+                style={{ font: 'inherit', color: 'inherit', background: 'none', border: 0, padding: 0, textDecoration: 'underline', cursor: 'pointer' }}>
+                다시 입장하기
+              </button>
+            </>
+          )}
+        </p>
       </div>
       {tab === 'match' && canStart && (
         <button className="btn btn-wide" onClick={() => nav(`/c/round/${(round as { id: string }).id}`)}>시작하기</button>

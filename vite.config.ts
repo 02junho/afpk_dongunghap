@@ -60,7 +60,7 @@ function devApi(): Plugin {
 }
 
 // 화면 구석에 찍는 빌드 시각(한국 시간). 이 기기가 어느 배포를 보고 있는지 눈으로 확인한다 (10.18 캐시 혼동)
-const BUILD_ID = new Date(Date.now() + 9 * 3600_000).toISOString().slice(5, 16).replace('T', ' ')
+const BUILD_ID = new Date(Date.now() + 9 * 3600_000).toISOString().slice(5, 10).replace('-', '.')  // '10.18' — 날짜만
 
 export default defineConfig({
   define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
