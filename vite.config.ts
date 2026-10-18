@@ -70,6 +70,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false, // src/main.tsx 의 registerSW 가 등록한다 (업데이트 시 자동 새로고침)
+      // ★ 새 서비스워커가 '대기(waiting)'에 머물지 않고 바로 교체되게. 이게 없으면 새 버전을 받아 놓고도
+      //   탭을 전부 닫을 때까지 옛 화면을 계속 보여준다 — 10.16부터의 "새로고침 두 번"의 진짜 원인 (10.18 배포 브라우저에서 waiting 확인).
+      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true },
       manifest: {
         name: '돈궁합',
         short_name: '돈궁합',
