@@ -39,7 +39,7 @@ export default function InstallGuide({ code, compact = false }: { code?: string;
             <ol className="note" style={{ margin: '10px 0 0', paddingLeft: 20 }}>
               {p === 'ios' ? (
                 <>
-                  <li>사파리 아래쪽 <b>공유 버튼</b>(네모에 위 화살표)을 눌러요</li>
+                  <li><b>공유 버튼</b>(네모에 위 화살표)을 눌러요 — {/CriOS/.test(navigator.userAgent) ? '크롬은 주소창 오른쪽' : '사파리는 화면 아래'}</li>
                   <li><b>"홈 화면에 추가"</b> → 오른쪽 위 <b>추가</b></li>
                   <li>홈 화면의 <b>돈궁합</b> 아이콘으로 열어요</li>
                 </>
