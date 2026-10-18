@@ -29,9 +29,10 @@ function describeValue(card: Card, raw: string) {
   return (card.unit ?? 'krw') === 'krw' ? `${n.toLocaleString()}원` : `${n}${card.unit === 'age' ? '세' : ''}`
 }
 
-interface Row { cardId: string; versionId: string; version: number; pending: boolean; card: Card }
+/** pending = 아직 전제가 아닌 최신 버전. awaiting = 그중 열린 먼저 묻기에서 답을 기다리는 중 (아니면 "동의 안 됨") */
+interface Row { cardId: string; versionId: string; version: number; pending: boolean; awaiting: boolean; card: Card }
 
-const DEMO_ROWS: Row[] = CARDS.map(c => ({ cardId: c.key, versionId: c.key, version: 1, pending: false, card: c }))
+const DEMO_ROWS: Row[] = CARDS.map(c => ({ cardId: c.key, versionId: c.key, version: 1, pending: false, awaiting: false, card: c }))
 
 export default function Cards() {
   const p = usePlanner()
@@ -53,7 +54,7 @@ export default function Cards() {
     }
     if (!p.live || !p.pass) {
       const id = `demo-${Date.now()}`
-      setRows(rs => [...rs, { cardId: id, versionId: id, version: 1, pending: false, card: { ...asCard, key: id } }])
+      setRows(rs => [...rs, { cardId: id, versionId: id, version: 1, pending: false, awaiting: false, card: { ...asCard, key: id } }])
       setMsg(`(데모) "${card.label}" v1 추가 — 실제로는 DB에 저장되고 바로 전제가 됩니다`)
       setAdding(false)
       return
@@ -73,7 +74,7 @@ export default function Cards() {
     if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
     try {
       const { cards } = await p.call<{ cards: any[] }>('cards')
-      setRows(cards.map(r => ({ cardId: r.card_id, versionId: r.id, version: r.version, pending: r.pending, card: rowToCard(r, r) })))
+      setRows(cards.map(r => ({ cardId: r.card_id, versionId: r.id, version: r.version, pending: r.pending, awaiting: r.awaiting ?? r.pending, card: rowToCard(r, r) })))
       setErr('')
     } catch (e) { setErr((e as Error).message) }
   }
@@ -93,7 +94,7 @@ export default function Cards() {
     if (!sel) return
     const f = toleranceField(sel.card)
     if (!p.live || !p.pass) {
-      setRows(rs => rs.map(r => r.cardId === sel.cardId ? { ...r, pending: true, version: r.version + 1, card: { ...r.card, plannedValue: sel.card.type === 'number' ? Number(value) : value } } : r))
+      setRows(rs => rs.map(r => r.cardId === sel.cardId ? { ...r, pending: true, awaiting: true, version: r.version + 1, card: { ...r.card, plannedValue: sel.card.type === 'number' ? Number(value) : value } } : r))
       setMsg('(데모) v' + (sel.version + 1) + ' 동의 대기 — 실제로는 두 분께 먼저 묻기 라운드가 열립니다')
       setSel(null)
       return
@@ -143,7 +144,8 @@ export default function Cards() {
                       <span className="cat" style={{ background: cat.bg, color: cat.fg, width: 36, height: 36, borderRadius: 11 }}>{cat.short}</span>
                       <div>
                         <div className="card-name">{c.label}</div>
-                        <div className="card-val">v{r.version} · {showValue(c)}{r.pending && <> <span className="chip chip-talk" style={{ fontSize: 11, padding: '2px 8px' }}>동의 대기</span></>}</div>
+                        <div className="card-val">v{r.version} · {showValue(c)}{r.awaiting ? <> <span className="chip chip-talk" style={{ fontSize: 11, padding: '2px 8px' }}>동의 대기</span></>
+                          : r.pending ? <> <span className="chip chip-escalate" style={{ fontSize: 11, padding: '2px 8px' }}>동의 안 됨</span></> : null}</div>
                       </div>
                     </button>
                   )
@@ -164,7 +166,8 @@ export default function Cards() {
                   <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
                   <p className="editor-title" style={{ marginTop: 10 }}>{c.label}</p>
                   <p className="meta">{c.stake}</p>
-                  {sel.pending && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version}이 동의 대기 중입니다. 두 분이 먼저 묻기에 답한 뒤 다시 고칠 수 있습니다.</p>}
+                  {sel.awaiting && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version}이 동의 대기 중입니다. 두 분이 먼저 묻기에 답한 뒤 다시 고칠 수 있습니다.</p>}
+                  {sel.pending && !sel.awaiting && <p className="will" style={{ color: 'var(--escalate)' }}>v{sel.version}은 먼저 묻기에서 두 분 동의를 받지 못해 전제가 되지 않았습니다. 처리 대기에서 사유를 확인하고, 값을 고쳐 다시 물을 수 있습니다.</p>}
 
                   <label className="label" htmlFor="v">전제 값</label>
                   <textarea id="v" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} rows={3} value={value} onChange={e => setValue(e.target.value)} />
@@ -192,7 +195,7 @@ export default function Cards() {
                   <textarea id="r" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} rows={2} value={reason} onChange={e => setReason(e.target.value)} placeholder="예: 0회차에서 두 분 모두 이직을 전제로 답함. 소득 재산정 필요." />
                   <p className="will">저장하면 이 카드만 두 분께 다시 묻습니다 — "{c.question}" 둘 다 새 전제와 맞게 답하면 v{sel.version + 1}이 활성화되고, 연동 수치는 공식대로 다시 계산됩니다. 어긋나면 처리 대기로 옵니다.</p>
                   <div className="actions">
-                    <button className="btn btn-small" disabled={busy || sel.pending || !reason.trim() || !changed || invalidNumber} onClick={save}>
+                    <button className="btn btn-small" disabled={busy || sel.awaiting || !reason.trim() || !changed || invalidNumber} onClick={save}>
                       {busy ? '저장 중…' : `두 분께 먼저 묻고 v${sel.version + 1} 저장`}
                     </button>
                     <button className="btn btn-quiet btn-small" onClick={() => pick(sel)}>되돌리기</button>

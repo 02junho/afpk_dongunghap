@@ -9,7 +9,7 @@
  *   new_couple { label, husband, wife }       커플 + 입장 코드 발급 + 기본 카드 10장(데모 세트) + 0회차
  *   queue                                     처리 대기 (🔴 + 확인 필요)
  *   resolve { judgmentId, resolution, note }  큐 닫기. false_positive 는 disputes 에도 기록
- *   cards                                     카드 최신 버전 (동의 대기 포함)
+ *   cards                                     카드 최신 버전 (동의 대기 포함). awaiting = 열린 라운드에서 답을 기다리는 중
  *   save_card { cardId, plannedValue, tolerance?, allowCondition?, reason }
  *                                             새 버전(v+1, 동의 대기) + 그 카드 1장짜리 factcheck 라운드
  *   add_card { card, askNow? }                새 카드 + v1(바로 전제). askNow 면 그 1장으로 정기 라운드
@@ -45,6 +45,16 @@ async function newInviteCode(sb: SB): Promise<string> {
     if (!data) return code
   }
   throw new Error('코드 발급 실패')
+}
+
+/**
+ * 지금 열린 라운드가 묻고 있는 카드 버전들. "동의 대기"는 이 안에 있을 때만이다.
+ * 먼저 묻기가 판정까지 끝났는데 🟢 가 아니면 그 버전은 활성화되지 않은 채 남는다 —
+ * 그때는 대기가 아니라 "동의 안 됨"이고, 설계사가 다시 고칠 수 있어야 한다 (E2E 10.18 에서 발견).
+ */
+async function openVersionIds(sb: SB, coupleId: string): Promise<Set<string>> {
+  const { data } = await sb.from('rounds').select('card_version_ids').eq('couple_id', coupleId).eq('status', 'open')
+  return new Set((data ?? []).flatMap(r => r.card_version_ids as string[]))
 }
 
 /** 0회차 라운드를 연다 (활성 버전 중 BASELINE 3장, 묻는 순서대로) */
@@ -175,7 +185,9 @@ export default async function handler(req: Request): Promise<Response> {
       case 'cards': {
         const { data, error } = await sb.from('latest_cards').select('*').eq('couple_id', coupleId)
         if (error) return bad(error.message, 500)
-        return Response.json({ cards: data })
+        const open = await openVersionIds(sb, coupleId)
+        // awaiting = 부부 답을 기다리는 중 (열린 라운드에 있음). pending 인데 awaiting 이 아니면 "동의 안 됨"
+        return Response.json({ cards: (data ?? []).map(c => ({ ...c, awaiting: c.pending && open.has(c.id) })) })
       }
       case 'save_card': {
         const { cardId, reason } = body
@@ -185,7 +197,8 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: latest, error: e2 } = e1 || cur ? { data: cur, error: e1 } : await sb.from('latest_cards').select('*').eq('card_id', cardId).maybeSingle()
         if (e2) return bad(e2.message, 500)
         if (!latest) return bad('카드 없음', 404)
-        if (latest.pending) return bad('이미 동의 대기 중인 버전이 있습니다. 두 분이 답한 뒤에 다시 고치세요')
+        if (latest.pending && (await openVersionIds(sb, latest.couple_id)).has(latest.id))
+          return bad('이미 동의 대기 중인 버전이 있습니다. 두 분이 답한 뒤에 다시 고치세요')
         const plannedValue = body.plannedValue == null ? latest.planned_value : String(body.plannedValue)
         const tolerance = body.tolerance == null ? latest.tolerance : Number(body.tolerance)
         const allowCondition = body.allowCondition == null ? latest.allow_condition : !!body.allowCondition
