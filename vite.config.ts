@@ -65,6 +65,7 @@ export default defineConfig({
     devApi(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false, // src/main.tsx 의 registerSW 가 등록한다 (업데이트 시 자동 새로고침)
       manifest: {
         name: '돈궁합',
         short_name: '돈궁합',
