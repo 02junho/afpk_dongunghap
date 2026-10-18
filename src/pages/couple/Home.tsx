@@ -45,11 +45,15 @@ export default function Home() {
 
         {tab === 'plan' ? (
           <>
-            <div className="bubble" style={{ marginBottom: 14 }}>
-              <p className="meta">2029년 내 집까지</p>
-              <p style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 0' }}>자기자금 2.5억 중 <span style={{ color: 'var(--him)' }}>1.4억</span></p>
-              <div className="progress"><div style={{ width: '56%' }} /></div>
-            </div>
+            {/* 진행 막대는 데모 부부(김현우·박지우)의 고정 예시다. 실제 부부에겐 그 부부의 숫자가 없으니 보이지 않는다
+                (E2E 10.18: 모든 부부에게 "2.5억 중 1.4억"이 똑같이 떴다). 숫자를 넣으려면 엔진 계산이 필요하다. */}
+            {!me.live && (
+              <div className="bubble" style={{ marginBottom: 14 }}>
+                <p className="meta">2029년 내 집까지</p>
+                <p style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 0' }}>자기자금 2.5억 중 <span style={{ color: 'var(--him)' }}>1.4억</span></p>
+                <div className="progress"><div style={{ width: '56%' }} /></div>
+              </div>
+            )}
             {cards.slice(0, 5).map(c => {
               const cat = CATEGORIES[c.category]
               return (

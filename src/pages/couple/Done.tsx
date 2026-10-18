@@ -32,7 +32,7 @@ export default function Done() {
         <p className="note" style={{ textAlign: 'center' }}>
           {factcheck
             ? '두 분이 같게 답했으면 [내 설계]에 바로 반영돼요. 다르면 설계사님이 다시 봐요.'
-            : `${n} 가지 모두요. 다음 상담 때 같이 보실 거예요.`}
+            : info.count === 1 ? '다음 상담 때 같이 보실 거예요.' : `${n} 가지 모두요. 다음 상담 때 같이 보실 거예요.`}
         </p>
         <div className="bubble" style={{ marginTop: 32 }}>
           <p className="meta">다음 맞춰보기</p>
