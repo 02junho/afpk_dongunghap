@@ -7,6 +7,7 @@
  *   { passcode, action, coupleId? , ... }
  *   couples                                   담당 커플 목록 (진행 상태·대기 건수)
  *   new_couple { label, husband, wife }       커플 + 입장 코드 발급 + 기본 카드 10장(데모 세트) + 0회차
+ *   rename_couple { husband, wife, label? }   이름 고치기 (label 은 설계사 화면용, 비우면 "남편 · 아내")
  *   queue                                     처리 대기 (🔴 + 확인 필요)
  *   resolve { judgmentId, resolution, note }  큐 닫기. false_positive 는 disputes 에도 기록
  *   cards                                     카드 최신 버전 (동의 대기 포함). awaiting = 열린 라운드에서 답을 기다리는 중
@@ -138,6 +139,24 @@ export default async function handler(req: Request): Promise<Response> {
           await openBaseline(sb, couple.id)
         }
         return Response.json({ coupleId: couple.id, code })
+      }
+
+      case 'rename_couple': {
+        // 이름 고치기. 남편·아내 이름은 부부 폰과 안내문에, 표시 이름은 설계사 화면에만 쓰인다.
+        const husband = String(body.husband ?? '').trim()
+        const wife = String(body.wife ?? '').trim()
+        const label = String(body.label ?? '').trim() || `${husband} · ${wife}`
+        if (!husband || !wife) return bad('남편·아내 이름이 필요합니다')
+        if (husband.length > 20 || wife.length > 20 || label.length > 40) return bad('이름이 너무 깁니다 (각 20자, 표시 이름 40자)')
+        const { data: c, error: e1 } = await sb.from('couples').update({ label }).eq('id', coupleId).select('id').maybeSingle()
+        if (e1) return bad(e1.message, 500)
+        if (!c) return bad('부부를 찾을 수 없습니다', 404)
+        const [{ error: e2 }, { error: e3 }] = await Promise.all([
+          sb.from('members').update({ display_name: husband }).eq('couple_id', coupleId).eq('role', 'husband'),
+          sb.from('members').update({ display_name: wife }).eq('couple_id', coupleId).eq('role', 'wife'),
+        ])
+        if (e2 || e3) return bad((e2 ?? e3)!.message, 500)
+        return Response.json({ ok: true, label, husband, wife })
       }
 
       // ── 큐 ────────────────────────────────────────────────────────────

@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
-import { loadActiveCards, loadOpenRound } from '../../lib/db'
-import { clearMe, loadMe, nameOf } from '../../lib/session'
+import { loadActiveCards, loadNames, loadOpenRound } from '../../lib/db'
+import { clearMe, loadMe, nameOf, saveMe } from '../../lib/session'
 import InstallGuide from './InstallGuide'
 import type { Card } from '../../judge/index'
 
 /** 탭 두 개 — [내 설계] 평소에 보는 화면 / [맞춰보기] 점검 질문. 예슬 제안 반영. */
 export default function Home() {
   const nav = useNavigate()
-  const me = loadMe()
+  const [me, setMe] = useState(loadMe)
   const him = me.role !== 'wife'
   const [tab, setTab] = useState<'plan' | 'match'>('match')
   const [cards, setCards] = useState<Card[]>(CARDS)
@@ -23,6 +23,12 @@ export default function Home() {
       .then(cs => setCards([...cs].sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key))))
       .catch(() => {})
     loadOpenRound(me.coupleId).then(r => setRound(r ? { id: r.id, kind: r.kind, count: r.cards.length } : null)).catch(() => setRound(null))
+    // 설계사가 이름을 고쳤으면 이 폰에도 반영 (입장할 때 저장한 이름은 그때 값이다)
+    loadNames(me.coupleId).then(n => {
+      if (n.husband === me.names.husband && n.wife === me.names.wife) return
+      const next = { ...me, names: { ...me.names, ...n } }
+      saveMe(next); setMe(next)
+    }).catch(() => {})
   }, [me.live, me.coupleId])
 
   // 라운드 종류별 문구. factcheck = 설계사가 전제 하나를 바꾸려 해 두 분께 먼저 묻는 것 (docs/03)

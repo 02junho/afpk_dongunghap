@@ -103,6 +103,15 @@ export async function roundProgress(roundId: string): Promise<Record<Role, numbe
   return out
 }
 
+/** 두 분 이름 (설계사가 '이름 고치기'로 바꿀 수 있다). 홈을 열 때마다 다시 읽는다 */
+export async function loadNames(coupleId: string): Promise<Partial<Record<Role, string>>> {
+  const { data, error } = await sb().from('members').select('role, display_name').eq('couple_id', coupleId)
+  if (error) throw new Error(error.message)
+  const out: Partial<Record<Role, string>> = {}
+  for (const m of data ?? []) if (m.display_name) out[m.role as Role] = m.display_name
+  return out
+}
+
 /** [내 설계] 탭 — 활성 전제 */
 export async function loadActiveCards(coupleId: string): Promise<Card[]> {
   const { data, error } = await sb().from('active_cards').select('*').eq('couple_id', coupleId)

@@ -56,9 +56,11 @@ export function useInstallPrompt() {
  * 아이폰은 홈 화면 앱과 사파리가 저장 공간을 따로 써서, 브라우저에서 먼저 입장하면 앱에서 코드를 한 번 더 넣어야 한다 —
  * 그래서 "추가 먼저, 입장은 아이콘에서" 순서로 쓴다.
  */
-export function inviteMessage(o: { label: string; code: string; url: string }): string {
+export function inviteMessage(o: { husband: string; wife: string; code: string; url: string }): string {
+  // 부부가 받는 글이라 설계사용 "표시 이름"이 아니라 남편·아내 이름을 쓴다. 기본값(남편/아내)뿐이면 이름 없이.
+  const names = [o.husband, o.wife].map(s => s.trim()).filter(s => s && s !== '남편' && s !== '아내')
   return [
-    `[돈궁합] ${o.label} 님, 입장 안내드립니다.`,
+    names.length ? `[돈궁합] ${names.join(' · ')} 님, 입장 안내드립니다.` : '[돈궁합] 입장 안내드립니다.',
     '',
     '1. 아래 링크를 휴대폰에서 열어 주세요.',
     o.url,

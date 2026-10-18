@@ -32,7 +32,9 @@ export default function Couples() {
   const [rows, setRows] = useState<CoupleRow[]>(DEMO_ROWS)
   const [err, setErr] = useState('')
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
-  const [issued, setIssued] = useState<{ label: string; code: string } | null>(null)
+  const [issued, setIssued] = useState<{ label: string; code: string; husband: string; wife: string } | null>(null)
+  // 이름 고치기: 한 번에 한 부부만 펼친다
+  const [edit, setEdit] = useState<{ id: string; label: string; husband: string; wife: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState('')  // '<code>:link' | '<code>:msg'
 
@@ -54,32 +56,52 @@ export default function Couples() {
     if (!p.live) {
       const code = String(100000 + Math.floor(Math.random() * 900000))
       setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '설계 직후 · 0회차 대기', lastAt: null, pending: 0 }])
-      setIssued({ label, code }); setForm({ label: '', husband: '', wife: '' })
+      setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
       return
     }
     setBusy(true)
     try {
       const { code } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife })
-      setIssued({ label, code }); setForm({ label: '', husband: '', wife: '' })
+      setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
       await load()
     } catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
 
   const joinUrl = (code: string) => `${location.origin}/c/join?code=${code}`
-  async function copy(code: string, label: string, what: 'link' | 'msg') {
-    const ok = await copyText(what === 'link' ? joinUrl(code) : inviteMessage({ label, code, url: joinUrl(code) }))
+  /** 안내문은 부부가 받는 글 — 설계사용 표시 이름이 아니라 남편·아내 이름으로 인사한다 */
+  async function copy(code: string, n: { husband: string; wife: string }, what: 'link' | 'msg') {
+    const ok = await copyText(what === 'link' ? joinUrl(code) : inviteMessage({ ...n, code, url: joinUrl(code) }))
     setCopied(ok ? `${code}:${what}` : '')
     if (!ok) setErr('복사하지 못했습니다. 링크를 직접 길게 눌러 복사해 주세요.')
     else setTimeout(() => setCopied(c => (c === `${code}:${what}` ? '' : c)), 2000)
   }
-  const copyBtn = (code: string, label: string, what: 'link' | 'msg') => (
+  const copyBtn = (code: string, n: { husband: string; wife: string }, what: 'link' | 'msg') => (
     <button className="btn btn-quiet btn-small" style={{ marginLeft: 8, padding: '4px 10px', fontSize: 12 }}
       title={what === 'msg' ? '링크 + 홈 화면 추가 방법 + 입장 코드가 든 카톡용 안내문' : undefined}
-      onClick={() => void copy(code, label, what)}>
+      onClick={() => void copy(code, n, what)}>
       {copied === `${code}:${what}` ? '복사됨 ✓' : what === 'link' ? '링크 복사' : '안내문 복사'}
     </button>
   )
+
+  async function saveName() {
+    if (!edit) return
+    const husband = edit.husband.trim(), wife = edit.wife.trim()
+    if (!husband || !wife) { setErr('남편·아내 이름을 모두 넣어 주세요.'); return }
+    const label = edit.label.trim() || `${husband} · ${wife}`
+    if (p.live && p.pass) {
+      setBusy(true)
+      try { await p.call('rename_couple', { coupleId: edit.id, husband, wife, label }) }
+      catch (e) { setErr((e as Error).message); setBusy(false); return }
+      setBusy(false)
+    }
+    setRows(rs => rs.map(r => (r.id === edit.id ? { ...r, label, husband, wife } : r)))
+    // 지금 보고 있는 부부면 레일·다른 화면 제목도 바로 바뀌게
+    if (p.couple.id === edit.id) p.setCouple({ ...p.couple, label, husband, wife })
+    setErr(''); setEdit(null)
+    if (p.live && p.pass) await load()
+  }
+  const fieldStyle = { boxShadow: 'none', border: '2px solid var(--line)' } as const
 
   return (
     <div className="console">
@@ -100,20 +122,45 @@ export default function Couples() {
                 <span className="queue-couple">{r.lastAt ? `마지막 판정 ${new Date(r.lastAt).toLocaleDateString('ko-KR')}` : '아직 판정 없음'}</span>
               </div>
               <dl className="pair" style={{ gridTemplateColumns: '80px 1fr' }}>
+                <dt className="meta">이름</dt><dd>{r.husband} · {r.wife} <span className="meta">(부부 화면·안내문에 쓰임)</span></dd>
                 <dt className="meta">진행</dt><dd>{r.state}</dd>
                 <dt className="meta">입장 코드</dt>
                 <dd>
                   <span style={{ letterSpacing: '0.12em', fontWeight: 700 }}>{r.code}</span>
                   <span className="meta" style={{ marginLeft: 12 }}>{joinUrl(r.code)}</span>
-                  {copyBtn(r.code, r.label, 'link')}
-                  {copyBtn(r.code, r.label, 'msg')}
+                  {copyBtn(r.code, r, 'link')}
+                  {copyBtn(r.code, r, 'msg')}
                 </dd>
               </dl>
               <div className="actions">
                 <button className="btn btn-small" onClick={() => open(r, '/p/queue')}>처리 대기</button>
                 <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/cards')}>가정 카드</button>
                 <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/history')}>변경 이력</button>
+                <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }}
+                  onClick={() => setEdit(edit?.id === r.id ? null : { id: r.id, label: r.label, husband: r.husband, wife: r.wife })}>
+                  {edit?.id === r.id ? '닫기' : '이름 고치기'}
+                </button>
               </div>
+              {edit?.id === r.id && (
+                <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px', maxWidth: 560 }}>
+                  <div>
+                    <label className="label" htmlFor={`eh-${r.id}`}>남편 이름</label>
+                    <input id={`eh-${r.id}`} className="field" style={fieldStyle} value={edit.husband} maxLength={20} onChange={e => setEdit({ ...edit, husband: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor={`ew-${r.id}`}>아내 이름</label>
+                    <input id={`ew-${r.id}`} className="field" style={fieldStyle} value={edit.wife} maxLength={20} onChange={e => setEdit({ ...edit, wife: e.target.value })} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label className="label" htmlFor={`el-${r.id}`}>표시 이름 (설계사 화면에만 · 비우면 "남편 · 아내")</label>
+                    <input id={`el-${r.id}`} className="field" style={fieldStyle} value={edit.label} maxLength={40} onChange={e => setEdit({ ...edit, label: e.target.value })} />
+                    <p className="note">남편·아내 이름은 두 분 휴대폰 화면과 안내문에 그대로 나갑니다. 이미 입장한 폰은 다음에 앱을 열 때 바뀝니다.</p>
+                    <div className="actions">
+                      <button className="btn btn-small" disabled={busy || !edit.husband.trim() || !edit.wife.trim()} onClick={() => void saveName()}>{busy ? '저장 중…' : '저장'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -124,7 +171,7 @@ export default function Couples() {
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
           <label className="label" htmlFor="w">아내 이름</label>
           <input id="w" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.wife} onChange={e => setForm(f => ({ ...f, wife: e.target.value }))} placeholder="예: 지우" />
-          <label className="label" htmlFor="l">표시 이름 (비우면 "남편 · 아내")</label>
+          <label className="label" htmlFor="l">표시 이름 (설계사 화면에만 · 비우면 "남편 · 아내")</label>
           <input id="l" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="예: 김현우 · 박지우" />
           <p className="will">
             {needPass
@@ -142,10 +189,10 @@ export default function Couples() {
               <p style={{ fontSize: 32, letterSpacing: '0.2em', fontWeight: 700, margin: '4px 0' }}>{issued.code}</p>
               <p className="note">이 코드를 두 분께 알려주세요. 링크로 보내면 코드가 채워진 채 열립니다: <b>{joinUrl(issued.code)}</b></p>
               <div className="actions" style={{ marginTop: 10 }}>
-                {copyBtn(issued.code, issued.label, 'link')}
-                {copyBtn(issued.code, issued.label, 'msg')}
+                {copyBtn(issued.code, issued, 'link')}
+                {copyBtn(issued.code, issued, 'msg')}
               </div>
-              <p className="note">안내문에는 링크, 홈 화면에 추가하는 방법, 입장 코드가 들어 있습니다. 카톡에 그대로 붙여 넣으세요.</p>
+              <p className="note">안내문에는 두 분 이름("{[issued.husband, issued.wife].join(' · ')} 님"), 링크, 홈 화면에 추가하는 방법, 입장 코드가 들어 있습니다. 카톡에 그대로 붙여 넣으세요.</p>
             </div>
           )}
         </div>
