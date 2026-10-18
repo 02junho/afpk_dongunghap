@@ -73,7 +73,7 @@ describe('inviteMessage — 설계사가 카톡으로 보내는 안내문', () =
   it('링크·코드·홈 화면 추가 방법·블라인드 안내가 다 들어간다', () => {
     const m = inviteMessage({ label: '김현우 · 박지우', code: '482913', url: 'https://x.app/c/join?code=482913' })
     expect(m).toContain('https://x.app/c/join?code=482913')
-    expect(m).toContain('입장 코드 482913')
+    expect(m).toContain('입장 코드: 482913')
     expect(m).toContain('홈 화면에 추가')
     expect(m).toContain('설계사만 봅니다')
     expect(m.indexOf('홈 화면에 추가')).toBeLessThan(m.indexOf('입장 코드'))  // 추가 먼저, 입장은 아이콘에서
