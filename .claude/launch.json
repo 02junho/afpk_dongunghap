@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "dongunghap-main",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/junho/dongunghap", "run", "dev", "--", "--port", "5174", "--strictPort"],
+      "port": 5174
     }
   ]
 }

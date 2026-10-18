@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
 import {
-  byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, KIND_CHIP, loadLiveRound, showAnswer,
+  byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, KIND_CHIP, loadLiveRound, showAnswer, showPlanned,
 } from '../../data/demo'
 import type { Card, Judgment, RedKind } from '../../judge/index'
 import { usePlanner } from './planner'
@@ -53,7 +53,10 @@ export default function Queue() {
     setErr('')
     try {
       const { items } = await p.call<{ items: any[] }>('queue')
-      setItems(items.map(r => ({ ...r, roundLabel: r.roundKind === 'baseline' ? '0회차' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기' })))
+      setItems(items.map(r => ({
+        ...r, planned: showPlanned(r.type, r.unit, String(r.planned ?? '')),
+        roundLabel: r.roundKind === 'baseline' ? '0회차' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기',
+      })))
     } catch (e) { setErr((e as Error).message) }
   }
   useEffect(() => { if (p.live && p.pass) void load(); else setItems(null) }, [p.live, p.pass, p.couple.id])

@@ -252,7 +252,9 @@ export default async function handler(req: Request): Promise<Response> {
         return Response.json({ cardId: card.id, versionId: v.id, roundId, askSkipped })
       }
       case 'history': {
-        const { data: cards } = await sb.from('cards').select('id, key, type').eq('couple_id', coupleId)
+        const { data: cards } = await sb.from('cards').select('id, key, type, unit').eq('couple_id', coupleId)
+        const cardById = new Map((cards ?? []).map(c => [c.id, c]))
+        const open = await openVersionIds(sb, coupleId)
         const ids = (cards ?? []).map(c => c.id)
         if (!ids.length) return Response.json({ items: [] })
         const { data: vs, error } = await sb.from('card_versions').select('id, card_id, version, label, planned_value, reason, created_at, activated_at').in('card_id', ids).order('created_at', { ascending: false })
@@ -265,6 +267,9 @@ export default async function handler(req: Request): Promise<Response> {
           items: (vs ?? []).map(v => ({
             id: v.id, label: v.label, version: v.version, from: prevOf.get(v.id), to: v.planned_value,
             reason: v.reason, at: v.created_at, active: !!v.activated_at,
+            // 미활성 버전: 열린 라운드가 묻는 중이면 "동의 대기", 판정까지 끝났으면 "동의 안 됨"
+            awaiting: !v.activated_at && open.has(v.id),
+            type: cardById.get(v.card_id)?.type, unit: cardById.get(v.card_id)?.unit ?? null,
           })),
         })
       }

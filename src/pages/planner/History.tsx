@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import Rail from './Rail'
 import { usePlanner } from './planner'
+import { showPlanned } from '../../data/demo'
+import type { Card } from '../../judge/index'
 
-interface Row { id: string; label: string; version: number; from: string; to: string; reason: string; at: string; active: boolean }
+/** awaiting = 미활성인데 열린 먼저 묻기가 묻는 중. 미활성 + !awaiting = 동의 안 됨 (판정까지 끝났는데 🟢 아님) */
+interface Row { id: string; label: string; version: number; from: string; to: string; reason: string; at: string; active: boolean; awaiting?: boolean; type?: Card['type']; unit?: Card['unit'] | null }
 
 const DEMO: Row[] = [
-  { id: 'd1', label: '승진·이직 계획', version: 2, from: '없음. 현 직장 유지, 연봉 상승은 물가 수준', to: '남편 2027년 상반기 이직 예정', reason: '0회차에서 두 분 모두 이직을 전제로 답함', at: '2026-10-12T14:20:00+09:00', active: false },
-  { id: 'd2', label: '목표 주택가격', version: 2, from: '650000000', to: '600000000', reason: '신혼부부 구입자금 상한에 맞춤', at: '2026-09-30T11:05:00+09:00', active: true },
+  { id: 'd1', label: '승진·이직 계획', version: 2, from: '없음. 현 직장 유지, 연봉 상승은 물가 수준', to: '남편 2027년 상반기 이직 예정', reason: '0회차에서 두 분 모두 이직을 전제로 답함', at: '2026-10-12T14:20:00+09:00', active: false, awaiting: true },
+  { id: 'd2', label: '목표 주택가격', version: 2, from: '650000000', to: '600000000', reason: '신혼부부 구입자금 상한에 맞춤', at: '2026-09-30T11:05:00+09:00', active: true, type: 'number', unit: 'krw' },
   { id: 'd3', label: '카드 10장 최초 설정', version: 1, from: '—', to: 'v1', reason: '설계안 확정', at: '2026-09-28T16:42:00+09:00', active: true },
 ]
 
@@ -28,7 +31,7 @@ export default function History() {
       <Rail />
       <main className="work">
         <h1 className="work-title">변경 이력 · {p.couple.label}</h1>
-        <p className="meta">카드 값은 덮어쓰지 않습니다. 모든 버전이 남습니다. "동의 대기"는 두 분이 아직 먼저 묻기에 답하지 않은 버전입니다.</p>
+        <p className="meta">카드 값은 덮어쓰지 않습니다. 모든 버전이 남습니다. "동의 대기"는 두 분이 아직 먼저 묻기에 답하지 않은 버전, "동의 안 됨"은 답했지만 두 분 생각이 새 값과 맞지 않아 전제가 되지 못한 버전입니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         <div style={{ marginTop: 22 }}>
           {rows.map(l => (
@@ -36,12 +39,12 @@ export default function History() {
               <div className="queue-top">
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{l.label}</span>
                 <span className="meta">v{l.version}</span>
-                <span className={`chip ${l.active ? 'chip-agree' : 'chip-talk'}`}>{l.active ? '반영됨' : '동의 대기'}</span>
+                <span className={`chip ${l.active ? 'chip-agree' : l.awaiting ? 'chip-talk' : 'chip-escalate'}`}>{l.active ? '반영됨' : l.awaiting ? '동의 대기' : '동의 안 됨'}</span>
                 <span className="queue-couple">{fmt(l.at)} · 박성훈 AFPK</span>
               </div>
               <dl className="pair" style={{ gridTemplateColumns: '60px 1fr' }}>
-                <dt className="meta">이전</dt><dd style={{ color: 'var(--muted)' }}>{l.from}</dd>
-                <dt className="meta">이후</dt><dd>{l.to}</dd>
+                <dt className="meta">이전</dt><dd style={{ color: 'var(--muted)' }}>{showPlanned(l.type, l.unit, l.from)}</dd>
+                <dt className="meta">이후</dt><dd>{showPlanned(l.type, l.unit, l.to)}</dd>
                 <dt className="meta">이유</dt><dd>{l.reason}</dd>
               </dl>
             </div>

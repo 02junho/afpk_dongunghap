@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeNewCard, newCardKey, splitOptions } from '../card-form'
+import { showPlanned } from '../../data/demo'
 
 const base = { category: 'housing', label: '전세 보증금', question: '전세 보증금은 얼마로 생각하나요?', stake: '자기자금을 뺀 나머지가 대출 금액' }
 
@@ -41,6 +42,19 @@ describe('normalizeNewCard — 카드 추가 입력 검사', () => {
   it('알 수 없는 주제·타입은 거부', () => {
     expect(normalizeNewCard({ ...base, category: 'wedding', type: 'text', plannedValue: 'x' }).ok).toBe(false)
     expect(normalizeNewCard({ ...base, type: 'bool', plannedValue: 'x' }).ok).toBe(false)
+  })
+})
+
+describe('showPlanned — 큐·변경 이력의 전제 값 표시', () => {
+  it('금액·시점·나이를 사람이 읽는 형태로', () => {
+    expect(showPlanned('number', 'krw', '650000000')).toBe('6.5억원')
+    expect(showPlanned('date', null, '2029-12')).toBe('2029년 12월')
+    expect(showPlanned('number', 'age', '60')).toBe('만 60세')
+  })
+  it('타입을 모르거나 숫자가 아니면 그대로', () => {
+    expect(showPlanned(undefined, null, '650000000')).toBe('650000000')
+    expect(showPlanned('number', 'krw', '—')).toBe('—')
+    expect(showPlanned('text', null, '현 직장 유지')).toBe('현 직장 유지')
   })
 })
 

@@ -113,6 +113,16 @@ export function showValue(c: Card): string {
   return c.unit === 'age' ? `만 ${n}세` : fmt(n)
 }
 
+/**
+ * DB 에 저장된 전제 값(문자열)을 사람이 읽는 형태로. 큐·변경 이력처럼 Card 전체가 없는 곳에서 쓴다.
+ * '650000000' → '6.5억원', '2029-12' → '2029년 12월'. 숫자로 못 읽으면 그대로.
+ */
+export function showPlanned(type: Card['type'] | undefined, unit: Card['unit'] | null | undefined, raw: string): string {
+  if (!type || raw === '—') return raw
+  if (type === 'number' && !/^-?\d+(\.\d+)?$/.test(raw)) return raw
+  return showValue({ key: '', type, unit: unit ?? undefined, category: 'housing', label: '', question: '', stake: '', plannedValue: type === 'number' ? Number(raw) : raw })
+}
+
 /** 답변 문자열을 사람이 읽는 형태로 (date 카드의 'YYYY-MM' → 'YYYY년 M월') */
 export function showAnswer(c: Card, s: string): string {
   if (c.type === 'date') {

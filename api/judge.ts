@@ -110,6 +110,35 @@ async function judgeRound(roundId: string): Promise<Response> {
     llm = r.llm
   }
 
+  // ★ 라운드 선점. 마지막 답을 낸 폰의 답변 화면·대기 화면, 그리고 상대 폰까지 거의 동시에 판정을 요청한다.
+  //   먼저 온 요청 하나만 판정하고 나머지는 "진행 중"으로 돌려보낸다 — 안 그러면 LLM 판별·요약이 2~4번 돈다 (E2E 10.18).
+  //   judged_at 을 선점 표시로 쓴다. 판정 도중 죽은 선점(2분 넘음)은 다시 가져갈 수 있다.
+  const staleBefore = new Date(Date.now() - 120_000).toISOString()
+  const { data: claimed, error: eClaim } = await sb.from('rounds')
+    .update({ judged_at: new Date().toISOString() })
+    .eq('id', roundId).eq('status', 'open')
+    .or(`judged_at.is.null,judged_at.lt.${staleBefore}`)
+    .select('id')
+  if (eClaim) return bad(eClaim.message, 500)
+  if (!claimed?.length) return Response.json({ ok: true, already: true, inProgress: true })
+  const release = () => sb.from('rounds').update({ judged_at: null }).eq('id', roundId).eq('status', 'open')
+
+  try {
+    return await judgeClaimedRound(sb, round, roundId, cvs ?? [], byCv, llm)
+  } catch (e) {
+    await release()
+    throw e
+  }
+}
+
+async function judgeClaimedRound(
+  sb: NonNullable<ReturnType<typeof serviceClient>>,
+  round: { couple_id: string; kind: string },
+  roundId: string,
+  cvs: any[],
+  byCv: Map<string, Partial<Record<'husband' | 'wife', string>>>,
+  llm: ReturnType<typeof createLlmClient> | undefined,
+): Promise<Response> {
   // 같은 카드의 직전 판정 (2연속 🟡 승격용)
   const { data: prevRows } = await sb
     .from('card_verdict_history').select('card_id, verdict, opened_at')
@@ -142,7 +171,7 @@ async function judgeRound(roundId: string): Promise<Response> {
       model: j.method === 'llm' ? (process.env.LLM_MOCK === '1' ? 'mock' : process.env.LLM_MODEL) : null,
       needs_review: !!j.needsReview,
     }, { onConflict: 'round_id,card_version_id', ignoreDuplicates: true })
-    if (e3) return bad(`judgments 기록 실패: ${e3.message}`, 500)
+    if (e3) throw new Error(`judgments 기록 실패: ${e3.message}`)
     judged++
   }
   await sb.from('rounds').update({ status: 'judged', judged_at: new Date().toISOString() }).eq('id', roundId)

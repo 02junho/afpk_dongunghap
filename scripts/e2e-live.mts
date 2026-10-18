@@ -249,7 +249,11 @@ section('카드 추가 + 바로 묻기')
     const k = rg.cards[0].key
     await answer(him, rg.id, h.memberId, { [k]: '남편' }, rg.cards)
     await answer(her, rg.id, w.memberId, { [k]: '아직 모름' }, rg.cards)
-    const j = await judgeRound(rg.id)
+    // 마지막 답을 낸 폰의 답변 화면·대기 화면이 거의 동시에 판정을 부른다 — 한 번만 판정해야 한다
+    const both = await Promise.all([judgeRound(rg.id), judgeRound(rg.id), judgeRound(rg.id)])
+    const ran = both.filter(r => r.body.judged === 1).length
+    check('판정 요청이 동시에 3번 와도 한 번만 판정', ran === 1 && both.every(r => r.status === 200), both.map(r => r.body.judged ? 'judged' : r.body.inProgress ? 'inProgress' : r.body.already ? 'already' : r.status).join(', '))
+    const j = both.find(r => r.body.judged === 1) ?? both[0]
     const q = (await planner('queue', { coupleId })).body.items ?? []
     const it = q.find((i: any) => i.label === '전세대출 명의')
     check('선택형은 AI 없이 판정 (남편 vs 아직 모름)', j.status === 200 && (!it || it.method === 'deterministic'), it ? `${it.verdict}/${it.redKind ?? ''} · ${it.method}` : '큐에 없음(🟢/🟡)')

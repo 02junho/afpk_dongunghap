@@ -166,8 +166,8 @@ export default function Cards() {
                   <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
                   <p className="editor-title" style={{ marginTop: 10 }}>{c.label}</p>
                   <p className="meta">{c.stake}</p>
-                  {sel.awaiting && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version}이 동의 대기 중입니다. 두 분이 먼저 묻기에 답한 뒤 다시 고칠 수 있습니다.</p>}
-                  {sel.pending && !sel.awaiting && <p className="will" style={{ color: 'var(--escalate)' }}>v{sel.version}은 먼저 묻기에서 두 분 동의를 받지 못해 전제가 되지 않았습니다. 처리 대기에서 사유를 확인하고, 값을 고쳐 다시 물을 수 있습니다.</p>}
+                  {sel.awaiting && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version} 값이 동의 대기 중입니다. 두 분이 먼저 묻기에 답한 뒤 다시 고칠 수 있습니다.</p>}
+                  {sel.pending && !sel.awaiting && <p className="will" style={{ color: 'var(--escalate)' }}>v{sel.version} 값은 먼저 묻기에서 두 분 동의를 받지 못해 전제가 되지 않았습니다. 처리 대기에서 사유를 확인하고, 값을 고쳐 다시 물을 수 있습니다.</p>}
 
                   <label className="label" htmlFor="v">전제 값</label>
                   <textarea id="v" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} rows={3} value={value} onChange={e => setValue(e.target.value)} />
