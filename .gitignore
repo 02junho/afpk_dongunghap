@@ -7,3 +7,6 @@ eval/out
 shots
 .vercel
 supabase/_all.sql
+
+# 흐름도 캡처 (scripts/flow-pdf.mjs)
+build/
