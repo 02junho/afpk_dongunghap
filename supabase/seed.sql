@@ -1,13 +1,13 @@
--- 데모용 시드. 김현우·박지우 + 카드 10장 v1. src/data/seed-cards.json 과 동일 내용.
+-- 데모용 시드. 데모 부부(남편 · 아내) + 카드 10장 v1. src/data/seed-cards.json 과 동일 내용.
 -- schema.sql → rls.sql 다음에 실행. (service_role 또는 SQL Editor 에서)
 --
 -- activated_at 을 now() 로 박는 것은 **데모 단축**이다. 실제 흐름에서 v1 은
 -- 0회차 라운드를 부부가 끝내야 활성화된다 (docs/03 §갱신 흐름).
 insert into planners (id, name) values ('00000000-0000-0000-0000-000000000001', '박성훈 AFPK');
-insert into couples (id, planner_id, invite_code, label) values ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', '482913', '김현우·박지우');
+insert into couples (id, planner_id, invite_code, label) values ('00000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', '482913', '남편 · 아내');
 insert into members (couple_id, role, display_name) values
-  ('00000000-0000-0000-0000-000000000010', 'husband', '현우'),
-  ('00000000-0000-0000-0000-000000000010', 'wife', '지우');
+  ('00000000-0000-0000-0000-000000000010', 'husband', '남편'),
+  ('00000000-0000-0000-0000-000000000010', 'wife', '아내');
 
 with c as (
   insert into cards (couple_id, key, type, category, unit) values

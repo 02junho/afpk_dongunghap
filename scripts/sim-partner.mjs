@@ -21,7 +21,7 @@ if (!url || !secret) { console.error('✗ VITE_SUPABASE_URL / SUPABASE_SERVICE_R
 const sb = createClient(url, secret, { auth: { persistSession: false } })
 
 const argv = process.argv.slice(2)
-// --code=631732 로 다른 커플을 고른다 (없으면 김현우·박지우)
+// --code=631732 로 다른 커플을 고른다 (없으면 데모 부부)
 const codeArg = argv.find(a => a.startsWith('--code='))?.slice(7)
 const [cmd, ...rest] = argv.filter(a => !a.startsWith('--code='))
 let coupleId = DEMO_COUPLE

@@ -40,7 +40,13 @@ export default function Couples() {
 
   async function load() {
     if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
-    try { setRows((await p.call<{ items: CoupleRow[] }>('couples')).items); setErr('') }
+    try {
+      const items = (await p.call<{ items: CoupleRow[] }>('couples')).items
+      setRows(items); setErr('')
+      // 이 노트북이 기억하는 '보는 중' 부부의 이름이 DB 와 다르면(이름 고치기·데이터 정리 뒤) 최신으로
+      const cur = items.find(r => r.id === p.couple.id)
+      if (cur && (cur.label !== p.couple.label || cur.husband !== p.couple.husband || cur.wife !== p.couple.wife)) p.setCouple(cur)
+    }
     catch (e) { setErr((e as Error).message) }
   }
   useEffect(() => { void load() }, [p.live, p.pass])

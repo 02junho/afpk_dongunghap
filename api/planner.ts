@@ -124,7 +124,7 @@ export default async function handler(req: Request): Promise<Response> {
           { couple_id: couple.id, role: 'husband', display_name: husband },
           { couple_id: couple.id, role: 'wife', display_name: wife },
         ])
-        // 데모 세트: 김현우·박지우의 활성 카드 10장을 v1 로 복사 (설계안→카드 추출 UI 는 공모전 후)
+        // 데모 세트: 데모 부부(남편 · 아내)의 활성 카드 10장을 v1 로 복사 (설계안→카드 추출 UI 는 공모전 후)
         if (body.cloneDemoCards !== false) {
           const { data: src } = await sb.from('active_cards').select('*').eq('couple_id', DEMO_COUPLE)
           for (const s of src ?? []) {
