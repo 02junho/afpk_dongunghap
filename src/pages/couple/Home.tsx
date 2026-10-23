@@ -16,7 +16,7 @@ export default function Home() {
   const [cards, setCards] = useState<Card[]>(CARDS)
   // live: 열린 라운드가 있을 때만 '맞춰보기'가 켜진다. 없으면 설계사가 열어줄 때까지 기다린다
   const [lastCheck, setLastCheck] = useState<string | null>(null)
-  // [내 설계] 카테고리 접기·펼치기 (10.23 Q13). 처음엔 첫 카테고리만 펼친다
+  // [내 설계] 카테고리 접기·펼치기 (10.23 Q13). 처음엔 모두 접혀 있다 — 누른 것만 펼친다
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({})
   const [round, setRound] = useState<{ id: string; kind: string; count: number } | null | 'loading'>(me.live ? 'loading' : { id: 'baseline', kind: 'baseline', count: 3 })
 
@@ -44,7 +44,7 @@ export default function Home() {
   const canStart = round !== null && round !== 'loading'
   const next = nextCheckDate(lastCheck)
   const groups = CATEGORY_ORDER.map(k => ({ k, cards: cards.filter(c => c.category === k) })).filter(g => g.cards.length)
-  const isOpen = (k: string, idx: number) => openCats[k] ?? idx === 0
+  const isOpen = (k: string) => openCats[k] ?? false
 
   return (
     <main className="phone">
@@ -72,9 +72,9 @@ export default function Home() {
               </div>
             )}
             {/* 카테고리를 누르면 펼쳐진다. 카드는 전부 보인다 (예전엔 5장만) */}
-            {groups.map(({ k, cards: cs }, idx) => {
+            {groups.map(({ k, cards: cs }) => {
               const cat = CATEGORIES[k]
-              const open = isOpen(k, idx)
+              const open = isOpen(k)
               return (
                 <div key={k} style={{ marginBottom: 10 }}>
                   <button className="plan-card" aria-expanded={open} onClick={() => setOpenCats(o => ({ ...o, [k]: !open }))}
@@ -99,7 +99,7 @@ export default function Home() {
             {isFactcheck
               ? <h2 className="q">설계사님이 전제 하나를<br />바꾸려고 해요<br />두 분께 먼저 여쭤볼게요</h2>
               : canStart
-                ? <h2 className="q">이제부터<br />시작할게요</h2>
+                ? <h2 className="q">이제부터 시작할게요</h2>
                 : round === 'loading' ? <h2 className="q">&nbsp;</h2>
                 : next
                   ? <h2 className="q">다음 맞춰보기는<br />{formatKDate(next)}쯤이에요</h2>

@@ -142,6 +142,11 @@ export default function Cards() {
 
         <div className="cards-layout" style={{ marginTop: 20 }}>
           <div>
+            {/* 카드가 많아도 내리지 않고 바로 누르게 목록 맨 위에 (10.23 사용자 요청) */}
+            <div className="actions" style={{ marginTop: 0, marginBottom: 14 }}>
+              <button className="btn btn-small" onClick={() => { setAdding(true); setExtracting(false); setSel(null); setMsg('') }}>카드 추가</button>
+              <button className="btn btn-quiet btn-small" onClick={() => { setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>재무제표 엑셀로 만들기</button>
+            </div>
             {CATEGORY_ORDER.filter(k => rows.some(r => r.card.category === k)).map(k => (
               <div key={k}>
                 <p className="cat-head">{CATEGORIES[k].label}</p>
@@ -160,10 +165,6 @@ export default function Cards() {
                 })}
               </div>
             ))}
-            <div className="actions" style={{ marginTop: 16 }}>
-              <button className="btn btn-small" onClick={() => { setAdding(true); setExtracting(false); setSel(null); setMsg('') }}>카드 추가</button>
-              <button className="btn btn-quiet btn-small" onClick={() => { setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>재무제표 엑셀로 만들기</button>
-            </div>
           </div>
 
           <div className="editor">
