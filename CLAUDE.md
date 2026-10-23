@@ -13,7 +13,7 @@
 
 ## 절대 규칙
 - **제도 수치는 `src/engine/programs.ts`에만.** 출처 URL + 확인일 필수. 블로그·뉴스 값 금지. 바꾸면 테스트도 같이.
-- **프롬프트를 고치면 `PROMPT_VERSIONS`의 해당 축(`judge` / `summary`)을 올리고 `src/judge/prompt.ts` CHANGELOG에 한 줄.** 안 올리면 eval 결과 비교가 무의미해진다.
+- **프롬프트를 고치면 `PROMPT_VERSIONS`의 해당 축(`judge` / `summary` / `extract`)을 올리고 `src/judge/prompt.ts` CHANGELOG에 한 줄.** 안 올리면 eval 결과 비교가 무의미해진다.
 - **카드 값은 덮어쓰지 않는다.** 항상 `card_versions`에 새 행. 삭제는 `archived_at`. (DB 트리거가 막는다)
 - **LLM 키는 브라우저로 가면 안 된다.** `VITE_` 접두사 금지. 호출은 `api/judge.ts`·`eval/run.ts`·`scripts/`·`vite.config.ts` 의 dev 미들웨어에서만.
 - **AI는 판별·분류·요약만.** 계산·재무 조언·자동 반영·재설계 금지. 이걸 어기면 기획의 핵심 주장이 무너진다.
@@ -24,8 +24,9 @@
 
 ## 명령
 ```
-npm test                    # vitest. 바꾸기 전후 항상 (87건)
+npm test                    # vitest. 바꾸기 전후 항상 (94건)
 npm run e2e                 # 실 DB 종단 39개 (폰 2대 + 설계사). 테스트 부부가 하나 늘어난다. -- --deployed-judge
+npm run seed:samples        # 예시 고객 3쌍 (이미 있으면 건너뜀)
 npm run dev                 # /c/join (폰) · /p/couples (설계사). /api/judge 는 dev 미들웨어가 처리
 npm run ping                # LLM 연결 확인. eval 전에 먼저
 npm run eval                # golden set → 혼동행렬 2개. LLM_API_KEY 없으면 mock
