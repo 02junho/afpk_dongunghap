@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Card, Judgment, LlmClient, TextJudgeInput, TextJudgeOutput } from './types'
 import { buildPrompt, buildSummaryPrompt } from './prompt'
+import { buildExtractPrompt } from '../extract/prompt'
 
 /**
  * 서버에서만 사용 (api/judge.ts, eval/run.ts, scripts/, vite dev 미들웨어). 브라우저에서 import 금지.
@@ -58,6 +59,10 @@ export function createLlmClient(env: LlmEnv): LlmClient {
       const text = await call(buildSummaryPrompt(card, a, b, judgment), 4000)
       return text.trim().split('\n').filter(l => l.trim()).slice(0, 3).join('\n')
     },
+    async extract(sheetText: string) {
+      // 카드 15장 JSON — 출력이 길어 max_tokens 를 넉넉히 (thinking 몫 포함)
+      return call(buildExtractPrompt(sheetText), 16000)
+    },
   }
 }
 
@@ -85,5 +90,10 @@ export const mockLlm: LlmClient = {
   },
   async summarize({ card }) {
     return `mock 요약 (${card.label})\n품질 기대 금지\n실제 측정은 LLM_API_KEY 필요`
+  },
+  async extract(sheetText: string) {
+    // 첫 셀 하나로 카드 1장 — 화면 흐름 확인용
+    const m = sheetText.match(/^\[([^\]]+)\] (.+)$/m)
+    return JSON.stringify(m ? [{ category: 'housing', type: 'text', unit: null, label: '(mock) 첫 줄', question: '이 내용이 지금도 맞나요?', plannedValue: m[2].slice(0, 60), options: null, stake: 'mock — 실제 추출은 LLM_API_KEY 필요', source: m[1], note: '' }] : [])
   },
 }

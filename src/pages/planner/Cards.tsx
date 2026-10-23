@@ -5,6 +5,7 @@ import { parseWon, parseCount, type Card } from '../../judge/index'
 import { rowToCard } from '../../lib/cards'
 import { usePlanner } from './planner'
 import AddCard from './AddCard'
+import ExtractCards from './ExtractCards'
 import type { NewCard } from '../../lib/card-form'
 
 /**
@@ -52,6 +53,7 @@ export default function Cards() {
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [adding, setAdding] = useState(false)
+  const [extracting, setExtracting] = useState(false)
 
   async function add(card: NewCard, askNow: boolean) {
     const asCard: Card = {
@@ -87,7 +89,7 @@ export default function Cards() {
   useEffect(() => { void load() }, [p.live, p.pass, p.couple.id])
 
   function pick(r: Row) {
-    setSel(r); setAdding(false)
+    setSel(r); setAdding(false); setExtracting(false)
     const c = r.card
     setValue(String(c.plannedValue))
     const f = toleranceField(c)
@@ -159,13 +161,16 @@ export default function Cards() {
               </div>
             ))}
             <div className="actions" style={{ marginTop: 16 }}>
-              <button className="btn btn-small" onClick={() => { setAdding(true); setSel(null); setMsg('') }}>카드 추가</button>
-              <button className="btn btn-quiet btn-small" disabled title="방식 검토 중 — docs/08 B안">설계안에서 뽑기(초안)</button>
+              <button className="btn btn-small" onClick={() => { setAdding(true); setExtracting(false); setSel(null); setMsg('') }}>카드 추가</button>
+              <button className="btn btn-quiet btn-small" onClick={() => { setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>재무제표 엑셀로 만들기</button>
             </div>
           </div>
 
           <div className="editor">
-            {adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {
+            {extracting ? (
+              <ExtractCards live={!!(p.live && p.pass)} call={p.call} onCancel={() => setExtracting(false)}
+                onSaved={n => { setExtracting(false); setMsg(`엑셀에서 만든 질문 카드 ${n}장을 추가했습니다.`); void load() }} />
+            ) : adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {
               const c = sel.card, cat = CATEGORIES[c.category]
               return (
                 <>

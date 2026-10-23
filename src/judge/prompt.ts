@@ -16,10 +16,13 @@
  *           - 전제가 '선호'와 '합의'를 함께 담을 때 선호에 맞춰 match 로 읽음 (g10) → 합의가 기준임을 명시
  *           라벨 자체가 다툼의 여지가 있는 g02·g13·g18 은 건드리지 않음 — 설계사(도메인) 판단 대기.
  * summary v1  🔴 건 설계사용 3줄 요약 (AI 활용 2번). 조언·계산 금지.
+ * extract v1 최초 (10.23 팀 결정 Q3). 엑셀 글 → 질문 카드 초안. 값은 엑셀 표기 그대로(앱이 원 단위로 바꿈),
+ *           상대 시점·서로 다른 값은 비워 두고 메모. 출처(시트·셀) 없는 카드는 버림. 설계사 확인 뒤에만 저장.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
   summary: 'v1',
+  extract: 'v1',   // 재무제표 엑셀 → 질문 카드 초안 (src/extract/prompt.ts)
 } as const
 
 /** @deprecated PROMPT_VERSIONS.judge 를 쓸 것. eval 출력 파일명 호환용으로 남겨둔다. */

@@ -7,6 +7,7 @@
  *   { passcode, action, coupleId? , ... }
  *   couples                                   담당 커플 목록 (진행 상태·대기 건수)
  *   new_couple { label, husband, wife }       커플 + 입장 코드 발급 + 기본 카드 10장(데모 세트) + 0회차
+ *   extract_cards { sheetText }               재무제표 엑셀 글 → 질문 카드 초안 (AI, 저장 안 함 — 설계사가 골라 add_card)
  *   rename_couple { husband, wife, label? }   이름 고치기 (label 은 설계사 화면용, 비우면 "남편 · 아내")
  *   queue                                     처리 대기 (🔴 + 확인 필요)
  *   resolve { judgmentId, resolution, note }  큐 닫기. false_positive 는 disputes 에도 기록
@@ -17,7 +18,7 @@
  *   history                                   변경 이력 (card_versions)
  *   rounds / new_round                        라운드 목록 / 0회차 다시 열기 (리허설)
  */
-import { serviceClient, summarizeJudgment } from './judge'
+import { extractCardDrafts, serviceClient, summarizeJudgment } from './judge'
 import { newCardKey, normalizeNewCard } from '../src/lib/card-form'
 
 export const config = { runtime: 'edge' }
@@ -142,6 +143,27 @@ export default async function handler(req: Request): Promise<Response> {
         return Response.json({ coupleId: couple.id, code })
       }
 
+      case 'extract_cards': {
+        // AI 활용 3번 (10.23 Q3). 초안만 돌려준다 — 저장은 설계사가 골라서 add_card 로 (자동 반영 없음).
+        const sheetText = String(body.sheetText ?? '')
+        if (!sheetText.trim()) return bad('엑셀 내용이 비어 있습니다')
+        if (sheetText.length > 60_000) return bad('엑셀 내용이 너무 깁니다 (6만 자까지)')
+        // AI 응답이 30초~1분 걸린다. 연결이 끊기지 않게 공백을 흘려보내다가 끝에 JSON 하나 (JSON 앞 공백은 허용된다)
+        const enc = new TextEncoder()
+        const stream = new ReadableStream({
+          async start(ctrl) {
+            const tick = setInterval(() => ctrl.enqueue(enc.encode(' ')), 5000)
+            try {
+              ctrl.enqueue(enc.encode(JSON.stringify(await extractCardDrafts(sheetText))))
+            } catch (e) {
+              ctrl.enqueue(enc.encode(JSON.stringify({ error: `카드 초안을 만들지 못했습니다: ${(e as Error).message}` })))
+            } finally {
+              clearInterval(tick); ctrl.close()
+            }
+          },
+        })
+        return new Response(stream, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } })
+      }
       case 'rename_couple': {
         // 이름 고치기. 남편·아내 이름은 부부 폰과 안내문에, 표시 이름은 설계사 화면에만 쓰인다.
         const husband = String(body.husband ?? '').trim()

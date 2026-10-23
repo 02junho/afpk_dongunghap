@@ -60,5 +60,7 @@ export async function plannerApi<T = any>(action: string, params: Record<string,
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+  // 오래 걸리는 요청(extract_cards)은 200 으로 흘려보내다가 끝에 { error } 를 줄 수 있다
+  if (data && typeof data === 'object' && typeof (data as any).error === 'string') throw new Error((data as any).error)
   return data as T
 }

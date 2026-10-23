@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js'
 import { judge, type Card, type Judgment } from '../src/judge/index'
 import { createLlmClient, mockLlm } from '../src/judge/text-llm'
 import { PROMPT_VERSIONS } from '../src/judge/prompt'
+import { parseExtractOutput } from '../src/extract/prompt'
 import { rowToCard } from '../src/lib/cards'
 
 export const config = { runtime: 'edge' }
@@ -41,6 +42,16 @@ function llmOrFail(): { llm: ReturnType<typeof createLlmClient> } | { error: Res
   const env = llmEnv()
   if (!env) return { error: bad('LLM_API_KEY / LLM_MODEL 이 설정되지 않았습니다', 500) }
   return { llm: createLlmClient(env) }
+}
+
+/**
+ * AI 활용 3번 (10.23 Q3): 재무제표 엑셀 글 → 질문 카드 초안. api/planner(extract_cards)가 호출한다.
+ * LLM 호출은 이 파일에만 둔다 (CLAUDE.md). 초안만 돌려준다 — 저장은 설계사가 골라서.
+ */
+export async function extractCardDrafts(sheetText: string): Promise<ReturnType<typeof parseExtractOutput> & { promptVersion: string }> {
+  const r = llmOrFail()
+  if ('error' in r) throw new Error('LLM_API_KEY / LLM_MODEL 이 설정되지 않았습니다')
+  return { ...parseExtractOutput(await r.llm.extract!(sheetText)), promptVersion: PROMPT_VERSIONS.extract }
 }
 
 /** 설계사 콘솔에서 요청하는 요약 (이미 판정된 건 1개). api/planner 가 호출한다. */
