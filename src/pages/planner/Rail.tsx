@@ -37,7 +37,7 @@ export default function Rail({ count }: { count?: number }) {
           <Link className={on('/p/couples')} to="/p/couples">부부 목록</Link>
           <p className="rail-group">{p.couple.label}</p>
           <Link className={on('/p/queue')} to="/p/queue">처리 대기{n > 0 && <span className="rail-count">{n}</span>}</Link>
-          <Link className={on('/p/cards')} to="/p/cards">가정 카드</Link>
+          <Link className={on('/p/cards')} to="/p/cards">질문 카드</Link>
           <Link className={on('/p/history')} to="/p/history">변경 이력</Link>
           {p.live && (
             <p className="rail-group" style={{ marginTop: 24 }}>

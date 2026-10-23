@@ -19,7 +19,7 @@ create type member_role as enum ('husband','wife');
 --   factcheck      [두 분께 먼저 묻기]  → factcheck 라운드 생성
 --   consult        [상담 때 다루기]     → 앱 밖 안건
 --   false_positive [이건 같은 뜻이에요] → AI 오판. golden set 최고 품질 소스 (전문가 라벨)
-create type resolution as enum ('factcheck','consult','false_positive');
+create type resolution as enum ('replan','factcheck','consult','false_positive');  -- replan: 재설계 필요 (10.23)
 
 create table planners (
   id uuid primary key default gen_random_uuid(),

@@ -84,6 +84,13 @@ function monthsDiff(a: string, b: string) {
   return Math.abs((ay - by) * 12 + (am - bm))
 }
 
+/**
+ * 선택형 질문의 "기타 — 직접 입력" 답은 이 접두사를 달고 저장된다 (10.23 팀 결정 Q1).
+ * 보기에 없는 답이라 규칙으로 비교할 수 없다 → 추측하지 않고 'unparsed' → 🟡 설계사 확인.
+ */
+export const OTHER_PREFIX = '기타: '
+export const isOtherAnswer = (s: string) => s.trim().startsWith(OTHER_PREFIX.trim())
+
 /** 결정적 비교. text 카드는 여기 오면 안 된다. 해석 불가는 'unparsed'. */
 export function compareToPlan(card: Card, answer: string): DeviationOrUnknown {
   switch (card.type) {
@@ -105,6 +112,7 @@ export function compareToPlan(card: Card, answer: string): DeviationOrUnknown {
       return d <= tol ? 'match' : d <= tol * 2 ? 'minor' : 'major'
     }
     case 'choice':
+      if (isOtherAnswer(answer)) return 'unparsed'
       return answer.trim() === String(card.plannedValue).trim() ? 'match' : 'major'
     case 'text':
       return 'unparsed'
@@ -129,6 +137,7 @@ export function answersAgree(card: Card, a: string, b: string): boolean | null {
       return monthsDiff(x, y) <= (card.tolerance ?? 6)
     }
     case 'choice':
+      if (isOtherAnswer(a) || isOtherAnswer(b)) return null
       return a.trim() === b.trim()
     case 'text':
       return null

@@ -103,6 +103,15 @@ export async function roundProgress(roundId: string): Promise<Record<Role, numbe
   return out
 }
 
+/** 마지막으로 판정까지 끝난 맞춰보기 시각 — 다음 맞춰보기 날짜 계산용 (lib/cycle.ts). 없으면 null */
+export async function loadLastCheckAt(coupleId: string): Promise<string | null> {
+  const { data, error } = await sb().from('rounds').select('judged_at')
+    .eq('couple_id', coupleId).eq('status', 'judged').not('judged_at', 'is', null)
+    .order('judged_at', { ascending: false }).limit(1)
+  if (error) throw new Error(error.message)
+  return data?.[0]?.judged_at ?? null
+}
+
 /** 두 분 이름 (설계사가 '이름 고치기'로 바꿀 수 있다). 홈을 열 때마다 다시 읽는다 */
 export async function loadNames(coupleId: string): Promise<Partial<Record<Role, string>>> {
   const { data, error } = await sb().from('members').select('role, display_name').eq('couple_id', coupleId)

@@ -84,3 +84,23 @@ describe('inviteMessage — 설계사가 카톡으로 보내는 안내문', () =
     expect(m.split('\n')[0]).toBe('[돈궁합] 입장 안내드립니다.')
   })
 })
+
+import { addMonths, formatKDate, nextCheckDate } from '../cycle'
+describe('정기 맞춰보기 주기 (10.23 Q10·Q11)', () => {
+  it('마지막 맞춰보기 + 3개월', () => {
+    const d = nextCheckDate('2026-10-23T05:00:00Z')!
+    expect([d.getFullYear(), d.getMonth() + 1, d.getDate()]).toEqual([2027, 1, 23])
+  })
+  it('31일 → 짧은 달이면 말일', () => {
+    const d = addMonths(new Date(2026, 10, 30), 3)   // 11/30 + 3개월 = 2/28
+    expect([d.getMonth() + 1, d.getDate()]).toEqual([2, 28])
+  })
+  it('한 번도 안 했으면 날짜 없음', () => {
+    expect(nextCheckDate(null)).toBeNull()
+  })
+  it('같은 해면 월·일만, 해가 바뀌면 연도까지', () => {
+    const now = new Date(2026, 9, 23)
+    expect(formatKDate(new Date(2026, 11, 5), now)).toBe('12월 5일')
+    expect(formatKDate(new Date(2027, 0, 23), now)).toBe('2027년 1월 23일')
+  })
+})

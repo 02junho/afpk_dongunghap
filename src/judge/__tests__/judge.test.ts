@@ -131,6 +131,15 @@ describe('결정적 카드', () => {
   it('choice: 아내 vs 남편 → 🔴', async () => {
     expect((await judge(leave, '아내', '남편')).verdict).toBe('red')
   })
+  it('choice: "기타: …" 직접 입력은 추측하지 않고 🟡 + 설계사 확인 (10.23 Q1)', async () => {
+    const j = await judge(leave, '아내', '기타: 번갈아 쓰기로')
+    expect(j.verdict).toBe('yellow')
+    expect(j.needsReview).toBe(true)
+    expect(j.reason).toContain('기타')
+  })
+  it('choice: 둘 다 그대로(전제와 같은 보기) → 🟢', async () => {
+    expect((await judge(leave, '아내', '아내')).verdict).toBe('green')
+  })
   it('text 카드는 LlmClient 없이 판정하지 않는다', async () => {
     const t: Card = { key: 't', category: 'income', type: 'text', label: 'x', question: 'x', plannedValue: 'x', stake: 'x' }
     await expect(judge(t, 'a', 'b')).rejects.toThrow('LlmClient')

@@ -20,7 +20,7 @@ export interface CoupleRow {
   pending: number
 }
 
-export const DEMO_COUPLE: CoupleRow = { id: '00000000-0000-0000-0000-000000000010', label: '김현우 · 박지우', code: '482913', husband: '현우', wife: '지우', state: '0회차 완료', lastAt: null, pending: 2 }
+export const DEMO_COUPLE: CoupleRow = { id: '00000000-0000-0000-0000-000000000010', label: '김현우 · 박지우', code: '482913', husband: '현우', wife: '지우', state: '첫 맞춰보기 완료', lastAt: null, pending: 2 }
 
 export function loadCouple(): CoupleRow {
   try { const raw = localStorage.getItem(COUPLE_KEY); if (raw) return JSON.parse(raw) } catch { /* 무시 */ }

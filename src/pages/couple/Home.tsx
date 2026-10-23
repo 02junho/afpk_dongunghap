@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
-import { loadActiveCards, loadNames, loadOpenRound } from '../../lib/db'
+import { loadActiveCards, loadLastCheckAt, loadNames, loadOpenRound } from '../../lib/db'
+import { CHECK_MONTHS, formatKDate, nextCheckDate } from '../../lib/cycle'
 import { clearMe, loadMe, nameOf, saveMe } from '../../lib/session'
 import InstallGuide from './InstallGuide'
 import type { Card } from '../../judge/index'
@@ -14,6 +15,9 @@ export default function Home() {
   const [tab, setTab] = useState<'plan' | 'match'>('match')
   const [cards, setCards] = useState<Card[]>(CARDS)
   // live: 열린 라운드가 있을 때만 '맞춰보기'가 켜진다. 없으면 설계사가 열어줄 때까지 기다린다
+  const [lastCheck, setLastCheck] = useState<string | null>(null)
+  // [내 설계] 카테고리 접기·펼치기 (10.23 Q13). 처음엔 첫 카테고리만 펼친다
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>({})
   const [round, setRound] = useState<{ id: string; kind: string; count: number } | null | 'loading'>(me.live ? 'loading' : { id: 'baseline', kind: 'baseline', count: 3 })
 
   useEffect(() => {
@@ -23,6 +27,7 @@ export default function Home() {
       .then(cs => setCards([...cs].sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key))))
       .catch(() => {})
     loadOpenRound(me.coupleId).then(r => setRound(r ? { id: r.id, kind: r.kind, count: r.cards.length } : null)).catch(() => setRound(null))
+    loadLastCheckAt(me.coupleId).then(setLastCheck).catch(() => {})
     // 설계사가 이름을 고쳤으면 이 폰에도 반영 (입장할 때 저장한 이름은 그때 값이다)
     loadNames(me.coupleId).then(n => {
       if (n.husband === me.names.husband && n.wife === me.names.wife) return
@@ -37,6 +42,9 @@ export default function Home() {
   const isRegular = round !== null && round !== 'loading' && (round.kind === 'regular' || round.kind === 'event')
 
   const canStart = round !== null && round !== 'loading'
+  const next = nextCheckDate(lastCheck)
+  const groups = CATEGORY_ORDER.map(k => ({ k, cards: cards.filter(c => c.category === k) })).filter(g => g.cards.length)
+  const isOpen = (k: string, idx: number) => openCats[k] ?? idx === 0
 
   return (
     <main className="phone">
@@ -63,37 +71,52 @@ export default function Home() {
                 <div className="progress"><div style={{ width: '56%' }} /></div>
               </div>
             )}
-            {cards.slice(0, 5).map(c => {
-              const cat = CATEGORIES[c.category]
+            {/* 카테고리를 누르면 펼쳐진다. 카드는 전부 보인다 (예전엔 5장만) */}
+            {groups.map(({ k, cards: cs }, idx) => {
+              const cat = CATEGORIES[k]
+              const open = isOpen(k, idx)
               return (
-                <div className="plan-card" key={c.key}>
-                  <span className="cat" style={{ background: cat.bg, color: cat.fg }}>{cat.short}</span>
-                  <div><p className="k">{c.label}</p><p className="v">{showValue(c)}</p></div>
+                <div key={k} style={{ marginBottom: 10 }}>
+                  <button className="plan-card" aria-expanded={open} onClick={() => setOpenCats(o => ({ ...o, [k]: !open }))}
+                    style={{ width: '100%', border: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer', marginBottom: open ? 8 : 0 }}>
+                    <span className="cat" style={{ background: cat.bg, color: cat.fg }}>{cat.short}</span>
+                    <div style={{ flex: 1 }}><p className="v" style={{ margin: 0 }}>{cat.label}</p><p className="k" style={{ margin: 0 }}>{cs.length}개</p></div>
+                    <span className="meta" style={{ fontSize: 18 }}>{open ? '−' : '+'}</span>
+                  </button>
+                  {open && cs.map(c => (
+                    <div className="plan-card" key={c.key} style={{ marginLeft: 18 }}>
+                      <div><p className="k">{c.label}</p><p className="v">{showValue(c)}</p></div>
+                    </div>
+                  ))}
                 </div>
               )
             })}
-            <p className="note">설계사님이 잡아준 전제예요. 바뀌면 여기서 먼저 알려드려요.</p>
+            <p className="note">설계사님과 정한 계획이에요. 설계사님이 설계를 수정하면 알려드릴게요.</p>
           </>
         ) : (
           <>
+            {/* 10.23 Q10: 질문이 열렸으면 "이제부터 시작할게요", 없으면 다음 정기 맞춰보기 날짜 */}
             {isFactcheck
               ? <h2 className="q">설계사님이 전제 하나를<br />바꾸려고 해요<br />두 분께 먼저 여쭤볼게요</h2>
-              : isRegular
-                ? <h2 className="q">설계사님이<br />두 분께 따로<br />여쭤볼 게 있어요</h2>
-                : <h2 className="q">설계사님이 두 분 말씀을<br />같게 들었는지<br />세 가지만 맞춰볼게요</h2>}
+              : canStart
+                ? <h2 className="q">이제부터<br />시작할게요</h2>
+                : round === 'loading' ? <h2 className="q">&nbsp;</h2>
+                : next
+                  ? <h2 className="q">다음 맞춰보기는<br />{formatKDate(next)}쯤이에요</h2>
+                  : <h2 className="q">설계사님이 곧<br />열어드릴 거예요</h2>}
             <div className="bubble" style={{ marginTop: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
                 <div>
                   <p style={{ margin: 0, fontWeight: 700 }}>
                     {round === 'loading' ? '불러오는 중…'
-                      : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : isRegular ? `정기 · ${round.count}문항` : `0회차 · ${round.count}문항`)
+                      : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : isRegular ? `정기 맞춰보기 · ${round.count}문항` : `첫 맞춰보기 · ${round.count}문항`)
                       : '지금은 열린 맞춰보기가 없어요'}
                   </p>
                   <p className="meta">
                     {round && round !== 'loading'
-                      ? (isFactcheck ? '1분이면 돼요 · 두 분 다 답해야 바뀌어요' : isRegular ? '1분이면 돼요 · 따로 답하고, 설계사님만 봐요' : '약 3분 · 따로 답하고, 설계사님만 봐요')
-                      : '설계사님이 열어주시면 여기 빨간 점이 켜져요'}
+                      ? (isFactcheck ? '1분이면 돼요 · 두 분 다 답해야 바뀌어요' : `약 ${Math.max(1, round.count)}분 · 따로 답하고, 설계사님만 봐요`)
+                      : `${CHECK_MONTHS}개월마다 여쭤봐요 · 열리면 여기 빨간 점이 켜져요`}
                   </p>
                 </div>
               </div>
@@ -101,7 +124,7 @@ export default function Home() {
             <p className="note">
               {isFactcheck
                 ? '설계사님이 고친 값이 맞는지 확인하는 거예요. 두 분이 같게 답하면 [내 설계]에 반영돼요.'
-                : '설계가 맞는지 보는 게 아니에요. 두 분이 같게 알고 계신지 보는 거예요.'}
+                : '설계사님과 정한 계획이 지금도 맞는지, 두 분께 따로 여쭤봐요.'}
             </p>
           </>
         )}

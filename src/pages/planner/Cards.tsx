@@ -30,6 +30,12 @@ function describeValue(card: Card, raw: string) {
 }
 
 /** pending = 아직 전제가 아닌 최신 버전. awaiting = 그중 열린 먼저 묻기에서 답을 기다리는 중 (아니면 "동의 안 됨") */
+/**
+ * 10.23 팀 결정(Q2): 앱 안에서 전제를 바꾸지 않는다. 카드는 보기 전용이고, 두 분 생각이 달라지면
+ * 처리 대기에서 "재설계 필요" → 앱 밖에서 다시 설계한다. 먼저 묻기(factcheck) 코드는 지우지 않고 이 스위치로 끈다.
+ */
+const ALLOW_PREMISE_CHANGE = false
+
 interface Row { cardId: string; versionId: string; version: number; pending: boolean; awaiting: boolean; card: Card }
 
 const DEMO_ROWS: Row[] = CARDS.map(c => ({ cardId: c.key, versionId: c.key, version: 1, pending: false, awaiting: false, card: c }))
@@ -127,8 +133,8 @@ export default function Cards() {
     <div className="console">
       <Rail />
       <main className="work">
-        <h1 className="work-title">가정 카드 · {p.couple.label}</h1>
-        <p className="meta">값을 고치면 새 버전이 생기고, 두 분이 동의해야 반영됩니다. 이전 버전은 지워지지 않습니다.</p>
+        <h1 className="work-title">질문 카드 · {p.couple.label}</h1>
+        <p className="meta">두 분께 "지금도 그렇게 생각하시나요?"로 묻는 설계 전제입니다. 카드를 고르면 폰에 어떻게 나가는지 보입니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
 
@@ -169,6 +175,23 @@ export default function Cards() {
                   {sel.awaiting && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version} 값이 동의 대기 중입니다. 두 분이 먼저 묻기에 답한 뒤 다시 고칠 수 있습니다.</p>}
                   {sel.pending && !sel.awaiting && <p className="will" style={{ color: 'var(--escalate)' }}>v{sel.version} 값은 먼저 묻기에서 두 분 동의를 받지 못해 전제가 되지 않았습니다. 처리 대기에서 사유를 확인하고, 값을 고쳐 다시 물을 수 있습니다.</p>}
 
+                  {!ALLOW_PREMISE_CHANGE ? (
+                    <>
+                      <dl className="pair" style={{ gridTemplateColumns: '92px 1fr', marginTop: 14 }}>
+                        <dt className="meta">설계 전제</dt><dd><b>{showValue(c)}</b> <span className="meta">v{sel.version}</span></dd>
+                        {f && <><dt className="meta">{f.label}</dt><dd>{f.toInput(c.tolerance)}</dd></>}
+                        {c.type === 'choice' && <><dt className="meta">보기</dt><dd>{(c.options ?? []).join(' · ')} · 기타(직접 입력)</dd></>}
+                      </dl>
+                      <p className="label">두 분 폰에는 이렇게 나갑니다</p>
+                      <div className="will" style={{ marginTop: 0 }}>
+                        <span className="meta">설계사님과 정한 계획</span><br />
+                        <b>{c.label} · {showValue(c)}</b><br />
+                        지금도 그렇게 생각하시나요? — 네, 그대로예요 / 아니요, 바뀌었어요
+                      </div>
+                      <p className="note">앱 안에서는 전제를 바꾸지 않습니다. 두 분 생각이 달라지면 처리 대기에서 "재설계 필요"로 표시하고, 다시 설계한 뒤 반영합니다.</p>
+                    </>
+                  ) : (
+                  <>
                   <label className="label" htmlFor="v">전제 값</label>
                   <textarea id="v" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} rows={3} value={value} onChange={e => setValue(e.target.value)} />
                   <p className="was">v{sel.version} · {showValue(c)}{c.type === 'number' && value !== String(c.plannedValue) ? ` → ${describeValue(c, value)}` : ''}{c.type === 'date' ? ' · 형식 YYYY-MM' : ''}</p>
@@ -200,6 +223,8 @@ export default function Cards() {
                     </button>
                     <button className="btn btn-quiet btn-small" onClick={() => pick(sel)}>되돌리기</button>
                   </div>
+                  </>
+                  )}
                 </>
               )
             })() : <p className="meta">왼쪽에서 카드를 고르세요.</p>}

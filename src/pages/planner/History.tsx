@@ -8,7 +8,7 @@ import type { Card } from '../../judge/index'
 interface Row { id: string; label: string; version: number; from: string; to: string; reason: string; at: string; active: boolean; awaiting?: boolean; type?: Card['type']; unit?: Card['unit'] | null }
 
 const DEMO: Row[] = [
-  { id: 'd1', label: '승진·이직 계획', version: 2, from: '없음. 현 직장 유지, 연봉 상승은 물가 수준', to: '남편 2027년 상반기 이직 예정', reason: '0회차에서 두 분 모두 이직을 전제로 답함', at: '2026-10-12T14:20:00+09:00', active: false, awaiting: true },
+  { id: 'd1', label: '승진·이직 계획', version: 2, from: '없음. 현 직장 유지, 연봉 상승은 물가 수준', to: '남편 2027년 상반기 이직 예정', reason: '첫 맞춰보기에서 두 분 모두 이직을 전제로 답함', at: '2026-10-12T14:20:00+09:00', active: false, awaiting: true },
   { id: 'd2', label: '목표 주택가격', version: 2, from: '650000000', to: '600000000', reason: '신혼부부 구입자금 상한에 맞춤', at: '2026-09-30T11:05:00+09:00', active: true, type: 'number', unit: 'krw' },
   { id: 'd3', label: '카드 10장 최초 설정', version: 1, from: '—', to: 'v1', reason: '설계안 확정', at: '2026-09-28T16:42:00+09:00', active: true },
 ]

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
 import { DEMO_COUPLE, usePlanner, type CoupleRow } from './planner'
 import { inviteMessage } from '../../lib/install'
+import QrView from './QrView'
 
 /** 클립보드 복사. https·localhost 가 아니거나 권한이 없으면 숨은 textarea 로 한 번 더 시도 */
 async function copyText(text: string): Promise<boolean> {
@@ -18,7 +19,7 @@ async function copyText(text: string): Promise<boolean> {
 const DEMO_ROWS: CoupleRow[] = [
   DEMO_COUPLE,
   { id: 'demo-2', label: '정도윤 · 한서현', code: '730254', husband: '도윤', wife: '서현', state: '정기 3회차', lastAt: null, pending: 0 },
-  { id: 'demo-3', label: '오재민 · 류하경', code: '619478', husband: '재민', wife: '하경', state: '설계 직후 · 0회차 대기', lastAt: null, pending: 0 },
+  { id: 'demo-3', label: '오재민 · 류하경', code: '619478', husband: '재민', wife: '하경', state: '첫 맞춰보기 대기', lastAt: null, pending: 0 },
   { id: 'demo-4', label: '배준서 · 문예린', code: '305126', husband: '준서', wife: '예린', state: '정기 7회차', lastAt: null, pending: 1 },
 ]
 
@@ -36,6 +37,7 @@ export default function Couples() {
   // 이름 고치기: 한 번에 한 부부만 펼친다
   const [edit, setEdit] = useState<{ id: string; label: string; husband: string; wife: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [qr, setQr] = useState<{ code: string; title: string } | null>(null)
   const [copied, setCopied] = useState('')  // '<code>:link' | '<code>:msg'
 
   async function load() {
@@ -61,7 +63,7 @@ export default function Couples() {
     if (needPass) { setErr('설계사 코드를 먼저 넣어야 실제로 발급됩니다 (왼쪽 레일).'); return }
     if (!p.live) {
       const code = String(100000 + Math.floor(Math.random() * 900000))
-      setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '설계 직후 · 0회차 대기', lastAt: null, pending: 0 }])
+      setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '첫 맞춰보기 대기', lastAt: null, pending: 0 }])
       setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
       return
     }
@@ -114,7 +116,7 @@ export default function Couples() {
       <Rail />
       <main className="work">
         <h1 className="work-title">담당 부부</h1>
-        <p className="meta">부부를 고르면 처리 대기·가정 카드·변경 이력이 그 부부 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
+        <p className="meta">부부를 고르면 처리 대기·질문 카드·변경 이력이 그 부부 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
 
         <div style={{ marginTop: 22 }}>
@@ -136,11 +138,12 @@ export default function Couples() {
                   <span className="meta" style={{ marginLeft: 12 }}>{joinUrl(r.code)}</span>
                   {copyBtn(r.code, r, 'link')}
                   {copyBtn(r.code, r, 'msg')}
+                  <button className="btn btn-quiet btn-small" style={{ marginLeft: 8, padding: '4px 10px', fontSize: 12 }} onClick={() => setQr({ code: r.code, title: r.label })}>QR</button>
                 </dd>
               </dl>
               <div className="actions">
                 <button className="btn btn-small" onClick={() => open(r, '/p/queue')}>처리 대기</button>
-                <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/cards')}>가정 카드</button>
+                <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/cards')}>질문 카드</button>
                 <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/history')}>변경 이력</button>
                 <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }}
                   onClick={() => setEdit(edit?.id === r.id ? null : { id: r.id, label: r.label, husband: r.husband, wife: r.wife })}>
@@ -182,7 +185,7 @@ export default function Couples() {
           <p className="will">
             {needPass
               ? '⚠ 지금은 예시 모드입니다. 왼쪽 레일에 설계사 코드를 넣어야 실제로 발급됩니다.'
-              : '발급하면 기본 가정 카드 10장(데모 세트)이 v1으로 들어가고 0회차가 열립니다. 설계안 문서에서 카드를 뽑는 건 공모전 후.'}
+              : '발급하면 기본 질문 카드 10장(연습용 세트)이 들어가고 첫 맞춰보기가 열립니다.'}
           </p>
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
@@ -202,6 +205,7 @@ export default function Couples() {
             </div>
           )}
         </div>
+        {qr && <QrView url={joinUrl(qr.code)} code={qr.code} title={qr.title} onClose={() => setQr(null)} />}
       </main>
     </div>
   )

@@ -7,9 +7,14 @@ import {
 import type { Card, Judgment, RedKind } from '../../judge/index'
 import { usePlanner } from './planner'
 
-/** 큐를 닫는 버튼 셋 = judgments.resolution 값 그대로 */
-type Resolution = 'factcheck' | 'consult' | 'false_positive'
+/**
+ * 큐를 닫는 버튼 셋 = judgments.resolution 값 그대로.
+ * 10.23 팀 결정(Q2): 앱 안에서 전제를 바꾸지 않는다 — "두 분께 먼저 묻기"(factcheck)는 숨기고
+ * 어긋난 건은 "재설계 필요"(replan)로 표시해 앱 밖에서 다시 설계한다. factcheck 는 예전 기록 표시용으로만 남는다.
+ */
+type Resolution = 'replan' | 'factcheck' | 'consult' | 'false_positive'
 const RESOLVED = {
+  replan: { text: '재설계 필요', cls: 'chip-escalate' },
   factcheck: { text: '카드 고치러 감', cls: 'chip-talk' },
   consult: { text: '상담 안건', cls: 'chip-agree' },
   false_positive: { text: '같은 뜻으로 정리', cls: 'chip-agree' },
@@ -55,7 +60,7 @@ export default function Queue() {
       const { items } = await p.call<{ items: any[] }>('queue')
       setItems(items.map(r => ({
         ...r, planned: showPlanned(r.type, r.unit, String(r.planned ?? '')),
-        roundLabel: r.roundKind === 'baseline' ? '0회차' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기',
+        roundLabel: r.roundKind === 'baseline' ? '첫 맞춰보기' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기 맞춰보기',
       })))
     } catch (e) { setErr((e as Error).message) }
   }
@@ -69,7 +74,6 @@ export default function Queue() {
       setBusy(false)
     }
     setDone(d => ({ ...d, [it.id]: r }))
-    if (r === 'factcheck') nav('/p/cards')
   }
 
   async function summarize(it: Item) {
@@ -83,7 +87,7 @@ export default function Queue() {
 
   async function newRound() {
     setBusy(true)
-    try { await p.call('new_round'); setMsg('새 0회차를 열었습니다. 부부 홈에서 시작할 수 있어요.') }
+    try { await p.call('new_round'); setMsg('새 맞춰보기를 열었습니다. 두 분 홈에서 바로 시작할 수 있어요.') }
     catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
@@ -100,7 +104,7 @@ export default function Queue() {
       return {
         id: k, key: k, category: c.category, label: c.label, planned: showAnswer(c, String(c.plannedValue)), type: c.type,
         verdict: j.verdict, redKind: j.redKind, needsReview: j.needsReview, method: j.method, promptVersion: j.promptVersion,
-        a: showAnswer(c, a.husband), b: showAnswer(c, a.wife), reason: j.reason, summary: DEMO_SUMMARY[k], roundLabel: '0회차',
+        a: showAnswer(c, a.husband), b: showAnswer(c, a.wife), reason: j.reason, summary: DEMO_SUMMARY[k], roundLabel: '첫 맞춰보기',
       }
     })
   })()
@@ -157,8 +161,8 @@ export default function Queue() {
                         value={note[it.id] ?? ''} onChange={e => setNote(n => ({ ...n, [it.id]: e.target.value }))} placeholder="메모 (선택) — 왜 이렇게 닫는지 한 줄" />
                     )}
                     <div className="actions">
-                      <button className="btn btn-small" disabled={busy} title="가정 카드에서 전제를 고치면 두 분께 먼저 묻는 라운드가 열립니다"
-                        onClick={() => resolve(it, 'factcheck')}>두 분께 먼저 묻기</button>
+                      <button className="btn btn-small" disabled={busy} title="두 분 생각이 설계와 달라졌습니다 — 앱 밖에서 다시 설계합니다"
+                        onClick={() => resolve(it, 'replan')}>재설계 필요</button>
                       <button className="btn btn-quiet btn-small" disabled={busy} title="앱 밖에서. 다음 상담 안건으로"
                         onClick={() => resolve(it, 'consult')}>상담 때 다루기</button>
                       <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy}
@@ -175,7 +179,7 @@ export default function Queue() {
 
         {liveMode && (
           <div className="actions" style={{ marginTop: 28 }}>
-            <button className="btn btn-quiet btn-small" disabled={busy} onClick={newRound}>0회차 다시 열기 (리허설)</button>
+            <button className="btn btn-quiet btn-small" disabled={busy} onClick={newRound}>맞춰보기 새로 열기</button>
             <button className="btn btn-quiet btn-small" disabled={busy} onClick={load}>새로고침</button>
           </div>
         )}

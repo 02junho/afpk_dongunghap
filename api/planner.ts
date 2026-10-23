@@ -23,7 +23,8 @@ import { newCardKey, normalizeNewCard } from '../src/lib/card-form'
 export const config = { runtime: 'edge' }
 
 const DEMO_COUPLE = '00000000-0000-0000-0000-000000000010'
-const RESOLUTIONS = ['factcheck', 'consult', 'false_positive'] as const
+// replan = 재설계 필요 (10.23 팀 결정). DB enum 에 없으면 supabase/patch-2026-10-23-replan.sql 을 먼저 실행
+const RESOLUTIONS = ['replan', 'factcheck', 'consult', 'false_positive'] as const
 /** 0회차가 묻는 순서. 주거 → 소득 → 양가 (src/data/demo.ts BASELINE 과 같다) */
 const BASELINE_KEYS = ['home_when', 'raise_plan', 'family_help']
 
@@ -99,8 +100,8 @@ export default async function handler(req: Request): Promise<Response> {
           const judgedCount = rs.filter(r => r.status === 'judged').length
           const last = rs.find(r => r.judged_at)?.judged_at ?? null
           const state = open
-            ? (open.kind === 'baseline' ? '0회차 진행 중' : open.kind === 'factcheck' ? '먼저 묻기 진행 중' : '정기 진행 중')
-            : judgedCount === 0 ? '설계 직후 · 0회차 대기' : `${judgedCount}회 완료`
+            ? (open.kind === 'baseline' ? '첫 맞춰보기 진행 중' : open.kind === 'factcheck' ? '먼저 묻기 진행 중' : '정기 맞춰보기 진행 중')
+            : judgedCount === 0 ? '첫 맞춰보기 대기' : `맞춰보기 ${judgedCount}회 완료`
           return {
             id: c.id, label: c.label, code: c.invite_code, createdAt: c.created_at,
             husband: ms.find(m => m.role === 'husband')?.display_name ?? '남편',
@@ -191,7 +192,11 @@ export default async function handler(req: Request): Promise<Response> {
         const { error } = await sb.from('judgments')
           .update({ resolved_at: new Date().toISOString(), resolution, resolution_note: typeof note === 'string' ? note : null })
           .eq('id', judgmentId).is('resolved_at', null)
-        if (error) return bad(error.message, 500)
+        if (error) {
+          if (/invalid input value for enum/.test(error.message))
+            return bad('DB 에 "재설계 필요" 값이 아직 없습니다 — supabase/patch-2026-10-23-replan.sql 을 SQL Editor 에서 한 번 실행해 주세요', 500)
+          return bad(error.message, 500)
+        }
         if (resolution === 'false_positive') {
           const { data: j } = await sb.from('judgments').select('method, verdict').eq('id', judgmentId).maybeSingle()
           const pid = await plannerId(sb)

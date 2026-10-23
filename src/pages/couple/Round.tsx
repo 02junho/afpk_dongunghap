@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BASELINE, byKey, CATEGORIES, answerKey, judgmentKey, type RoundAnswers } from '../../data/demo'
-import { parseWon, parseCount, type Card, type Judgment } from '../../judge/index'
+import { BASELINE, byKey, CATEGORIES, answerKey, judgmentKey, showValue, type RoundAnswers } from '../../data/demo'
+import { OTHER_PREFIX, parseWon, parseCount, type Card, type Judgment } from '../../judge/index'
 import { requestJudgment, triggerJudge } from '../../lib/api'
 import { loadOpenRound, myAnswered, submitAnswer } from '../../lib/db'
 import { loadMe, nameOf, partnerRole } from '../../lib/session'
@@ -9,7 +9,16 @@ import { loadMe, nameOf, partnerRole } from '../../lib/session'
 const UNITS = ['억', '천만', '백만', '만']
 const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
+const OTHER = '__other'
+
 /**
+ * 10.23 팀 결정(Q4·Q6·Q9): 빈 질문 대신 **기존 설계를 보여주고 "지금도 그렇게 생각하시나요?"** 로 묻는다.
+ *   · "네, 그대로예요" → 답은 설계 전제 값 그대로 저장 (판정은 기존 규칙 그대로 🟢)
+ *   · "아니요, 바뀌었어요" → 바뀐 값을 적는다. 그 값과 전제·배우자 답을 3자 비교한다
+ *   한 사람이라도 크게 바뀌었거나 두 분이 다르면 🔴 → 설계사가 "재설계 필요"로 처리한다.
+ *   (전제를 보여주면 "그대로"로 답하기 쉬워진다 — 팀이 고른 방식이다. 바뀐 경우를 놓치지 않게 버튼을 같은 크기로 둔다)
+ * 선택형은 보기 끝에 "기타 — 직접 입력"(Q1). 기타 답은 추측하지 않고 설계사 확인으로 간다.
+ *
  * 입력 UI가 파서의 구멍을 메운다:
  *   · 금액 — 숫자 + 단위 버튼. 입력한 값이 원 단위로 얼마인지 그 자리에서 보여준다
  *   · 시점 — 연·월 선택. 단, "정확한 시점 대신 조건으로" 답하는 길을 남긴다 (조건부는 🟡 + 설계사 확인)
@@ -34,6 +43,8 @@ export default function Round() {
   const [year, setYear] = useState('')
   const [month, setMonth] = useState('06')
   const [busy, setBusy] = useState(false)
+  const [stance, setStance] = useState<'same' | 'changed' | null>(null)
+  const [other, setOther] = useState('')
 
   useEffect(() => {
     if (!me.live || !me.coupleId || !me.memberId) return
@@ -67,7 +78,12 @@ export default function Round() {
   const total = me.live ? cards.length : BASELINE.length
   const step = me.live ? i + 1 : i + 1
 
-  const value = card.type === 'date' && !condition ? (year ? `${year}-${month}` : '') : text
+  const changedValue = card.type === 'date' && !condition ? (year ? `${year}-${month}` : '')
+    : card.type === 'choice' && text === OTHER ? (other.trim() ? OTHER_PREFIX + other.trim() : '')
+    : text
+  // "그대로예요"면 설계 전제 값을 그대로 답으로 남긴다 — 판정 규칙이 그대로 🟢 로 읽는다
+  const value = stance === 'same' ? String(card.plannedValue) : stance === 'changed' ? changedValue : ''
+  const isCondition = stance === 'changed' && condition
   const preview = card.type === 'number'
     ? (() => {
         if (!text.trim()) return ''
@@ -76,17 +92,17 @@ export default function Round() {
         return (card.unit ?? 'krw') === 'krw' ? `${n.toLocaleString()}원` : `${n}`
       })()
     : ''
-  const ready = value.trim().length > 0 && !preview.startsWith('단위') && !busy
+  const ready = value.trim().length > 0 && !(stance === 'changed' && preview.startsWith('단위')) && !busy
 
   function reset() {
-    setText(''); setCondition(false); setYear(''); setMonth('06')
+    setText(''); setCondition(false); setYear(''); setMonth('06'); setStance(null); setOther('')
   }
 
   async function submit() {
     if (me.live) {
       setBusy(true)
       try {
-        await submitAnswer(id, versionId, me.memberId!, value, condition)
+        await submitAnswer(id, versionId, me.memberId!, value, isCondition)
       } catch (e) {
         setErr((e as Error).message)
         setBusy(false)
@@ -103,7 +119,7 @@ export default function Round() {
 
     // 1주차 데모: sessionStorage
     const prev = JSON.parse(sessionStorage.getItem(answerKey(id)) ?? '{}') as RoundAnswers
-    prev[card.key] = { ...prev[card.key], [me.role]: { text: value, isCondition: condition } }
+    prev[card.key] = { ...prev[card.key], [me.role]: { text: value, isCondition } }
     sessionStorage.setItem(answerKey(id), JSON.stringify(prev))
     reset()
     if (i + 1 < cards.length) return setI(i + 1)
@@ -120,16 +136,34 @@ export default function Round() {
       </div>
       <div className="phone-body">
         <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
-        <h2 className="q" style={{ marginTop: 14 }}>{card.question}</h2>
+        <div className="bubble" style={{ marginTop: 14 }}>
+          <p className="meta">설계사님과 정한 계획</p>
+          <p style={{ margin: '4px 0 0', fontWeight: 700 }}>{card.label}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 700, lineHeight: 1.4 }}>{showValue(card)}</p>
+        </div>
+        <h2 className="q" style={{ marginTop: 22 }}>지금도 그렇게<br />생각하시나요?</h2>
 
-        <div style={{ marginTop: 26 }}>
+        <div className="role-row" style={{ marginTop: 18 }}>
+          <button className={`role ${stance === 'same' ? 'role-on' : ''}`} onClick={() => setStance('same')}>네, 그대로예요</button>
+          <button className={`role ${stance === 'changed' ? 'role-on' : ''}`} onClick={() => setStance('changed')}>아니요, 바뀌었어요</button>
+        </div>
+
+        {stance === 'changed' && (
+        <div style={{ marginTop: 22 }}>
+          <p className="meta" style={{ margin: '0 0 10px' }}>어떻게 바뀌었나요? <span style={{ opacity: 0.7 }}>— {card.question}</span></p>
           {card.type === 'choice' && (
-            <select className="field" value={text} onChange={e => setText(e.target.value)} aria-label={card.label}>
-              <option value="">고르기</option>
-              {card.options!.map(o => <option key={o}>{o}</option>)}
-            </select>
+            <>
+              <select className="field" value={text} onChange={e => setText(e.target.value)} aria-label={card.label}>
+                <option value="">고르기</option>
+                {card.options!.map(o => <option key={o}>{o}</option>)}
+                <option value={OTHER}>기타 — 직접 입력</option>
+              </select>
+              {text === OTHER && (
+                <textarea className="field" rows={2} style={{ marginTop: 10 }} value={other} onChange={e => setOther(e.target.value)}
+                  placeholder="보기에 없으면 직접 적어 주세요" aria-label="기타 직접 입력" />
+              )}
+            </>
           )}
-
           {card.type === 'number' && (
             <>
               <input className="field" inputMode="decimal" value={text} onChange={e => setText(e.target.value)}
@@ -181,6 +215,7 @@ export default function Round() {
             </>
           )}
         </div>
+        )}
 
         <p className="note">제출하면 고칠 수 없어요. {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요.</p>
       </div>

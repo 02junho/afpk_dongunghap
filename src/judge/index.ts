@@ -55,9 +55,11 @@ export async function judge(card: Card, a: string, b: string, llm?: LlmClient, o
     const bVsPlan = compareToPlan(card, b)
     const agree = answersAgree(card, a, b)
     if (aVsPlan === 'unparsed' || bVsPlan === 'unparsed' || agree === null) {
-      const reason = card.type === 'date' && card.allowCondition
-        ? '시점 대신 조건으로 답했습니다 — 설계사 확인 필요'
-        : `답변을 ${card.type === 'date' ? '날짜' : '숫자'}로 해석하지 못했습니다`
+      const reason = card.type === 'choice'
+        ? '보기에 없는 답(기타)을 직접 적었습니다 — 설계사 확인 필요'
+        : card.type === 'date' && card.allowCondition
+          ? '시점 대신 조건으로 답했습니다 — 설계사 확인 필요'
+          : `답변을 ${card.type === 'date' ? '날짜' : '숫자'}로 해석하지 못했습니다`
       return escalate(
         { verdict: 'yellow', aVsPlan, bVsPlan, abAgree: agree ?? false, reason, method: 'deterministic', needsReview: true },
         opts.previousVerdict,
