@@ -58,8 +58,14 @@ export default function Queue() {
     setErr('')
     try {
       const { items } = await p.call<{ items: any[] }>('queue')
+      // "네, 그대로예요"는 전제 값이 답으로 저장된다 (10.23) — 설계사에겐 "그대로예요"로 보여준다
+      const show = (r: any, ans: string) => {
+        const raw = String(ans ?? '')
+        const v = showPlanned(r.type, r.unit, raw)
+        return raw === String(r.planned ?? '') ? `그대로예요 (${v})` : v
+      }
       setItems(items.map(r => ({
-        ...r, planned: showPlanned(r.type, r.unit, String(r.planned ?? '')),
+        ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? '')),
         roundLabel: r.roundKind === 'baseline' ? '첫 맞춰보기' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기 맞춰보기',
       })))
     } catch (e) { setErr((e as Error).message) }
