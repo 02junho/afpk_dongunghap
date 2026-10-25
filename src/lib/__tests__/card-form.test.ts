@@ -36,7 +36,7 @@ describe('normalizeNewCard — 카드 추가 입력 검사', () => {
     expect(r.ok && r.card.options).toEqual(['남편', '아내', '둘 다'])
   })
 
-  it('흔들리면 무너지는 것은 필수 (큐·AI 요약이 쓴다)', () => {
+  it('"이 계획이 바뀌면 생기는 일"은 필수 (큐·AI 요약이 쓴다)', () => {
     expect(normalizeNewCard({ ...base, stake: ' ', type: 'text', plannedValue: '현 직장 유지' }).ok).toBe(false)
   })
 

@@ -102,7 +102,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
         </label>
       )}
 
-      <label className="label" htmlFor="ac-stake">흔들리면 무너지는 것 (설계사만 봅니다)</label>
+      <label className="label" htmlFor="ac-stake">이 계획이 바뀌면 생기는 일 (설계사만 봅니다)</label>
       <textarea id="ac-stake" className="field" style={fieldStyle} rows={2} value={stake} onChange={e => setStake(e.target.value)} placeholder="예: 자기자금을 뺀 나머지가 대출 금액. 근거 숫자가 있으면 함께" />
 
       <label className="label" style={{ fontWeight: 400, display: 'flex', gap: 8, alignItems: 'center' }}>

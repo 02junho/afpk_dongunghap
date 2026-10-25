@@ -108,7 +108,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel }: {
                   {cat && <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>}
                   <input className="field" style={{ ...fieldStyle, flex: 1 }} value={r.label} onChange={e => set(i, { label: e.target.value })} aria-label="카드 이름" />
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr', gap: '6px 10px', marginTop: 8, alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '6px 10px', marginTop: 8, alignItems: 'center' }}>
                   <span className="meta">설계 전제</span>
                   <div>
                     {r.type === 'choice' && r.options ? (
@@ -124,7 +124,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel }: {
                   </div>
                   <span className="meta">질문</span>
                   <input className="field" style={fieldStyle} value={r.question} onChange={e => set(i, { question: e.target.value })} />
-                  <span className="meta">흔들리면</span>
+                  <span className="meta">바뀌면 생기는 일</span>
                   <input className="field" style={fieldStyle} value={r.stake} onChange={e => set(i, { stake: e.target.value })} />
                 </div>
                 <p className="was" style={{ marginTop: 6 }}>출처: {r.source}{r.note ? ` · 메모: ${r.note}` : ''}</p>
