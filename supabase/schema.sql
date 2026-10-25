@@ -6,7 +6,7 @@
 create extension if not exists "pgcrypto";
 
 create type card_type as enum ('number','date','choice','text');
-create type card_category as enum ('housing','income','children','family','saving','insurance','retire','tax');
+create type card_category as enum ('housing','income','children','family','saving','insurance','retire','tax','wedding','debt');  -- wedding·debt: 10.25 카드 틀 확정
 create type number_unit as enum ('krw','age','count','percent');
 create type verdict as enum ('green','yellow','red');
 -- repeated_yellow = 같은 카드가 2회 연속 🟡 → 승격 (docs/03 §갱신 없이 끝나는 경우)

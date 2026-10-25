@@ -24,7 +24,7 @@
 
 ## 명령
 ```
-npm test                    # vitest. 바꾸기 전후 항상 (94건)
+npm test                    # vitest. 바꾸기 전후 항상 (95건)
 npm run e2e                 # 실 DB 종단 39개 (폰 2대 + 설계사). 테스트 부부가 하나 늘어난다. -- --deployed-judge
 npm run seed:samples        # 예시 고객 3쌍 (이미 있으면 건너뜀)
 npm run dev                 # /c/join (폰) · /p/couples (설계사). /api/judge 는 dev 미들웨어가 처리

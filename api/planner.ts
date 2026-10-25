@@ -65,7 +65,8 @@ async function openBaseline(sb: SB, coupleId: string) {
   const { data: active } = await sb.from('active_cards').select('id, key').eq('couple_id', coupleId).in('key', BASELINE_KEYS)
   const byKey = new Map((active ?? []).map(c => [c.key, c.id]))
   const ids = BASELINE_KEYS.map(k => byKey.get(k)).filter(Boolean)
-  if (ids.length !== BASELINE_KEYS.length) throw new Error('0회차 카드(활성 버전)가 모자랍니다')
+  if (ids.length !== BASELINE_KEYS.length)
+    throw new Error('첫 맞춰보기에 쓰는 카드(주택 취득 시점 · 승진·이직 계획 · 양가 지원)가 없어 맞춰보기를 열 수 없습니다. 카드를 골라 여는 기능은 준비 중입니다')
   const { data, error } = await sb.from('rounds').insert({ couple_id: coupleId, kind: 'baseline', card_version_ids: ids }).select('id').single()
   if (error) throw new Error(error.message)
   return data.id as string
@@ -88,21 +89,31 @@ export default async function handler(req: Request): Promise<Response> {
     switch (body.action) {
       // ── 커플 ──────────────────────────────────────────────────────────
       case 'couples': {
-        const [{ data: couples }, { data: members }, { data: rounds }, { data: queue }] = await Promise.all([
+        const [{ data: couples }, { data: members }, { data: rounds }, { data: queue }, { data: cardRows }] = await Promise.all([
           sb.from('couples').select('id, label, invite_code, created_at').order('created_at', { ascending: true }),
           sb.from('members').select('couple_id, role, display_name'),
-          sb.from('rounds').select('couple_id, kind, status, opened_at, judged_at').order('opened_at', { ascending: false }),
+          sb.from('rounds').select('id, couple_id, kind, status, opened_at, judged_at').order('opened_at', { ascending: false }),
           sb.from('planner_queue').select('couple_id'),
+          sb.from('cards').select('couple_id').is('archived_at', null),
         ])
+        // 열린 맞춰보기에 답이 하나라도 있으면 "진행 중", 없으면 "시작 전" (10.25: 아무도 안 답했는데 진행 중으로 보였다)
+        const openIds = (rounds ?? []).filter(r => r.status === 'open').map(r => r.id)
+        const { data: openAnswers } = openIds.length
+          ? await sb.from('answers').select('round_id').in('round_id', openIds)
+          : { data: [] as { round_id: string }[] }
+        const answered = new Set((openAnswers ?? []).map(a => a.round_id))
         const items = (couples ?? []).map(c => {
           const ms = (members ?? []).filter(m => m.couple_id === c.id)
           const rs = (rounds ?? []).filter(r => r.couple_id === c.id)
           const open = rs.find(r => r.status === 'open')
           const judgedCount = rs.filter(r => r.status === 'judged').length
           const last = rs.find(r => r.judged_at)?.judged_at ?? null
+          const kindLabel = open ? (open.kind === 'baseline' ? '첫 맞춰보기' : open.kind === 'factcheck' ? '먼저 묻기' : '정기 맞춰보기') : ''
+          const hasCards = (cardRows ?? []).some(x => x.couple_id === c.id)
           const state = open
-            ? (open.kind === 'baseline' ? '첫 맞춰보기 진행 중' : open.kind === 'factcheck' ? '먼저 묻기 진행 중' : '정기 맞춰보기 진행 중')
-            : judgedCount === 0 ? '첫 맞춰보기 대기' : `맞춰보기 ${judgedCount}회 완료`
+            ? `${kindLabel} ${answered.has(open.id) ? '진행 중' : '시작 전'}`
+            : judgedCount > 0 ? `맞춰보기 ${judgedCount}회 완료`
+            : hasCards ? '첫 맞춰보기 대기' : '질문 카드 준비 중'
           return {
             id: c.id, label: c.label, code: c.invite_code, createdAt: c.created_at,
             husband: ms.find(m => m.role === 'husband')?.display_name ?? '남편',
@@ -126,7 +137,7 @@ export default async function handler(req: Request): Promise<Response> {
           { couple_id: couple.id, role: 'husband', display_name: husband },
           { couple_id: couple.id, role: 'wife', display_name: wife },
         ])
-        // 데모 세트: 데모 부부(남편 · 아내)의 활성 카드 10장을 v1 로 복사 (설계안→카드 추출 UI 는 공모전 후)
+        // cloneDemoCards: 연습용 카드 10장으로 시작 / false 면 빈 카드로 시작 — 질문 카드에서 '카드 추가'·'재무제표 엑셀로 만들기'로 넣는다 (10.25)
         if (body.cloneDemoCards !== false) {
           const { data: src } = await sb.from('active_cards').select('*').eq('couple_id', DEMO_COUPLE)
           for (const s of src ?? []) {

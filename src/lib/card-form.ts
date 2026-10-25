@@ -10,7 +10,7 @@ import { parseNumeric, parseYearMonth } from '../judge/deterministic'
  * 호출하는 쪽이 비율로 넘긴다.
  */
 
-export const CATEGORY_KEYS: CardCategory[] = ['housing', 'income', 'children', 'family', 'saving', 'insurance', 'retire', 'tax']
+export const CATEGORY_KEYS: CardCategory[] = ['wedding', 'housing', 'income', 'children', 'family', 'debt', 'saving', 'insurance', 'retire', 'tax']
 export const TYPE_KEYS: CardType[] = ['number', 'date', 'choice', 'text']
 export const UNIT_KEYS: NumberUnit[] = ['krw', 'age', 'count', 'percent']
 

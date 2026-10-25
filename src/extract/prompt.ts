@@ -28,7 +28,7 @@ export function buildExtractPrompt(sheetText: string): string {
    - 나이: "number", unit "age" (예: "60").
    - 보기 중 하나를 고르는 것: "choice". options 2~5개, plannedValue 는 그중 하나.
    - 그 밖의 서술: "text". plannedValue 는 엑셀 문구를 짧게 옮긴 한 문장.
-5. category 는 housing(주거) · income(소득·직업) · children(출산·양육) · family(양가 지원) · saving(저축·투자) · insurance(보험) · retire(은퇴·노후) · tax(세금) 중 하나.
+5. category 는 wedding(결혼) · housing(주거) · income(소득·직업) · children(출산·양육·교육) · family(양가 지원·증여) · debt(부채·소비·자금관리) · saving(저축·투자) · insurance(보험) · retire(노후·사회보험) · tax(세금) 중 하나.
 6. label 은 12자 안의 카드 이름. question 은 부부에게 묻는 존댓말 한 문장. stake 는 이 전제가 흔들리면 무엇이 무너지는지 한 문장 — 엑셀의 체크사항·고민에서 옮기고, 엑셀에 없는 숫자는 쓰지 않습니다.
 7. 최대 15장, 설계에 중요한 순서로.
 

@@ -132,14 +132,17 @@ export function showAnswer(c: Card, s: string): string {
   return s
 }
 
+/** 10.25 카드 틀 확정(docs/09, 주제 10개): 결혼·부채·소비가 새로 들어왔다. 세금은 틀에선 양가 지원에 합쳤지만 예전 카드 호환으로 남긴다 */
 export const CATEGORIES: Record<Card['category'], { label: string; bg: string; fg: string; short: string }> = {
+  wedding:   { label: '결혼',      short: '결혼', bg: '#fbe9f1', fg: '#b04a7a' },
   housing:   { label: '주거',      short: '주거', bg: '#e9effd', fg: '#3f63c9' },
   income:    { label: '소득·직업', short: '소득', bg: '#fdeae6', fg: '#c25a4a' },
   children:  { label: '출산·양육', short: '양육', bg: '#fdf1dc', fg: '#a86a12' },
   family:    { label: '양가 지원', short: '양가', bg: '#eee9fb', fg: '#6b4fc0' },
+  debt:      { label: '부채·소비', short: '부채', bg: '#f1ece4', fg: '#8a5a2b' },
   saving:    { label: '저축·투자', short: '저축', bg: '#e4f5ec', fg: '#1f7a52' },
   insurance: { label: '보험',      short: '보험', bg: '#e6f3f8', fg: '#2a6f8a' },
   retire:    { label: '은퇴',      short: '은퇴', bg: '#f3efe6', fg: '#7a6530' },
   tax:       { label: '세금',      short: '세금', bg: '#f0f0f0', fg: '#555' },
 }
-export const CATEGORY_ORDER: Card['category'][] = ['housing','income','children','family','saving','insurance','retire','tax']
+export const CATEGORY_ORDER: Card['category'][] = ['wedding','housing','income','children','family','debt','saving','insurance','retire','tax']

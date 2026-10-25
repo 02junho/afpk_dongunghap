@@ -40,8 +40,13 @@ describe('normalizeNewCard — 카드 추가 입력 검사', () => {
     expect(normalizeNewCard({ ...base, stake: ' ', type: 'text', plannedValue: '현 직장 유지' }).ok).toBe(false)
   })
 
+  it('카드 틀 확정(10.25)의 새 주제 결혼·부채·소비를 받는다', () => {
+    expect(normalizeNewCard({ ...base, category: 'wedding', type: 'text', plannedValue: '작은 결혼식' }).ok).toBe(true)
+    expect(normalizeNewCard({ ...base, category: 'debt', type: 'text', plannedValue: '할부 먼저 정리' }).ok).toBe(true)
+  })
+
   it('알 수 없는 주제·타입은 거부', () => {
-    expect(normalizeNewCard({ ...base, category: 'wedding', type: 'text', plannedValue: 'x' }).ok).toBe(false)
+    expect(normalizeNewCard({ ...base, category: 'pet', type: 'text', plannedValue: 'x' }).ok).toBe(false)
     expect(normalizeNewCard({ ...base, type: 'bool', plannedValue: 'x' }).ok).toBe(false)
   })
 })

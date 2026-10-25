@@ -1,7 +1,7 @@
 export type CardType = 'number' | 'date' | 'choice' | 'text'
 
 /** 큰 카테고리 8개. 팀이 정하고(AFPK 7과목 + 양가), 세부 카드는 설계안에서 추출·분류된다 */
-export type CardCategory = 'housing' | 'income' | 'children' | 'family' | 'saving' | 'insurance' | 'retire' | 'tax'
+export type CardCategory = 'wedding' | 'housing' | 'income' | 'children' | 'family' | 'debt' | 'saving' | 'insurance' | 'retire' | 'tax'
 
 /**
  * number 카드의 값이 무엇인지. 같은 'number'라도 금액과 나이는 파싱·표시 규칙이 다르다.

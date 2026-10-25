@@ -33,6 +33,8 @@ export default function Couples() {
   const [rows, setRows] = useState<CoupleRow[]>(DEMO_ROWS)
   const [err, setErr] = useState('')
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
+  // 10.25: 새 부부는 빈 카드로 시작할 수 있다 — 연습용 카드와 엑셀로 만든 카드가 두 벌 되지 않게
+  const [startEmpty, setStartEmpty] = useState(true)
   const [issued, setIssued] = useState<{ label: string; code: string; husband: string; wife: string } | null>(null)
   // 이름 고치기: 한 번에 한 부부만 펼친다
   const [edit, setEdit] = useState<{ id: string; label: string; husband: string; wife: string } | null>(null)
@@ -63,13 +65,13 @@ export default function Couples() {
     if (needPass) { setErr('설계사 코드를 먼저 넣어야 실제로 발급됩니다 (왼쪽 레일).'); return }
     if (!p.live) {
       const code = String(100000 + Math.floor(Math.random() * 900000))
-      setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '첫 맞춰보기 대기', lastAt: null, pending: 0 }])
+      setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: startEmpty ? '질문 카드 준비 중' : '첫 맞춰보기 시작 전', lastAt: null, pending: 0 }])
       setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
       return
     }
     setBusy(true)
     try {
-      const { code } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife })
+      const { code } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife, cloneDemoCards: !startEmpty })
       setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
       await load()
     } catch (e) { setErr((e as Error).message) }
@@ -182,10 +184,17 @@ export default function Couples() {
           <input id="w" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.wife} onChange={e => setForm(f => ({ ...f, wife: e.target.value }))} placeholder="예: 지우" />
           <label className="label" htmlFor="l">표시 이름 (설계사 화면에만 · 비우면 "남편 · 아내")</label>
           <input id="l" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="예: 김현우 · 박지우" />
+          <p className="label">질문 카드</p>
+          <div className="role-row">
+            <button type="button" className={`role ${startEmpty ? 'role-on' : ''}`} style={{ padding: '12px 10px', fontSize: 14 }} onClick={() => setStartEmpty(true)}>빈 카드로 시작</button>
+            <button type="button" className={`role ${!startEmpty ? 'role-on' : ''}`} style={{ padding: '12px 10px', fontSize: 14 }} onClick={() => setStartEmpty(false)}>연습용 카드 10장으로 시작</button>
+          </div>
           <p className="will">
             {needPass
               ? '⚠ 지금은 예시 모드입니다. 왼쪽 레일에 설계사 코드를 넣어야 실제로 발급됩니다.'
-              : '발급하면 기본 질문 카드 10장(연습용 세트)이 들어가고 첫 맞춰보기가 열립니다.'}
+              : startEmpty
+                ? '카드 없이 시작합니다. 발급한 뒤 질문 카드 화면에서 "카드 추가"나 "재무제표 엑셀로 만들기"로 넣으세요. 이렇게 시작한 부부는 아직 맞춰보기를 열 수 없습니다 (카드를 골라 여는 기능은 준비 중).'
+                : '연습용 질문 카드 10장이 들어가고 첫 맞춰보기(3문항)가 바로 열립니다.'}
           </p>
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
