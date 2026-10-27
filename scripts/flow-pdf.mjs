@@ -38,7 +38,7 @@ await shot('/c/join', 'c1-join', async pg => {
 }, true)
 await shot('/c/home', 'c2-home-match')
 await shot(null, 'c3-home-plan', async pg => { await pg.click('button[role=tab]:has-text("내 설계")') }, true)
-await shot('/c/round/baseline', 'c4-round', async pg => { await pg.selectOption('select[aria-label="연도"]', '2029') })
+await shot('/c/round/baseline', 'c4-round', async pg => { await pg.click('button:has-text("아니요, 바뀌었어요")'); await pg.selectOption('select[aria-label="연도"]', '2029'); await pg.selectOption('select[aria-label="월"]', '09') })
 await shot('/c/wait/baseline', 'c5-wait')
 await shot('/c/done/baseline', 'c6-done')
 

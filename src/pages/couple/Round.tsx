@@ -41,7 +41,8 @@ export default function Round() {
   const [text, setText] = useState('')
   const [condition, setCondition] = useState(false)
   const [year, setYear] = useState('')
-  const [month, setMonth] = useState('06')
+  // 월은 처음엔 비워 둔다 — 6월이 미리 골라져 있으면 연도만 고르고 넘어가 원치 않은 6월이 저장됐다 (10.27)
+  const [month, setMonth] = useState('')
   const [busy, setBusy] = useState(false)
   const [stance, setStance] = useState<'same' | 'changed' | null>(null)
   const [other, setOther] = useState('')
@@ -78,7 +79,7 @@ export default function Round() {
   const total = me.live ? cards.length : BASELINE.length
   const step = me.live ? i + 1 : i + 1
 
-  const changedValue = card.type === 'date' && !condition ? (year ? `${year}-${month}` : '')
+  const changedValue = card.type === 'date' && !condition ? (year && month ? `${year}-${month}` : '')
     : card.type === 'choice' && text === OTHER ? (other.trim() ? OTHER_PREFIX + other.trim() : '')
     : text
   // "그대로예요"면 설계 전제 값을 그대로 답으로 남긴다 — 판정 규칙이 그대로 🟢 로 읽는다
@@ -95,7 +96,7 @@ export default function Round() {
   const ready = value.trim().length > 0 && !(stance === 'changed' && preview.startsWith('단위')) && !busy
 
   function reset() {
-    setText(''); setCondition(false); setYear(''); setMonth('06'); setStance(null); setOther('')
+    setText(''); setCondition(false); setYear(''); setMonth(''); setStance(null); setOther('')
   }
 
   async function submit() {
@@ -187,6 +188,7 @@ export default function Round() {
                   {years.map(y => <option key={y} value={y}>{y}년</option>)}
                 </select>
                 <select className="field" value={month} onChange={e => setMonth(e.target.value)} aria-label="월">
+                  <option value="">월</option>
                   {MONTHS.map(m => <option key={m} value={m}>{Number(m)}월</option>)}
                 </select>
               </div>

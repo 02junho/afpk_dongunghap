@@ -37,6 +37,7 @@ export default function App() {
       <Route path="/c/done/:id" element={<NeedsJoin><Done /></NeedsJoin>} />
       <Route path="/p" element={<Navigate to="/p/couples" replace />} />
       <Route path="/p/couples" element={<Couples />} />
+      <Route path="/p/archived" element={<Couples archivedView />} />
       <Route path="/p/queue" element={<Queue />} />
       <Route path="/p/cards" element={<Cards />} />
       <Route path="/p/history" element={<History />} />

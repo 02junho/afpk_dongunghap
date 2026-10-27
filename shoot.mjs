@@ -27,7 +27,7 @@ await shot('/c/home', '2-홈-맞춰보기')
 await shot('/c/home', '2b-홈-내설계', async pg => { await pg.click('text=내 설계') })
 await shot('/c/round/baseline', '3-문답', async pg => {
   // 첫 카드는 시점(연·월 선택). 2029년을 고른 상태를 찍는다
-  await pg.selectOption('select[aria-label="연도"]', '2029')
+  await pg.click('button:has-text("아니요, 바뀌었어요")'); await pg.selectOption('select[aria-label="연도"]', '2029'); await pg.selectOption('select[aria-label="월"]', '09')
 })
 await shot('/c/wait/baseline', '4-대기')
 await shot('/c/done/baseline', '5-전달완료')

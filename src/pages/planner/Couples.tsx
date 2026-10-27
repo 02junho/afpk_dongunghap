@@ -27,7 +27,8 @@ const DEMO_ROWS: CoupleRow[] = [
  * 설계사 콘솔 첫 화면. 설계사 1명 : 커플 N쌍 — 여기서 고른 커플이 나머지 화면의 컨텍스트다.
  * 입장 코드 발급이 "설계사 경유 설치"의 시작점. live 면 DB(couples/members), 아니면 데모 4쌍.
  */
-export default function Couples() {
+/** archivedView: 왼쪽 메뉴 "지운 부부 보기" — 지운(보관한) 부부만 모아 되돌리기 (10.27) */
+export default function Couples({ archivedView = false }: { archivedView?: boolean }) {
   const nav = useNavigate()
   const p = usePlanner()
   const [rows, setRows] = useState<CoupleRow[]>(DEMO_ROWS)
@@ -140,6 +141,33 @@ export default function Couples() {
     <div className="console">
       <Rail />
       <main className="work">
+        {archivedView ? (
+          <>
+            <h1 className="work-title">지운 부부</h1>
+            <p className="meta">목록에서 지운 부부입니다. 답변·판정·카드 기록은 그대로 보관돼 있고, 되돌리면 담당 부부 목록에 다시 나타납니다. 두 분은 같은 코드로 다시 입장하면 됩니다.</p>
+            {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
+            <div style={{ marginTop: 22 }}>
+              {archived.map(r => (
+                <div key={r.id} className="qcard">
+                  <div className="queue-top">
+                    <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
+                    <span style={{ fontSize: 15, fontWeight: 700 }}>{r.label}</span>
+                    <span className="queue-couple">지운 날 {new Date(r.archivedAt!).toLocaleDateString('ko-KR')}</span>
+                  </div>
+                  <dl className="pair" style={{ gridTemplateColumns: '80px 1fr' }}>
+                    <dt className="meta">이름</dt><dd>{r.husband} · {r.wife}</dd>
+                    <dt className="meta">진행</dt><dd>{r.state}</dd>
+                    <dt className="meta">입장 코드</dt><dd><span style={{ letterSpacing: '0.12em', fontWeight: 700 }}>{r.code}</span> <span className="meta">(지금은 입장 불가)</span></dd>
+                  </dl>
+                  <div className="actions">
+                    <button className="btn btn-small" disabled={busy} onClick={() => void setArchived(r, false)}>{busy ? '되돌리는 중…' : '되돌리기'}</button>
+                  </div>
+                </div>
+              ))}
+              {!archived.length && <p className="note">지운 부부가 없습니다.</p>}
+            </div>
+          </>
+        ) : (<>
         <h1 className="work-title">담당 부부</h1>
         <p className="meta">부부를 고르면 처리 대기·질문 카드·변경 이력이 그 부부 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
@@ -180,7 +208,7 @@ export default function Couples() {
                 <div className="will" role="alertdialog" aria-label={`${r.label} 지우기 확인`} style={{ borderLeft: '4px solid var(--escalate)' }}>
                   <b>{r.label}</b> 부부를 목록에서 지울까요?<br />
                   두 분 폰에서도 더 이상 열리지 않고, 진행 중인 맞춰보기는 닫힙니다.
-                  답변·판정·카드 기록은 지우지 않고 보관해서, 아래 "지운 부부 보기"에서 되돌릴 수 있습니다.
+                  답변·판정·카드 기록은 지우지 않고 보관해서, 왼쪽 메뉴 "지운 부부 보기"에서 되돌릴 수 있습니다.
                   <div className="actions" style={{ marginTop: 10 }}>
                     <button className="btn btn-small" style={{ background: 'var(--escalate)' }} disabled={busy} onClick={() => void setArchived(r, true)}>{busy ? '지우는 중…' : '지우기'}</button>
                     <button className="btn btn-quiet btn-small" onClick={() => setConfirmDel(null)}>취소</button>
@@ -210,24 +238,6 @@ export default function Couples() {
             </div>
           ))}
         </div>
-
-        {archived.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            <button className="btn btn-quiet btn-small" onClick={() => setShowArchived(v => !v)}>
-              {showArchived ? '지운 부부 닫기' : `지운 부부 보기 (${archived.length})`}
-            </button>
-            {showArchived && archived.map(r => (
-              <div key={r.id} className="qcard" style={{ opacity: 0.75, padding: '14px 18px', marginTop: 10 }}>
-                <div className="queue-top">
-                  <span style={{ fontWeight: 700 }}>{r.label}</span>
-                  <span className="meta">지운 날 {new Date(r.archivedAt!).toLocaleDateString('ko-KR')} · 코드 {r.code}</span>
-                  <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy} onClick={() => void setArchived(r, false)}>되돌리기</button>
-                </div>
-                <p className="note" style={{ margin: '4px 0 0' }}>되돌리면 목록에 다시 나타납니다. 두 분은 같은 코드로 다시 입장해야 합니다.</p>
-              </div>
-            ))}
-          </div>
-        )}
 
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
@@ -268,6 +278,7 @@ export default function Couples() {
           )}
         </div>
         {qr && <QrView url={joinUrl(qr.code)} code={qr.code} title={qr.title} onClose={() => setQr(null)} />}
+        </>)}
       </main>
     </div>
   )
