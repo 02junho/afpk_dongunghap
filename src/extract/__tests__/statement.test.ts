@@ -52,15 +52,29 @@ describe('재무설계 엑셀 → 질문 카드 후보 (규칙, AI 안 씀 · 10
   })
 })
 
-describe('파일 이름 규칙: 남편이름_아내이름_재무설계.xlsx', () => {
-  it('이름 두 개를 읽는다', () => {
-    expect(namesFromFilename('에이피_에피케_재무설계.xlsx')).toEqual({ husband: '에이피', wife: '에피케' })
-    expect(namesFromFilename('현우_지우_재무설계.XLSX')).toEqual({ husband: '현우', wife: '지우' })
+describe('재무제표 · 현금흐름표 두 파일 (10.27)', () => {
+  // 표 이름 칸이 없는 파일 — 어느 칸에 올렸는지로 표를 정한다
+  const one = (rows: unknown[][]) => { const wb = utils.book_new(); utils.book_append_sheet(wb, utils.aoa_to_sheet(rows), 'Sheet1'); return wb }
+  const cash = one([['유입 항목', '금액(만원)', '유출 항목', '금액(만원)'], ['남편 급여', 6700, '적금', 500]])
+  const bal = one([['자산 항목', '금액(만원)'], ['적금', 1500], ['월세 보증금', 2000]])
+
+  it('표 이름이 없으면 올린 칸으로 — 현금흐름표 칸의 적금만 기본 선택', () => {
+    expect(readStatement(cash, '현금흐름표').map(i => i.table)).toEqual(['현금흐름표', '현금흐름표'])
+    const cs = toCandidates([...readStatement(cash, '현금흐름표'), ...readStatement(bal, '재무상태표')])
+    expect(cs.filter(c => c.item.label === '적금').map(c => [c.item.table, c.pick])).toEqual([['현금흐름표', true], ['재무상태표', false]])
+  })
+})
+
+describe('파일 이름 규칙: 남편이름_아내이름_재무제표 / 현금흐름표 .xlsx', () => {
+  it('이름 두 개와 어느 칸 파일인지 읽는다', () => {
+    expect(namesFromFilename('에이피_에피케_재무제표.xlsx')).toEqual({ husband: '에이피', wife: '에피케', kind: 'statement' })
+    expect(namesFromFilename('현우_지우_현금흐름표.XLSX')).toEqual({ husband: '현우', wife: '지우', kind: 'cashflow' })
+    expect(namesFromFilename('에이피_에피케_재무설계.xlsx')).toMatchObject({ kind: 'statement' })   // 두 표가 한 파일
   })
   it('모양이 다르면 null — 이름은 직접 입력', () => {
     expect(namesFromFilename('재무설계.xlsx')).toBeNull()
     expect(namesFromFilename('현우_지우.xlsx')).toBeNull()
-    expect(namesFromFilename('현우__재무설계.xlsx')).toBeNull()
-    expect(namesFromFilename('현우_지우_재무제표.xlsx')).toBeNull()
+    expect(namesFromFilename('현우__재무제표.xlsx')).toBeNull()
+    expect(namesFromFilename('현우_지우_상담메모.xlsx')).toBeNull()
   })
 })

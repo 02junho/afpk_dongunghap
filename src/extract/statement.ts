@@ -1,5 +1,6 @@
 import { read, utils, type WorkBook } from 'xlsx'
 import type { CardCategory } from '../judge/types'
+import type { SheetKind } from './names'
 
 /**
  * 설계사가 완성한 재무설계 엑셀(재무제표 표)을 **규칙으로** 읽어 질문 카드 후보를 만든다 (10.27).
@@ -67,7 +68,8 @@ function categoryOfGroup(group: string, table: string, label = ''): CardCategory
   return /재무상태/.test(table) ? 'saving' : 'debt'
 }
 
-export function readStatement(wb: WorkBook): StatementItem[] {
+/** defaultTable: 표 이름("…표") 칸이 없는 파일이면 올린 칸 이름으로 (재무제표 칸 → 재무상태표, 현금흐름표 칸 → 현금흐름표) */
+export function readStatement(wb: WorkBook, defaultTable = ''): StatementItem[] {
   const out: StatementItem[] = []
   for (const sheet of wb.SheetNames) {
     const ws = wb.Sheets[sheet]
@@ -81,7 +83,7 @@ export function readStatement(wb: WorkBook): StatementItem[] {
       for (let rr = r; rr >= range.s.r; rr--) for (let cc = c; cc >= Math.max(range.s.c, c - 4); cc--) {
         const t = text(rr, cc); if (/표$/.test(t)) return t
       }
-      return ''
+      return defaultTable
     }
     // 단위: 위쪽 머리글의 "(만원)" 같은 표기
     const unitOf = (r: number, c: number) => {
@@ -116,9 +118,15 @@ export function toCandidates(items: StatementItem[]): CardCandidate[] {
   })
 }
 
-/** 브라우저: 엑셀 파일 → 카드 후보. 표 모양이 아니면 빈 배열 (그때는 AI 로 상담 내용을 읽는 길로) */
-export function statementCandidates(data: ArrayBuffer): CardCandidate[] {
-  return toCandidates(readStatement(read(data, { type: 'array' })))
+/**
+ * 브라우저: 엑셀 파일(재무제표 · 현금흐름표 칸, 하나만 있어도 됨) → 카드 후보. 표 모양이 아니면 빈 배열 (그때는 AI 로 상담 내용을 읽는 길로).
+ * 같은 파일을 두 칸에 넣었거나 두 파일에 같은 표가 있으면 같은 항목(표 · 이름 · 금액)은 한 번만.
+ */
+export function statementCandidates(files: { data: ArrayBuffer; kind: SheetKind }[]): CardCandidate[] {
+  const seen = new Set<string>()
+  const items = files.flatMap(f => readStatement(read(f.data, { type: 'array' }), f.kind === 'cashflow' ? '현금흐름표' : '재무상태표'))
+    .filter(i => { const k = `${i.table}|${i.label}|${i.value}`; if (seen.has(k)) return false; seen.add(k); return true })
+  return toCandidates(items)
 }
 
 export { namesFromFilename } from './names'

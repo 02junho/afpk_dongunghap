@@ -173,7 +173,7 @@ export default function Cards() {
 
           <div className="editor">
             {extracting ? (
-              <ExtractCards live={!!(p.live && p.pass)} call={p.call} initialFile={importFile} onCancel={() => setExtracting(false)}
+              <ExtractCards live={!!(p.live && p.pass)} call={p.call} initialFiles={importFile} onCancel={() => setExtracting(false)}
                 onSaved={n => { setExtracting(false); setMsg(`엑셀에서 만든 질문 카드 ${n}장을 추가했습니다.`); void load() }} />
             ) : adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {
               const c = sel.card, cat = CATEGORIES[c.category]

@@ -4,8 +4,13 @@ import { normalizeNewCard, type NewCard } from '../../lib/card-form'
 import type { SheetText } from '../../extract/sheet-text'
 import type { ExtractDraft } from '../../extract/prompt'
 import type { Card } from '../../judge/index'
+import { KIND_LABEL, type SheetKind } from '../../extract/names'
+import type { ImportFiles } from './pendingImport'
 
 /**
+ * 재무제표 · 현금흐름표 엑셀 두 칸(10.27, 하나만 있어도 됨) → 질문 카드 후보 → 설계사 확인 → 고른 카드만 저장.
+ * 표는 규칙으로 읽는다(AI 안 씀). 표가 아닌 상담 글일 때만 아래 AI 초안 길로 간다.
+ *
  * 재무제표 엑셀 → 질문 카드 초안 → 설계사 확인 → 고른 카드만 저장 (10.23 팀 결정 Q3, AI 활용 3번).
  * 엑셀 파일은 브라우저에서 글로 바뀌고, 글만 서버를 거쳐 AI 로 간다 (파일은 저장하지 않는다).
  * AI 초안은 그대로 들어가지 않는다 — 카드마다 설계사가 확인 체크를 해야 저장된다.
@@ -18,14 +23,15 @@ function check(r: Row) {
   return normalizeNewCard({ ...r, tolerance: null })
 }
 
-export default function ExtractCards({ live, call, onSaved, onCancel, initialFile }: {
+export default function ExtractCards({ live, call, onSaved, onCancel, initialFiles }: {
   live: boolean
-  /** "재무설계 엑셀로 새 부부 등록"에서 넘어온 파일 — 열리자마자 읽는다 */
-  initialFile?: File | null
+  /** "재무설계 엑셀로 새 부부 등록"에서 넘어온 파일들 — 열리자마자 읽는다 */
+  initialFiles?: ImportFiles | null
   call: <T>(action: string, params?: Record<string, unknown>) => Promise<T>
   onSaved: (n: number) => void
   onCancel: () => void
 }) {
+  const [files, setFiles] = useState<ImportFiles>({})
   const [sheet, setSheet] = useState<(SheetText & { file: string }) | null>(null)
   const [rows, setRows] = useState<Row[] | null>(null)
   const [busy, setBusy] = useState<'' | 'reading' | 'saving'>('')
@@ -34,16 +40,24 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
   // rules = 재무제표 표를 규칙으로 읽음 (AI 안 씀, 10.27) / ai = 표가 아닌 상담 글 → AI 초안
   const [mode, setMode] = useState<'rules' | 'ai' | null>(null)
 
-  async function pick(f: File | undefined | null) {
-    if (!f) return
+  async function pick(next: ImportFiles) {
+    setFiles(next)
+    const list = (Object.entries(next) as [SheetKind, File][]).filter(([, f]) => f)
+    if (!list.length) return
     setErr(''); setRows(null); setMode(null)
     // 엑셀 라이브러리는 크다 — 부부 폰 번들에 넣지 않으려고 이 버튼을 쓸 때만 불러온다
     try {
-      const buf = await f.arrayBuffer()
-      const [{ workbookToText }, { statementCandidates }] = await Promise.all([import('../../extract/sheet-text'), import('../../extract/statement')])
-      setSheet({ ...workbookToText(buf), file: f.name })
-      // 1순위: 설계사가 완성한 재무제표 표 — "항목 | 금액" 을 규칙으로 읽는다. 숫자를 AI 가 만지지 않는다
-      const cs = statementCandidates(buf)
+      const bufs = await Promise.all(list.map(async ([kind, f]) => ({ kind, data: await f.arrayBuffer(), name: f.name })))
+      const [{ workbookToText, MAX_SHEET_TEXT }, { statementCandidates }] = await Promise.all([import('../../extract/sheet-text'), import('../../extract/statement')])
+      const texts = bufs.map(b => workbookToText(b.data))
+      const text = texts.map(t => t.text).join('\n')
+      setSheet({
+        text: text.slice(0, MAX_SHEET_TEXT), truncated: text.length > MAX_SHEET_TEXT || texts.some(t => t.truncated),
+        sheets: texts.flatMap(t => t.sheets), cells: texts.reduce((n, t) => n + t.cells, 0),
+        file: bufs.map(b => `${KIND_LABEL[b.kind]}: ${b.name}`).join(' / '),
+      })
+      // 1순위: 설계사가 완성한 표 — "항목 | 금액" 을 규칙으로 읽는다. 숫자를 AI 가 만지지 않는다
+      const cs = statementCandidates(bufs)
       if (cs.length >= 3) {
         setRows(cs.map(c => ({
           category: c.category, type: 'number', unit: 'krw', label: c.label, question: c.question,
@@ -52,13 +66,13 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
           note: `${c.item.table} · ${c.item.group} · 엑셀 "${c.item.label}" ${(c.item.value / (c.item.unitNote === '만원' ? 10_000 : 1)).toLocaleString()}${c.item.unitNote}${c.known ? '' : ' · 새 항목 — 쓸지 판단해 주세요'}`,
           checked: c.pick,
         })))
-        setInfo(`재무제표 표에서 항목 ${cs.length}개를 규칙으로 읽었습니다 · AI 안 씀 · 기본 선택 ${cs.filter(c => c.pick).length}개`)
+        setInfo(`엑셀 표에서 항목 ${cs.length}개를 그대로 옮겼습니다 (AI가 숫자를 읽거나 고치지 않음) · 기본 선택 ${cs.filter(c => c.pick).length}개`)
         setMode('rules')
       } else setMode('ai')
     }
     catch (e) { setErr(`엑셀을 읽지 못했습니다: ${(e as Error).message}`) }
   }
-  useEffect(() => { if (initialFile) void pick(initialFile) }, [initialFile])
+  useEffect(() => { if (initialFiles) void pick(initialFiles) }, [initialFiles])
 
   async function extract() {
     if (!sheet) return
@@ -90,19 +104,23 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
   return (
     <>
       <p className="editor-title">재무설계 엑셀로 질문 카드 만들기</p>
-      <p className="meta">설계사가 완성한 재무설계 엑셀을 올리면, 재무제표 표의 항목과 금액을 규칙으로 읽어 질문 카드 후보를 만듭니다 (AI 안 씀). 표가 아니라 상담 내용 글이면 AI가 초안을 만듭니다. 확인하고 고른 카드만 저장됩니다.</p>
+      <p className="meta">설계사가 완성한 재무제표 · 현금흐름표 엑셀을 올리면, 표에 적힌 항목 이름과 금액을 그대로 옮겨 질문 카드 후보를 만듭니다. 숫자는 AI를 거치지 않으니 엑셀과 다를 일이 없습니다. 하나만 올려도 되고, 고른 카드만 저장됩니다.</p>
 
       {!live && <p className="note" style={{ color: 'var(--escalate)' }}>왼쪽에 설계사 코드를 넣어야 쓸 수 있습니다.</p>}
 
-      <label className="label" htmlFor="xlsx">엑셀 파일 (.xlsx)</label>
-      <input id="xlsx" type="file" accept=".xlsx,.xls" disabled={!live || !!busy} onChange={e => void pick(e.target.files?.[0])} />
+      {(['statement', 'cashflow'] as const).map(k => (
+        <div key={k}>
+          <label className="label" htmlFor={`xlsx-${k}`}>{KIND_LABEL[k]} 엑셀 (.xlsx){files[k] ? ` — ${files[k]!.name}` : ''}</label>
+          <input id={`xlsx-${k}`} type="file" accept=".xlsx,.xls" disabled={!live || !!busy} onChange={e => { const f = e.target.files?.[0]; if (f) void pick({ ...files, [k]: f }) }} />
+        </div>
+      ))}
       {sheet && (
         <p className="was">
           {sheet.file} · 시트 {sheet.sheets.length}개 · 칸 {sheet.cells}개 읽음{sheet.truncated ? ' · 너무 길어 앞부분만 보냅니다' : ''}
         </p>
       )}
       <p className="will">{mode === 'rules'
-        ? '표로 읽었습니다 — 엑셀 내용은 이 브라우저 밖으로 나가지 않습니다. 금액은 엑셀의 "만원"을 원으로 바꾼 값입니다.'
+        ? '표로 읽었습니다 — 엑셀 내용은 이 브라우저 밖으로 나가지 않습니다. 금액은 엑셀의 "만원"을 원으로 바꿔 적은 값입니다.'
         : '실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요. 표가 아니면 칸의 글만 AI에 보냅니다 (파일은 저장 안 함). AI는 엑셀에 적힌 값만 옮기고 계산하지 않습니다.'}</p>
 
       {sheet && !rows && mode === 'ai' && (

@@ -4,8 +4,8 @@ import Rail from './Rail'
 import { DEMO_COUPLE, usePlanner, type CoupleRow } from './planner'
 import { inviteMessage } from '../../lib/install'
 import QrView from './QrView'
-import { setPendingImport } from './pendingImport'
-import { namesFromFilename } from '../../extract/names'
+import { setPendingImport, type ImportFiles } from './pendingImport'
+import { KIND_LABEL, namesFromFilename, type SheetKind } from '../../extract/names'
 
 /** 클립보드 복사. https·localhost 가 아니거나 권한이 없으면 숨은 textarea 로 한 번 더 시도 */
 async function copyText(text: string): Promise<boolean> {
@@ -38,15 +38,17 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
   // 10.25: 새 부부는 빈 카드로 시작할 수 있다 — 연습용 카드와 엑셀로 만든 카드가 두 벌 되지 않게
   const [startEmpty, setStartEmpty] = useState(true)
-  // 재무설계 엑셀로 등록 (10.27): 파일 이름 "남편이름_아내이름_재무설계.xlsx" → 이름 채우고, 등록 뒤 질문 카드 화면에서 바로 읽는다
-  const [importFile, setImportFile] = useState<File | null>(null)
+  // 재무설계 엑셀로 등록 (10.27): 재무제표 · 현금흐름표 두 칸 (하나만 있어도 됨).
+  // 파일 이름 "남편이름_아내이름_재무제표.xlsx" → 이름 채우고, 등록 뒤 질문 카드 화면에서 바로 읽는다
+  const [importFiles, setImportFiles] = useState<ImportFiles>({})
   const [importNote, setImportNote] = useState('')
-  function chooseImport(f: File | undefined) {
+  const hasImport = !!(importFiles.statement || importFiles.cashflow)
+  function chooseImport(kind: SheetKind, f: File | undefined) {
     if (!f) return
-    setImportFile(f); setStartEmpty(true)
+    setImportFiles(x => ({ ...x, [kind]: f })); setStartEmpty(true)
     const n = namesFromFilename(f.name)
     if (n) { setForm(x => ({ ...x, husband: n.husband, wife: n.wife })); setImportNote(`파일 이름에서 남편 "${n.husband}", 아내 "${n.wife}"를 채웠습니다.`) }
-    else setImportNote('파일 이름이 "남편이름_아내이름_재무설계.xlsx" 모양이 아니라 이름을 채우지 못했습니다. 아래에 직접 적어 주세요.')
+    else if (!form.husband && !form.wife) setImportNote(`파일 이름이 "남편이름_아내이름_${KIND_LABEL[kind]}.xlsx" 모양이 아니라 이름을 채우지 못했습니다. 아래에 직접 적어 주세요.`)
   }
   const [issued, setIssued] = useState<{ label: string; code: string; husband: string; wife: string } | null>(null)
   // 이름 고치기: 한 번에 한 부부만 펼친다
@@ -90,9 +92,9 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
       const { code, coupleId } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife, cloneDemoCards: !startEmpty })
       const husband = form.husband.trim() || '남편', wife = form.wife.trim() || '아내'
       setIssued({ label, code, husband, wife }); setForm({ label: '', husband: '', wife: '' })
-      if (importFile) {
+      if (hasImport) {
         // 등록하자마자 그 부부의 질문 카드 화면으로 — 엑셀을 바로 읽어 카드 후보를 보여준다
-        setPendingImport(importFile); setImportFile(null); setImportNote(''); setBusy(false)
+        setPendingImport(importFiles); setImportFiles({}); setImportNote(''); setBusy(false)
         p.setCouple({ id: coupleId, label, code, husband, wife, state: '질문 카드 준비 중', lastAt: null, pending: 0 })
         nav('/p/cards')
         return
@@ -261,9 +263,14 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
 
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
-          <label className="label" htmlFor="imp">재무설계 엑셀로 등록 (선택)</label>
-          <input id="imp" type="file" accept=".xlsx,.xls" disabled={needPass || busy} onChange={e => chooseImport(e.target.files?.[0])} />
-          <p className="was">파일 이름을 "남편이름_아내이름_재무설계.xlsx"로 하면 이름이 채워지고, 등록한 뒤 질문 카드 후보가 바로 만들어집니다.</p>
+          <p className="label">재무설계 엑셀로 등록 (선택 · 하나만 있어도 됩니다)</p>
+          {(['statement', 'cashflow'] as const).map(k => (
+            <div key={k} style={{ marginBottom: 6 }}>
+              <label className="meta" htmlFor={`imp-${k}`} style={{ display: 'block' }}>{KIND_LABEL[k]} 엑셀{importFiles[k] ? ` — ${importFiles[k]!.name}` : ''}</label>
+              <input id={`imp-${k}`} type="file" accept=".xlsx,.xls" disabled={needPass || busy} onChange={e => chooseImport(k, e.target.files?.[0])} />
+            </div>
+          ))}
+          <p className="was">파일 이름을 "남편이름_아내이름_재무제표.xlsx", "남편이름_아내이름_현금흐름표.xlsx"로 하면 이름이 채워지고, 등록한 뒤 질문 카드 후보가 바로 만들어집니다.</p>
           {importNote && <p className="note" style={{ color: importNote.startsWith('파일 이름에서') ? 'var(--agree)' : 'var(--talk)' }}>{importNote}</p>}
           <label className="label" htmlFor="h">남편 이름</label>
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
@@ -279,13 +286,15 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
           <p className="will">
             {needPass
               ? '⚠ 지금은 예시 모드입니다. 왼쪽 레일에 설계사 코드를 넣어야 실제로 발급됩니다.'
+              : startEmpty && hasImport
+                ? '등록하면 질문 카드 화면이 열리고, 올린 엑셀에서 읽은 카드 후보가 나옵니다. 고른 카드만 저장됩니다. 이렇게 시작한 부부는 아직 맞춰보기를 열 수 없습니다 (카드를 골라 여는 기능은 준비 중).'
               : startEmpty
                 ? '카드 없이 시작합니다. 발급한 뒤 질문 카드 화면에서 "카드 추가"나 "재무제표 엑셀로 만들기"로 넣으세요. 이렇게 시작한 부부는 아직 맞춰보기를 열 수 없습니다 (카드를 골라 여는 기능은 준비 중).'
                 : '연습용 질문 카드 10장이 들어가고 첫 맞춰보기(3문항)가 바로 열립니다.'}
           </p>
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
-              {busy ? '발급 중…' : importFile ? '새 부부 등록하고 엑셀로 질문 카드 만들기' : '새 부부 등록하고 코드 발급'}
+              {busy ? '발급 중…' : hasImport ? '새 부부 등록하고 엑셀로 질문 카드 만들기' : '새 부부 등록하고 코드 발급'}
             </button>
           </div>
           {issued && (
