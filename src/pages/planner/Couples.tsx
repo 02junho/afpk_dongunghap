@@ -4,6 +4,8 @@ import Rail from './Rail'
 import { DEMO_COUPLE, usePlanner, type CoupleRow } from './planner'
 import { inviteMessage } from '../../lib/install'
 import QrView from './QrView'
+import { setPendingImport } from './pendingImport'
+import { namesFromFilename } from '../../extract/names'
 
 /** 클립보드 복사. https·localhost 가 아니거나 권한이 없으면 숨은 textarea 로 한 번 더 시도 */
 async function copyText(text: string): Promise<boolean> {
@@ -36,6 +38,16 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
   // 10.25: 새 부부는 빈 카드로 시작할 수 있다 — 연습용 카드와 엑셀로 만든 카드가 두 벌 되지 않게
   const [startEmpty, setStartEmpty] = useState(true)
+  // 재무설계 엑셀로 등록 (10.27): 파일 이름 "남편이름_아내이름_재무설계.xlsx" → 이름 채우고, 등록 뒤 질문 카드 화면에서 바로 읽는다
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importNote, setImportNote] = useState('')
+  function chooseImport(f: File | undefined) {
+    if (!f) return
+    setImportFile(f); setStartEmpty(true)
+    const n = namesFromFilename(f.name)
+    if (n) { setForm(x => ({ ...x, husband: n.husband, wife: n.wife })); setImportNote(`파일 이름에서 남편 "${n.husband}", 아내 "${n.wife}"를 채웠습니다.`) }
+    else setImportNote('파일 이름이 "남편이름_아내이름_재무설계.xlsx" 모양이 아니라 이름을 채우지 못했습니다. 아래에 직접 적어 주세요.')
+  }
   const [issued, setIssued] = useState<{ label: string; code: string; husband: string; wife: string } | null>(null)
   // 이름 고치기: 한 번에 한 부부만 펼친다
   const [edit, setEdit] = useState<{ id: string; label: string; husband: string; wife: string } | null>(null)
@@ -75,8 +87,16 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
     }
     setBusy(true)
     try {
-      const { code } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife, cloneDemoCards: !startEmpty })
-      setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
+      const { code, coupleId } = await p.call<{ coupleId: string; code: string }>('new_couple', { label, husband: form.husband, wife: form.wife, cloneDemoCards: !startEmpty })
+      const husband = form.husband.trim() || '남편', wife = form.wife.trim() || '아내'
+      setIssued({ label, code, husband, wife }); setForm({ label: '', husband: '', wife: '' })
+      if (importFile) {
+        // 등록하자마자 그 부부의 질문 카드 화면으로 — 엑셀을 바로 읽어 카드 후보를 보여준다
+        setPendingImport(importFile); setImportFile(null); setImportNote(''); setBusy(false)
+        p.setCouple({ id: coupleId, label, code, husband, wife, state: '질문 카드 준비 중', lastAt: null, pending: 0 })
+        nav('/p/cards')
+        return
+      }
       await load()
     } catch (e) { setErr((e as Error).message) }
     setBusy(false)
@@ -241,6 +261,10 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
 
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
+          <label className="label" htmlFor="imp">재무설계 엑셀로 등록 (선택)</label>
+          <input id="imp" type="file" accept=".xlsx,.xls" disabled={needPass || busy} onChange={e => chooseImport(e.target.files?.[0])} />
+          <p className="was">파일 이름을 "남편이름_아내이름_재무설계.xlsx"로 하면 이름이 채워지고, 등록한 뒤 질문 카드 후보가 바로 만들어집니다.</p>
+          {importNote && <p className="note" style={{ color: importNote.startsWith('파일 이름에서') ? 'var(--agree)' : 'var(--talk)' }}>{importNote}</p>}
           <label className="label" htmlFor="h">남편 이름</label>
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
           <label className="label" htmlFor="w">아내 이름</label>
@@ -261,7 +285,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
           </p>
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
-              {busy ? '발급 중…' : '새 부부 등록하고 코드 발급'}
+              {busy ? '발급 중…' : importFile ? '새 부부 등록하고 엑셀로 질문 카드 만들기' : '새 부부 등록하고 코드 발급'}
             </button>
           </div>
           {issued && (

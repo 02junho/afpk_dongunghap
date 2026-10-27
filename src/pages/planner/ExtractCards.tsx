@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CATEGORIES, showValue } from '../../data/demo'
 import { normalizeNewCard, type NewCard } from '../../lib/card-form'
 import type { SheetText } from '../../extract/sheet-text'
@@ -18,8 +18,10 @@ function check(r: Row) {
   return normalizeNewCard({ ...r, tolerance: null })
 }
 
-export default function ExtractCards({ live, call, onSaved, onCancel }: {
+export default function ExtractCards({ live, call, onSaved, onCancel, initialFile }: {
   live: boolean
+  /** "재무설계 엑셀로 새 부부 등록"에서 넘어온 파일 — 열리자마자 읽는다 */
+  initialFile?: File | null
   call: <T>(action: string, params?: Record<string, unknown>) => Promise<T>
   onSaved: (n: number) => void
   onCancel: () => void
@@ -29,17 +31,34 @@ export default function ExtractCards({ live, call, onSaved, onCancel }: {
   const [busy, setBusy] = useState<'' | 'reading' | 'saving'>('')
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
+  // rules = 재무제표 표를 규칙으로 읽음 (AI 안 씀, 10.27) / ai = 표가 아닌 상담 글 → AI 초안
+  const [mode, setMode] = useState<'rules' | 'ai' | null>(null)
 
-  async function pick(f: File | undefined) {
+  async function pick(f: File | undefined | null) {
     if (!f) return
-    setErr(''); setRows(null)
+    setErr(''); setRows(null); setMode(null)
     // 엑셀 라이브러리는 크다 — 부부 폰 번들에 넣지 않으려고 이 버튼을 쓸 때만 불러온다
     try {
-      const { workbookToText } = await import('../../extract/sheet-text')
-      setSheet({ ...workbookToText(await f.arrayBuffer()), file: f.name })
+      const buf = await f.arrayBuffer()
+      const [{ workbookToText }, { statementCandidates }] = await Promise.all([import('../../extract/sheet-text'), import('../../extract/statement')])
+      setSheet({ ...workbookToText(buf), file: f.name })
+      // 1순위: 설계사가 완성한 재무제표 표 — "항목 | 금액" 을 규칙으로 읽는다. 숫자를 AI 가 만지지 않는다
+      const cs = statementCandidates(buf)
+      if (cs.length >= 3) {
+        setRows(cs.map(c => ({
+          category: c.category, type: 'number', unit: 'krw', label: c.label, question: c.question,
+          plannedValue: String(c.item.value), options: null, stake: c.stake,
+          source: `${c.item.sheet} ${c.item.cell}`,
+          note: `${c.item.table} · ${c.item.group} · 엑셀 "${c.item.label}" ${(c.item.value / (c.item.unitNote === '만원' ? 10_000 : 1)).toLocaleString()}${c.item.unitNote}${c.known ? '' : ' · 새 항목 — 쓸지 판단해 주세요'}`,
+          checked: c.pick,
+        })))
+        setInfo(`재무제표 표에서 항목 ${cs.length}개를 규칙으로 읽었습니다 · AI 안 씀 · 기본 선택 ${cs.filter(c => c.pick).length}개`)
+        setMode('rules')
+      } else setMode('ai')
     }
     catch (e) { setErr(`엑셀을 읽지 못했습니다: ${(e as Error).message}`) }
   }
+  useEffect(() => { if (initialFile) void pick(initialFile) }, [initialFile])
 
   async function extract() {
     if (!sheet) return
@@ -70,8 +89,8 @@ export default function ExtractCards({ live, call, onSaved, onCancel }: {
 
   return (
     <>
-      <p className="editor-title">재무제표 엑셀로 질문 카드 만들기</p>
-      <p className="meta">우리 조 재무제표 양식(상담 내용 · 고객정보 시트)을 올리면 AI가 질문 카드 초안을 만듭니다. 확인하고 고른 카드만 저장됩니다.</p>
+      <p className="editor-title">재무설계 엑셀로 질문 카드 만들기</p>
+      <p className="meta">설계사가 완성한 재무설계 엑셀을 올리면, 재무제표 표의 항목과 금액을 규칙으로 읽어 질문 카드 후보를 만듭니다 (AI 안 씀). 표가 아니라 상담 내용 글이면 AI가 초안을 만듭니다. 확인하고 고른 카드만 저장됩니다.</p>
 
       {!live && <p className="note" style={{ color: 'var(--escalate)' }}>왼쪽에 설계사 코드를 넣어야 쓸 수 있습니다.</p>}
 
@@ -82,9 +101,11 @@ export default function ExtractCards({ live, call, onSaved, onCancel }: {
           {sheet.file} · 시트 {sheet.sheets.length}개 · 칸 {sheet.cells}개 읽음{sheet.truncated ? ' · 너무 길어 앞부분만 보냅니다' : ''}
         </p>
       )}
-      <p className="will">실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요. 엑셀 파일은 저장하지 않고, 칸의 글만 AI에 보냅니다. AI는 엑셀에 적힌 값만 옮기고 계산하지 않습니다.</p>
+      <p className="will">{mode === 'rules'
+        ? '표로 읽었습니다 — 엑셀 내용은 이 브라우저 밖으로 나가지 않습니다. 금액은 엑셀의 "만원"을 원으로 바꾼 값입니다.'
+        : '실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요. 표가 아니면 칸의 글만 AI에 보냅니다 (파일은 저장 안 함). AI는 엑셀에 적힌 값만 옮기고 계산하지 않습니다.'}</p>
 
-      {sheet && !rows && (
+      {sheet && !rows && mode === 'ai' && (
         <div className="actions">
           <button className="btn btn-small" disabled={!live || !!busy} onClick={() => void extract()}>
             {busy === 'reading' ? 'AI가 읽는 중… (30초~1분)' : 'AI로 질문 카드 초안 만들기'}

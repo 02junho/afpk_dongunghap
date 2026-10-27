@@ -6,6 +6,7 @@ import { rowToCard } from '../../lib/cards'
 import { usePlanner } from './planner'
 import AddCard from './AddCard'
 import ExtractCards from './ExtractCards'
+import { takePendingImport } from './pendingImport'
 import type { NewCard } from '../../lib/card-form'
 
 /**
@@ -53,7 +54,9 @@ export default function Cards() {
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [adding, setAdding] = useState(false)
-  const [extracting, setExtracting] = useState(false)
+  // "재무설계 엑셀로 새 부부 등록"에서 넘어온 파일이 있으면 엑셀 화면을 바로 연다 (10.27)
+  const [importFile] = useState(() => takePendingImport())
+  const [extracting, setExtracting] = useState(!!importFile)
 
   async function add(card: NewCard, askNow: boolean) {
     const asCard: Card = {
@@ -169,7 +172,7 @@ export default function Cards() {
 
           <div className="editor">
             {extracting ? (
-              <ExtractCards live={!!(p.live && p.pass)} call={p.call} onCancel={() => setExtracting(false)}
+              <ExtractCards live={!!(p.live && p.pass)} call={p.call} initialFile={importFile} onCancel={() => setExtracting(false)}
                 onSaved={n => { setExtracting(false); setMsg(`엑셀에서 만든 질문 카드 ${n}장을 추가했습니다.`); void load() }} />
             ) : adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {
               const c = sel.card, cat = CATEGORIES[c.category]
