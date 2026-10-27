@@ -6,7 +6,7 @@ import { rowToCard } from '../../lib/cards'
 import { usePlanner } from './planner'
 import AddCard from './AddCard'
 import ExtractCards from './ExtractCards'
-import { takePendingImport } from './pendingImport'
+import { clearPendingImport, peekPendingImport } from './pendingImport'
 import type { NewCard } from '../../lib/card-form'
 
 /**
@@ -55,8 +55,9 @@ export default function Cards() {
   const [err, setErr] = useState('')
   const [adding, setAdding] = useState(false)
   // "재무설계 엑셀로 새 부부 등록"에서 넘어온 파일이 있으면 엑셀 화면을 바로 연다 (10.27)
-  const [importFile] = useState(() => takePendingImport())
+  const [importFile] = useState(() => peekPendingImport())
   const [extracting, setExtracting] = useState(!!importFile)
+  useEffect(() => { clearPendingImport() }, [])
 
   async function add(card: NewCard, askNow: boolean) {
     const asCard: Card = {
