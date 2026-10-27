@@ -8,6 +8,7 @@
  *   couples                                   담당 커플 목록 (진행 상태·대기 건수)
  *   new_couple { label, husband, wife }       커플 + 입장 코드 발급 + 기본 카드 10장(데모 세트) + 0회차
  *   extract_cards { sheetText }               재무제표 엑셀 글 → 질문 카드 초안 (AI, 저장 안 함 — 설계사가 골라 add_card)
+ *   archive_couple / restore_couple           부부 지우기(보관) · 되돌리기. 기록은 지우지 않는다
  *   rename_couple { husband, wife, label? }   이름 고치기 (label 은 설계사 화면용, 비우면 "남편 · 아내")
  *   queue                                     처리 대기 (🔴 + 확인 필요)
  *   resolve { judgmentId, resolution, note }  큐 닫기. false_positive 는 disputes 에도 기록
@@ -90,7 +91,7 @@ export default async function handler(req: Request): Promise<Response> {
       // ── 커플 ──────────────────────────────────────────────────────────
       case 'couples': {
         const [{ data: couples }, { data: members }, { data: rounds }, { data: queue }, { data: cardRows }] = await Promise.all([
-          sb.from('couples').select('id, label, invite_code, created_at').order('created_at', { ascending: true }),
+          sb.from('couples').select('*').order('created_at', { ascending: true }),
           sb.from('members').select('couple_id, role, display_name'),
           sb.from('rounds').select('id, couple_id, kind, status, opened_at, judged_at').order('opened_at', { ascending: false }),
           sb.from('planner_queue').select('couple_id'),
@@ -120,6 +121,7 @@ export default async function handler(req: Request): Promise<Response> {
             wife: ms.find(m => m.role === 'wife')?.display_name ?? '아내',
             state, lastAt: last,
             pending: (queue ?? []).filter(q => q.couple_id === c.id).length,
+            archivedAt: (c as { archived_at?: string | null }).archived_at ?? null,
           }
         })
         return Response.json({ items })
@@ -174,6 +176,25 @@ export default async function handler(req: Request): Promise<Response> {
           },
         })
         return new Response(stream, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } })
+      }
+      case 'archive_couple':
+      case 'restore_couple': {
+        // 지우기 = 보관. 답변·판정·카드 기록은 그대로 남는다 (이력 보존 원칙, CLAUDE.md).
+        // 지우면: 열린 맞춰보기를 닫고, 두 분 폰의 연결을 풀어 더 이상 그 부부 화면을 못 보게 한다.
+        const archive = body.action === 'archive_couple'
+        const { data: c, error: e1 } = await sb.from('couples')
+          .update({ archived_at: archive ? new Date().toISOString() : null }).eq('id', coupleId).select('id').maybeSingle()
+        if (e1) {
+          if (/archived_at/.test(e1.message))
+            return bad('DB 에 "지우기" 칸이 아직 없습니다 — supabase/patch-2026-10-27-archive-couple.sql 을 SQL Editor 에서 한 번 실행해 주세요', 500)
+          return bad(e1.message, 500)
+        }
+        if (!c) return bad('부부를 찾을 수 없습니다', 404)
+        if (archive) {
+          await sb.from('rounds').update({ status: 'closed' }).eq('couple_id', coupleId).eq('status', 'open')
+          await sb.from('members').update({ auth_user_id: null }).eq('couple_id', coupleId)
+        }
+        return Response.json({ ok: true, archived: archive })
       }
       case 'rename_couple': {
         // 이름 고치기. 남편·아내 이름은 부부 폰과 안내문에, 표시 이름은 설계사 화면에만 쓰인다.

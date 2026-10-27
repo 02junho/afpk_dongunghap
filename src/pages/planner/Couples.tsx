@@ -40,6 +40,9 @@ export default function Couples() {
   const [edit, setEdit] = useState<{ id: string; label: string; husband: string; wife: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [qr, setQr] = useState<{ code: string; title: string } | null>(null)
+  // 부부 지우기(보관, 10.27): 한 번 더 확인 → 목록·입장에서 빠짐. 기록은 남아 되돌릴 수 있다
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [copied, setCopied] = useState('')  // '<code>:link' | '<code>:msg'
 
   async function load() {
@@ -113,6 +116,26 @@ export default function Couples() {
   }
   const fieldStyle = { boxShadow: 'none', border: '2px solid var(--line)' } as const
 
+  async function setArchived(r: CoupleRow, archive: boolean) {
+    if (p.live && p.pass) {
+      setBusy(true)
+      try { await p.call(archive ? 'archive_couple' : 'restore_couple', { coupleId: r.id }) }
+      catch (e) { setErr((e as Error).message); setBusy(false); return }
+      setBusy(false)
+    }
+    const at = archive ? new Date().toISOString() : null
+    setRows(rs => rs.map(x => (x.id === r.id ? { ...x, archivedAt: at } : x)))
+    // 지금 보고 있던 부부를 지우면 남은 첫 부부로 옮긴다
+    if (archive && p.couple.id === r.id) {
+      const next = rows.find(x => x.id !== r.id && !x.archivedAt)
+      if (next) p.setCouple(next)
+    }
+    setConfirmDel(null); setErr('')
+    if (p.live && p.pass) await load()
+  }
+  const visible = rows.filter(r => !r.archivedAt)
+  const archived = rows.filter(r => r.archivedAt)
+
   return (
     <div className="console">
       <Rail />
@@ -122,7 +145,7 @@ export default function Couples() {
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
 
         <div style={{ marginTop: 22 }}>
-          {rows.map(r => (
+          {visible.map(r => (
             <div className="qcard" key={r.id} style={r.id === p.couple.id ? { outline: '2px solid var(--ink)' } : undefined}>
               <div className="queue-top">
                 <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
@@ -151,7 +174,19 @@ export default function Couples() {
                   onClick={() => setEdit(edit?.id === r.id ? null : { id: r.id, label: r.label, husband: r.husband, wife: r.wife })}>
                   {edit?.id === r.id ? '닫기' : '이름 고치기'}
                 </button>
+                <button className="btn btn-quiet btn-small" style={{ color: 'var(--escalate)' }} onClick={() => setConfirmDel(confirmDel === r.id ? null : r.id)}>지우기</button>
               </div>
+              {confirmDel === r.id && (
+                <div className="will" role="alertdialog" aria-label={`${r.label} 지우기 확인`} style={{ borderLeft: '4px solid var(--escalate)' }}>
+                  <b>{r.label}</b> 부부를 목록에서 지울까요?<br />
+                  두 분 폰에서도 더 이상 열리지 않고, 진행 중인 맞춰보기는 닫힙니다.
+                  답변·판정·카드 기록은 지우지 않고 보관해서, 아래 "지운 부부 보기"에서 되돌릴 수 있습니다.
+                  <div className="actions" style={{ marginTop: 10 }}>
+                    <button className="btn btn-small" style={{ background: 'var(--escalate)' }} disabled={busy} onClick={() => void setArchived(r, true)}>{busy ? '지우는 중…' : '지우기'}</button>
+                    <button className="btn btn-quiet btn-small" onClick={() => setConfirmDel(null)}>취소</button>
+                  </div>
+                </div>
+              )}
               {edit?.id === r.id && (
                 <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px', maxWidth: 560 }}>
                   <div>
@@ -175,6 +210,24 @@ export default function Couples() {
             </div>
           ))}
         </div>
+
+        {archived.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <button className="btn btn-quiet btn-small" onClick={() => setShowArchived(v => !v)}>
+              {showArchived ? '지운 부부 닫기' : `지운 부부 보기 (${archived.length})`}
+            </button>
+            {showArchived && archived.map(r => (
+              <div key={r.id} className="qcard" style={{ opacity: 0.75, padding: '14px 18px', marginTop: 10 }}>
+                <div className="queue-top">
+                  <span style={{ fontWeight: 700 }}>{r.label}</span>
+                  <span className="meta">지운 날 {new Date(r.archivedAt!).toLocaleDateString('ko-KR')} · 코드 {r.code}</span>
+                  <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy} onClick={() => void setArchived(r, false)}>되돌리기</button>
+                </div>
+                <p className="note" style={{ margin: '4px 0 0' }}>되돌리면 목록에 다시 나타납니다. 두 분은 같은 코드로 다시 입장해야 합니다.</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>

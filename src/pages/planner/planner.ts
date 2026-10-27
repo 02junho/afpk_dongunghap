@@ -18,6 +18,8 @@ export interface CoupleRow {
   state: string
   lastAt: string | null
   pending: number
+  /** 지운(보관한) 부부면 그 시각 */
+  archivedAt?: string | null
 }
 
 export const DEMO_COUPLE: CoupleRow = { id: '00000000-0000-0000-0000-000000000010', label: '김현우 · 박지우', code: '482913', husband: '현우', wife: '지우', state: '첫 맞춰보기 완료', lastAt: null, pending: 2 }

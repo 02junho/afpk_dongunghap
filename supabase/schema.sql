@@ -33,7 +33,8 @@ create table couples (
   planner_id uuid references planners(id),
   invite_code char(6) unique not null,
   label text,                        -- '김현우·박지우'
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  archived_at timestamptz            -- 지우기(보관). 기록은 남고 목록·입장에서 빠진다 (10.27)
 );
 
 create table members (

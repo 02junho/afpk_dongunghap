@@ -65,7 +65,7 @@ returns uuid language plpgsql security definer as $$
 declare cid uuid; mid uuid;
 begin
   if auth.uid() is null then raise exception '로그인이 필요합니다'; end if;
-  select id into cid from couples where invite_code = code;
+  select id into cid from couples where invite_code = code and archived_at is null;  -- 지운(보관한) 부부는 입장 불가 (10.27)
   if cid is null then raise exception '코드를 찾을 수 없습니다'; end if;
   select id into mid from members where couple_id = cid and role = want_role;
   if mid is null then raise exception '역할이 없습니다'; end if;

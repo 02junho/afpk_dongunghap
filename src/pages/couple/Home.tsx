@@ -30,6 +30,8 @@ export default function Home() {
     loadLastCheckAt(me.coupleId).then(setLastCheck).catch(() => {})
     // 설계사가 이름을 고쳤으면 이 폰에도 반영 (입장할 때 저장한 이름은 그때 값이다)
     loadNames(me.coupleId).then(n => {
+      // 두 분 이름이 하나도 안 읽히면 설계사가 이 부부를 지웠거나(보관) 연결이 풀린 것 — 입장 화면으로 (10.27)
+      if (!n.husband && !n.wife) { clearMe(); nav('/c/join?removed=1', { replace: true }); return }
       if (n.husband === me.names.husband && n.wife === me.names.wife) return
       const next = { ...me, names: { ...me.names, ...n } }
       saveMe(next); setMe(next)
