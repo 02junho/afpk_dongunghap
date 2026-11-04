@@ -51,6 +51,10 @@ interface Notice {
   createdAt: string
 }
 type NoticeResolution = 'factcheck' | 'replan' | 'consult'
+// 예시 모드(코드 전·데모 서버)에서 보여 줄 "먼저 알린 변화" 한 건 — 흐름도 캡처와 처음 보는 사람용
+const DEMO_NOTICES: Notice[] = [
+  { id: 'demo-n1', key: 'home_when', category: 'housing', label: '주택 취득 시점', planned: '2029년 6월', role: 'wife', text: '2031년 3월', createdAt: '2026-11-03T10:00:00+09:00' },
+]
 const NOTICE_RESOLVED: Record<NoticeResolution, { text: string; cls: string }> = {
   factcheck: { text: '두 분께 물어봄', cls: 'chip-talk' },
   replan: { text: '재설계 필요', cls: 'chip-escalate' },
@@ -84,6 +88,7 @@ export default function Queue() {
   }
 
   async function resolveNotice(n: Notice, r: NoticeResolution) {
+    if (!liveMode) { setNoticeDone(d => ({ ...d, [n.id]: r })); return }   // 예시 모드 — 저장하지 않는다
     setBusy(true); setErr(''); setMsg('')
     try {
       const out = await p.call<{ roundId: string | null }>('resolve_notice', { noticeId: n.id, resolution: r, note: note[n.id] ?? '' })
@@ -158,7 +163,8 @@ export default function Queue() {
   const liveMode = p.live && p.pass
   const showing: Item[] = liveMode ? (items ?? []) : demoItems
   const open = showing.filter(i => !done[i.id])
-  const openNotices = liveMode ? notices.filter(n => !noticeDone[n.id]) : []
+  const shownNotices = liveMode ? notices : DEMO_NOTICES
+  const openNotices = shownNotices.filter(n => !noticeDone[n.id])
 
   return (
     <div className="console">
@@ -170,10 +176,10 @@ export default function Queue() {
         {liveMode && noticeHint && <p className="note" style={{ color: 'var(--talk)' }}>{noticeHint}</p>}
         {liveMode && items === null && !err && <p className="note">불러오는 중…</p>}
 
-        {liveMode && notices.length > 0 && (
+        {shownNotices.length > 0 && (
           <div style={{ marginTop: 22 }}>
             <p className="cat-head">먼저 알린 변화</p>
-            {notices.map(n => {
+            {shownNotices.map(n => {
               const cat = CATEGORIES[n.category] ?? CATEGORIES.housing
               const res = noticeDone[n.id]
               const him = n.role === 'husband'

@@ -9,7 +9,7 @@
  * 캡처는 build/flow/ 에 남는다(커밋 안 함). 크로미움은 playwright 것을 쓴다 (PW_CHROMIUM 으로 바꿀 수 있음).
  */
 import { chromium } from 'playwright'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const B = process.env.SHOTS_BASE ?? 'http://127.0.0.1:5180'
@@ -18,7 +18,7 @@ const PDF = resolve('docs/11_화면흐름도.pdf')
 const TODAY = '2026-11-04'
 mkdirSync(OUT, { recursive: true })
 
-const br = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {})
+const br = await chromium.launch({ args: ['--lang=ko-KR'], ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}) })  // 파일 고르기 버튼도 한국어로
 const shotOpts = { type: 'jpeg', quality: 86 }
 
 // ── 부부 폰 (아이폰 사파리로 보이게 — 홈 화면 추가 안내가 뜬다) ──────────────────
@@ -51,7 +51,7 @@ await shot('/c/change/home_when', 'c7-change', async pg => { await pg.selectOpti
 await shot(null, 'c8-change-sent', async pg => { await pg.click('button:has-text("설계사님께 알리기")') })
 
 // ── 설계사 콘솔 (노트북) ────────────────────────────────────────────────
-const desk = await br.newContext({ viewport: { width: 1280, height: 820 }, deviceScaleFactor: 2 })
+const desk = await br.newContext({ viewport: { width: 1280, height: 820 }, deviceScaleFactor: 2, locale: 'ko-KR' })
 const d = await desk.newPage()
 async function dshot(url, name, prep, el) {
   if (url) await d.goto(B + url, { waitUntil: 'networkidle' })
@@ -61,16 +61,35 @@ async function dshot(url, name, prep, el) {
   else await d.screenshot({ ...shotOpts, path: `${OUT}/${name}.jpg` })
   console.log('·', name)
 }
+// 설계사 쪽 (11.04): 준비 → 결과 보기 → 계획 바꾸기. 엑셀은 가상고객 파일 (FLOW_XLSX 로 바꿀 수 있음)
+const XLSX = process.env.FLOW_XLSX ?? `${process.env.HOME}/Desktop/공모전/AFPK 영 플래너/에이피_에피케_재무설계.xlsx`
+const hasXlsx = existsSync(XLSX)
 await dshot('/p/couples', 'p1-couples')
+await dshot(null, 'p2-new-couple', async pg => {
+  if (hasXlsx) await pg.setInputFiles('#imp-statement', XLSX)
+  await pg.waitForTimeout(600)
+}, 'main .editor')
+await dshot('/p/cards', 'p5-extract', async pg => {
+  await pg.click('button:has-text("재무제표 엑셀로 만들기")')
+  if (hasXlsx) { await pg.setInputFiles('#xlsx-statement', XLSX); await pg.waitForSelector('text=확인한', { timeout: 15000 }) }
+  // 예시 모드 안내 줄은 그림에서 뺀다 (실제 설계사 화면엔 없다)
+  await pg.evaluate(() => document.querySelectorAll('.note').forEach(e => { if (e.textContent?.includes('예시 모드')) e.remove() }))
+}, 'main .editor')
 await dshot('/p/queue', 'p3-queue', null, 'main')
 await dshot('/p/cards', 'p4-card-view', async pg => { await pg.locator('.card-row').first().click() }, 'main .cards-layout')
 await dshot('/p/history', 'p7-history', null, 'main')
+const invite = await d.evaluate(async () => {
+  const m = await import('/src/lib/install.ts')
+  return m.inviteMessage({ husband: '에이피', wife: '에피케', code: '482913', url: 'https://afpk-dongunghap.vercel.app/c/join?code=482913' })
+})
 
 
 // ── PDF (5쪽) ─────────────────────────────────────────────────────────
 const img = n => `file://${OUT}/${n}.jpg`
 const phoneFig = (n, cap) => `<figure class="ph"><img src="${img(n)}"><figcaption>${cap}</figcaption></figure>`
-const deskFig = (n, cap) => `<figure class="dk"><img src="${img(n)}"><figcaption>${cap}</figcaption></figure>`
+const deskFig = (n, cap, h = 62) => `<figure class="dk"><img src="${img(n)}" style="height:${h}mm"><figcaption>${cap}</figcaption></figure>`
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+const step = (n, t) => `<span class="sn">${n}</span><b>${t}</b>`
 
 // 1쪽 큰 그림: 세 줄(설계사 · 부부 폰 · 앱) 위에 상자 8개
 const W = 135, H = 78, X = [100, 265, 430, 595, 760, 925], LANE = [0, 135, 270], Y = LANE.map(t => t + 24)
@@ -139,6 +158,16 @@ ul { margin: 0; padding-left: 5mm; font-size: 9.2pt; } li { margin: 0.5mm 0; }
 .chip { display: inline-block; font-size: 8pt; font-weight: 700; padding: 0.2mm 2mm; border-radius: 10mm; white-space: nowrap; }
 .g { background: #e4f5ec; color: #1f7a52; } .y { background: #fdf1dc; color: #a86a12; } .r { background: #fde6e5; color: #c0392b; }
 .foot { font-size: 8.5pt; color: #6d6674; margin-top: auto; }
+.three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; flex: 1; min-height: 0; }
+.sn { display: inline-grid; place-items: center; width: 6mm; height: 6mm; border-radius: 50%; background: #2b2a33; color: #fff; font-size: 8.5pt; font-weight: 700; margin-right: 1.5mm; vertical-align: 0.2mm; }
+pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; background: #fff; border: 0.3mm solid #e4dcd6; border-radius: 3mm; padding: 3mm 3.5mm; margin: 0; line-height: 1.45; height: 62mm; overflow: hidden; }
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm 6mm; }
+.node { border-radius: 4mm; padding: 3.5mm 4mm; background: #fff7f2; border: 0.4mm solid #f0e6df; position: relative; }
+.node b { display: block; font-size: 10.5pt; margin-bottom: 0.8mm; }
+.node small { color: #6d6674; font-size: 8.8pt; display: block; }
+.node:not(:last-child)::after { content: '→'; position: absolute; right: -5mm; top: 50%; transform: translateY(-50%); color: #b3aab4; font-size: 12pt; }
+.side { display: flex; flex-direction: column; gap: 2.5mm; }
+.side .box p { margin: 0; font-size: 9.2pt; }
 </style></head><body>
 
 <section class="page">
@@ -176,13 +205,41 @@ ul { margin: 0; padding-left: 5mm; font-size: 9.2pt; } li { margin: 0.5mm 0; }
 </section>
 
 <section class="page">
-  <div class="eyebrow">① ⑤ ⑥ 설계사 화면</div>
-  <h2>어긋난 것만 보고, 계획은 설계사가 바꿉니다</h2>
-  <div class="grid4">
-    ${deskFig('p1-couples', '<b>담당 부부</b> — 등록, 안내문 · QR, 처리 대기 수')}
-    ${deskFig('p3-queue', '<b>처리 대기</b> — 두 분 답과 계획을 나란히. 버튼 셋 중 하나로 닫는다')}
-    ${deskFig('p4-card-view', '<b>질문 카드</b> — 카드 추가 · 엑셀로 만들기 · 엑셀 다시 읽기')}
-    ${deskFig('p7-history', '<b>변경 이력</b> — 모든 버전이 이유와 함께 남는다')}
+  <div class="eyebrow">① 설계사 — 준비</div>
+  <h2>엑셀을 올려 질문 카드를 만들고, 두 분께 안내문을 보냅니다</h2>
+  <div class="three">
+    ${deskFig('p2-new-couple', `${step(1, '새 부부 등록')} — 엑셀을 올리면 파일 이름에서 두 분 이름이 채워진다`, 112)}
+    ${deskFig('p5-extract', `${step(2, '카드 고르기')} — 엑셀 항목이 그대로 카드 후보가 된다. 물어볼 것만 골라 저장`, 112)}
+    <figure class="dk"><pre class="msg" style="height:112mm">${esc(invite)}</pre><figcaption>${step(3, '안내문 보내기')} — "안내문 복사" → 카톡. QR도 있다</figcaption></figure>
+  </div>
+</section>
+
+<section class="page">
+  <div class="eyebrow">⑤ 설계사 — 결과 보기</div>
+  <h2>두 분이 다 답하면 어긋난 것만 처리 대기에 올라옵니다</h2>
+  <div class="two" style="grid-template-columns: 1.5fr 1fr">
+    <img src="${img('p3-queue')}" style="width:100%;max-height:150mm;object-fit:cover;object-position:top left;border-radius:3mm;border:0.3mm solid #e4dcd6">
+    <div class="side">
+      <div class="box">${step(4, '처리 대기 열기')}<p style="margin-top:1.5mm">부부 목록의 "처리 대기 N"이 볼 건의 수다</p></div>
+      <div class="box">${step(5, '카드 한 장씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히. 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
+      <div class="box">${step(6, '버튼 하나로 닫기')}<p style="margin-top:1.5mm"><b>재설계 필요</b> → 다음 쪽<br><b>상담 때 다루기</b> → 다음 상담 안건<br><b>이건 같은 뜻이에요</b> → AI 오판 기록</p></div>
+      <div class="box">${step('+', '먼저 알린 변화')}<p style="margin-top:1.5mm">한 분이 "바뀐 게 있어요"로 알린 것. 맨 위에 따로 보인다. <b>두 분께 같이 묻기</b>를 누르면 그 카드 한 문항이 두 분 폰에 열린다</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="eyebrow">⑥ 설계사 — 계획 바꾸기</div>
+  <h2>계획은 엑셀에서 고치고, 앱은 바뀐 숫자만 받아 옵니다</h2>
+  <div class="steps">
+    <div class="node"><b>7 · 엑셀에서 다시 설계</b><small>처음 만든 그 엑셀 파일을 고치고 저장</small></div>
+    <div class="node"><b>8 · "엑셀 다시 읽기"</b><small>질문 카드 맨 위 버튼 (처음 한 번 "이 컴퓨터 파일로 연결")</small></div>
+    <div class="node"><b>9 · 바뀐 숫자만 반영</b><small>"지금 카드 → 엑셀"로 보이는 것만 골라 반영. 그대로인 건 건드리지 않는다</small></div>
+    <div class="node"><b>10 · 새 버전 · 이력</b><small>카드가 v2가 되고 두 분 [내 설계]에 보인다. 예전 값은 이력에</small></div>
+  </div>
+  <div class="grid4" style="grid-template-columns: 1.2fr 1fr">
+    ${deskFig('p4-card-view', '<b>질문 카드</b> — 앱 안에서는 계획을 고치지 않는다. 두 분 폰에 어떻게 나가는지만 보인다', 98)}
+    ${deskFig('p7-history', '<b>변경 이력</b> — 언제 · 무엇이 · 왜 바뀌었는지 모두 남는다', 98)}
   </div>
 </section>
 

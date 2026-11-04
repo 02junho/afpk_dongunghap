@@ -168,7 +168,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
     <>
       <p className="editor-title">재무설계 엑셀로 질문 카드 만들기</p>
 
-      {!live && <p className="note" style={{ color: 'var(--escalate)' }}>왼쪽에 설계사 코드를 넣어야 쓸 수 있습니다.</p>}
+      {!live && <p className="note" style={{ color: 'var(--escalate)' }}>예시 모드라 저장은 안 됩니다. 왼쪽에 설계사 코드를 넣으세요.</p>}
 
       {(['statement', 'cashflow'] as const).map(k => (
         <div key={k}>
@@ -181,7 +181,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
             </p>
           ) : (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input id={`xlsx-${k}`} type="file" accept=".xlsx,.xls" disabled={!live || !!busy} onChange={e => { const f = e.target.files?.[0]; if (f) void pick({ ...files, [k]: f }) }} />
+              <input id={`xlsx-${k}`} type="file" accept=".xlsx,.xls" disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; if (f) void pick({ ...files, [k]: f }) }} />
               {canLink && (
                 <button className="btn btn-quiet btn-small" style={{ padding: '2px 10px', fontSize: 11 }} disabled={!live || !!busy} onClick={() => void connect(k)}
                   title="다음부터는 엑셀을 고쳐 저장한 뒤 '다시 읽기'만 누르면 됩니다 (크롬 · 엣지 컴퓨터)">이 컴퓨터 파일로 연결</button>
@@ -283,7 +283,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
             )
           })}
           <div className="actions" style={{ marginTop: 14 }}>
-            <button className="btn btn-small" disabled={!(addCount + applyCount) || !!busy} onClick={() => void save()}>
+            <button className="btn btn-small" disabled={!live || !(addCount + applyCount) || !!busy} onClick={() => void save()}>
               {busy === 'saving' ? '저장 중…'
                 : applyCount ? `바뀐 숫자 ${applyCount}건 반영${addCount ? ` · 새 카드 ${addCount}장 저장` : ''}`
                 : `확인한 ${addCount}장 저장`}
