@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
 import { loadActiveCardRows, loadLastCheckAt, loadNames, loadOpenRound, myOpenNotices } from '../../lib/db'
-import { CHECK_MONTHS, formatKDate, nextCheckDate } from '../../lib/cycle'
+import { formatKDate, nextCheckDate } from '../../lib/cycle'
 import { clearMe, loadMe, nameOf, saveMe } from '../../lib/session'
 import InstallGuide from './InstallGuide'
 import type { Card } from '../../judge/index'
@@ -104,7 +104,6 @@ export default function Home() {
                 </div>
               )
             })}
-            <p className="note">설계사님과 정한 계획이에요. 사정이 바뀌었으면 맞춰보기를 기다리지 말고 "바뀐 게 있어요"로 알려 주세요 — 설계사님께만 전달돼요.</p>
           </>
         ) : (
           <>
@@ -126,19 +125,10 @@ export default function Home() {
                       : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : isRegular ? `정기 맞춰보기 · ${round.count}문항` : `첫 맞춰보기 · ${round.count}문항`)
                       : '지금은 열린 맞춰보기가 없어요'}
                   </p>
-                  <p className="meta">
-                    {round && round !== 'loading'
-                      ? (isFactcheck ? '1분이면 돼요 · 두 분 다 답해야 바뀌어요' : `약 ${Math.max(1, round.count)}분 · 따로 답하고, 설계사님만 봐요`)
-                      : `${CHECK_MONTHS}개월마다 여쭤봐요 · 열리면 여기 빨간 점이 켜져요`}
-                  </p>
+                  {round && round !== 'loading' && <p className="meta">약 {Math.max(1, round.count)}분</p>}
                 </div>
               </div>
             </div>
-            <p className="note">
-              {isFactcheck
-                ? '설계사님이 고친 값이 맞는지 확인하는 거예요. 두 분이 같게 답하면 [내 설계]에 반영돼요.'
-                : '설계사님과 정한 계획이 지금도 맞는지, 두 분께 따로 여쭤봐요.'}
-            </p>
           </>
         )}
         <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>

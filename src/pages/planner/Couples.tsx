@@ -166,7 +166,6 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
         {archivedView ? (
           <>
             <h1 className="work-title">지운 부부</h1>
-            <p className="meta">목록에서 지운 부부입니다. 답변·판정·카드 기록은 그대로 보관돼 있고, 되돌리면 담당 부부 목록에 다시 나타납니다. 두 분은 같은 코드로 다시 입장하면 됩니다.</p>
             {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
             <div style={{ marginTop: 22 }}>
               {archived.map(r => (
@@ -191,7 +190,6 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
           </>
         ) : (<>
         <h1 className="work-title">담당 부부</h1>
-        <p className="meta">부부를 고르면 처리 대기·질문 카드·변경 이력이 그 부부 기준으로 열립니다. 입장 코드를 발급하면 두 분이 각자 휴대폰에서 바로 시작할 수 있습니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
 
         <div style={{ marginTop: 22 }}>
@@ -205,7 +203,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
                 <span className="queue-couple">{r.lastAt ? `마지막 판정 ${new Date(r.lastAt).toLocaleDateString('ko-KR')}` : '아직 판정 없음'}</span>
               </div>
               <dl className="pair" style={{ gridTemplateColumns: '80px 1fr' }}>
-                <dt className="meta">이름</dt><dd>{r.husband} · {r.wife} <span className="meta">(부부 화면·안내문에 쓰임)</span></dd>
+                <dt className="meta">이름</dt><dd>{r.husband} · {r.wife}</dd>
                 <dt className="meta">진행</dt><dd>{r.state}</dd>
                 <dt className="meta">입장 코드</dt>
                 <dd>
@@ -229,8 +227,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
               {confirmDel === r.id && (
                 <div className="will" role="alertdialog" aria-label={`${r.label} 지우기 확인`} style={{ borderLeft: '4px solid var(--escalate)' }}>
                   <b>{r.label}</b> 부부를 목록에서 지울까요?<br />
-                  두 분 폰에서도 더 이상 열리지 않고, 진행 중인 맞춰보기는 닫힙니다.
-                  답변·판정·카드 기록은 지우지 않고 보관해서, 왼쪽 메뉴 "지운 부부 보기"에서 되돌릴 수 있습니다.
+                  두 분 폰에서도 열리지 않습니다. 기록은 보관되고 "지운 부부 보기"에서 되돌릴 수 있습니다.
                   <div className="actions" style={{ marginTop: 10 }}>
                     <button className="btn btn-small" style={{ background: 'var(--escalate)' }} disabled={busy} onClick={() => void setArchived(r, true)}>{busy ? '지우는 중…' : '지우기'}</button>
                     <button className="btn btn-quiet btn-small" onClick={() => setConfirmDel(null)}>취소</button>
@@ -250,7 +247,6 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label className="label" htmlFor={`el-${r.id}`}>표시 이름 (설계사 화면에만 · 비우면 "남편 · 아내")</label>
                     <input id={`el-${r.id}`} className="field" style={fieldStyle} value={edit.label} maxLength={40} onChange={e => setEdit({ ...edit, label: e.target.value })} />
-                    <p className="note">남편·아내 이름은 두 분 휴대폰 화면과 안내문에 그대로 나갑니다. 이미 입장한 폰은 다음에 앱을 열 때 바뀝니다.</p>
                     <div className="actions">
                       <button className="btn btn-small" disabled={busy || !edit.husband.trim() || !edit.wife.trim()} onClick={() => void saveName()}>{busy ? '저장 중…' : '저장'}</button>
                     </div>
@@ -270,7 +266,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
               <input id={`imp-${k}`} type="file" accept=".xlsx,.xls" disabled={needPass || busy} onChange={e => chooseImport(k, e.target.files?.[0])} />
             </div>
           ))}
-          <p className="was">파일 이름을 "남편이름_아내이름_재무제표.xlsx", "남편이름_아내이름_현금흐름표.xlsx"로 하면 이름이 채워지고, 등록한 뒤 질문 카드 후보가 바로 만들어집니다.</p>
+          <p className="was">파일 이름이 "남편이름_아내이름_재무제표.xlsx"면 이름이 채워집니다.</p>
           {importNote && <p className="note" style={{ color: importNote.startsWith('파일 이름에서') ? 'var(--agree)' : 'var(--talk)' }}>{importNote}</p>}
           <label className="label" htmlFor="h">남편 이름</label>
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
@@ -285,12 +281,12 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
           </div>
           <p className="will">
             {needPass
-              ? '⚠ 지금은 예시 모드입니다. 왼쪽 레일에 설계사 코드를 넣어야 실제로 발급됩니다.'
+              ? '⚠ 예시 모드입니다. 왼쪽에 설계사 코드를 넣어야 발급됩니다.'
               : startEmpty && hasImport
-                ? '등록하면 질문 카드 화면이 열리고, 올린 엑셀에서 읽은 카드 후보가 나옵니다. 고른 카드만 저장됩니다. 이렇게 시작한 부부는 아직 맞춰보기를 열 수 없습니다 (카드를 골라 여는 기능은 준비 중).'
+                ? '등록하면 엑셀에서 읽은 카드 후보가 나옵니다.'
               : startEmpty
-                ? '카드 없이 시작합니다. 발급한 뒤 질문 카드 화면에서 "카드 추가"나 "재무제표 엑셀로 만들기"로 넣으세요. 이렇게 시작한 부부는 아직 맞춰보기를 열 수 없습니다 (카드를 골라 여는 기능은 준비 중).'
-                : '연습용 질문 카드 10장이 들어가고 첫 맞춰보기(3문항)가 바로 열립니다.'}
+                ? '발급한 뒤 질문 카드 화면에서 카드를 넣습니다.'
+                : '연습용 카드 10장과 첫 맞춰보기(3문항)가 열립니다.'}
           </p>
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
@@ -301,12 +297,11 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
             <div style={{ marginTop: 18 }}>
               <p className="meta">{issued.label}</p>
               <p style={{ fontSize: 32, letterSpacing: '0.2em', fontWeight: 700, margin: '4px 0' }}>{issued.code}</p>
-              <p className="note">이 코드를 두 분께 알려주세요. 링크로 보내면 코드가 채워진 채 열립니다: <b>{joinUrl(issued.code)}</b></p>
+              <p className="note">{joinUrl(issued.code)}</p>
               <div className="actions" style={{ marginTop: 10 }}>
                 {copyBtn(issued.code, issued, 'link')}
                 {copyBtn(issued.code, issued, 'msg')}
               </div>
-              <p className="note">안내문에는 두 분 이름("{[issued.husband, issued.wife].join(' · ')} 님"), 링크, 홈 화면에 추가하는 방법, 입장 코드가 들어 있습니다. 카톡에 그대로 붙여 넣으세요.</p>
             </div>
           )}
         </div>

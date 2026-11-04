@@ -43,8 +43,7 @@ export default function Join() {
       </div>
       <div className="phone-body">
         <h2 className="q">설계사님께 받은<br />입장 코드를 넣어주세요</h2>
-        <p className="note">상담 때 안내받은 여섯 자리예요.</p>
-        {params.get('removed') && <p className="note" style={{ color: 'var(--escalate)' }}>설계사님이 연결을 정리했어요. 계속하려면 설계사님께 받은 코드를 다시 확인해 주세요.</p>}
+        {params.get('removed') && <p className="note" style={{ color: 'var(--escalate)' }}>연결이 정리됐어요. 설계사님께 코드를 다시 확인해 주세요.</p>}
         <InstallGuide code={code.length === 6 ? code : undefined} />
         <input className="field code-field" style={{ marginTop: 24 }} inputMode="numeric" maxLength={6} placeholder="······"
           aria-label="입장 코드 여섯 자리" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} />
@@ -58,7 +57,6 @@ export default function Join() {
             <span className="avatar avatar-her">아</span>아내
           </button>
         </div>
-        <p className="note" style={{ marginTop: 24 }}>두 분의 답변은 설계사님만 봅니다. 서로에게는 보이지 않아요.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
       </div>

@@ -31,7 +31,6 @@ export default function History() {
       <Rail />
       <main className="work">
         <h1 className="work-title">변경 이력 · {p.couple.label}</h1>
-        <p className="meta">카드 값은 덮어쓰지 않습니다. 모든 버전이 남습니다. "동의 대기"는 두 분이 아직 먼저 묻기에 답하지 않은 버전, "동의 안 됨"은 답했지만 두 분 생각이 새 값과 맞지 않아 전제가 되지 못한 버전입니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         <div style={{ marginTop: 22 }}>
           {rows.map(l => (

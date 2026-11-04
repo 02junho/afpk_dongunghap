@@ -99,7 +99,6 @@ export default function ChangeInput({ card, state: s, onChange }: { card: Card; 
             placeholder={s.condition ? '예: 애 낳고 나서, 전세 만기 때' : '편하게 적어주세요'} aria-label={card.label} />
           {s.condition && (
             <>
-              <p className="note">조건으로 답하면 설계사님이 직접 확인해요.</p>
               <div className="actions">
                 <button className="btn btn-quiet btn-small" onClick={() => set({ condition: false })}>연·월로 고르기</button>
               </div>

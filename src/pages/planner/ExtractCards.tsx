@@ -163,7 +163,6 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
   return (
     <>
       <p className="editor-title">재무설계 엑셀로 질문 카드 만들기</p>
-      <p className="meta">설계사가 완성한 재무제표 · 현금흐름표 엑셀을 올리면, 표에 적힌 항목 이름과 금액을 그대로 옮겨 질문 카드 후보를 만듭니다. 숫자는 AI를 거치지 않으니 엑셀과 다를 일이 없습니다. 하나만 올려도 되고, 고른 카드만 저장됩니다.</p>
 
       {!live && <p className="note" style={{ color: 'var(--escalate)' }}>왼쪽에 설계사 코드를 넣어야 쓸 수 있습니다.</p>}
 
@@ -190,7 +189,6 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
       {(linked.statement || linked.cashflow) && (
         <div className="actions">
           <button className="btn btn-small" disabled={!live || !!busy} onClick={() => void reread()}>연결된 엑셀 다시 읽기</button>
-          <span className="meta">엑셀을 고쳐 저장했다면 이것만 누르세요. 바뀐 숫자만 골라 보여 드립니다.</span>
         </div>
       )}
       {sheet && (
@@ -199,8 +197,8 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
         </p>
       )}
       <p className="will">{mode === 'rules'
-        ? '표로 읽었습니다 — 엑셀 내용은 이 브라우저 밖으로 나가지 않습니다. 금액은 엑셀의 "만원"을 원으로 바꿔 적은 값입니다.'
-        : '실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요. 표가 아니면 칸의 글만 AI에 보냅니다 (파일은 저장 안 함). AI는 엑셀에 적힌 값만 옮기고 계산하지 않습니다.'}</p>
+        ? '금액은 엑셀의 "만원"을 원으로 바꾼 값입니다.'
+        : '실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요.'}</p>
 
       {sheet && !rows && mode === 'ai' && (
         <div className="actions">
@@ -219,12 +217,11 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
           {mode === 'rules' && !matched && <p className="note">이미 있는 질문 카드와 맞춰 보는 중…</p>}
           {mode === 'rules' && matched && (count('same') > 0 || count('changed') > 0) && (
             <p className="will">
-              이미 있는 카드와 맞춰 봤습니다 — 바뀐 숫자 <b>{count('changed')}</b>건 · 새 항목 {count('new')}개 · 그대로 {count('same')}개.
-              그대로인 항목은 다시 만들지 않습니다.
+              바뀐 숫자 <b>{count('changed')}</b>건 · 새 항목 {count('new')}개 · 그대로 {count('same')}개
             </p>
           )}
           {missing.length > 0 && (
-            <p className="was">이번 엑셀에서 찾지 못한 카드 {missing.length}장: {missing.map(m => m.label).join(', ')} — 카드는 그대로 둡니다. 쓰지 않을 거면 처리 대기·상담에서 정리하세요.</p>
+            <p className="was">이번 엑셀에서 찾지 못한 카드 {missing.length}장: {missing.map(m => m.label).join(', ')} (카드는 그대로 둡니다)</p>
           )}
           {rows.map((r, i) => {
             const st = statusOf(i)
@@ -244,7 +241,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
                     <span className="meta"> → 엑셀</span> <b>{showPlanned('number', 'krw', String(r.item!.value))}</b>
                   </p>
                   <p className="was" style={{ marginTop: 6 }}>출처: {r.source} · 반영하면 새 버전으로 남고, 예전 값은 변경 이력에 남습니다</p>
-                  {e.inOpenRound && <p className="note" style={{ color: 'var(--talk)', margin: '4px 0 0' }}>지금 맞춰보기에서 묻는 중이라 반영할 수 없습니다. 두 분이 답한 뒤 다시 읽어 주세요.</p>}
+                  {e.inOpenRound && <p className="note" style={{ color: 'var(--talk)', margin: '4px 0 0' }}>맞춰보기 중이라 지금은 반영할 수 없습니다.</p>}
                 </div>
               )
             }

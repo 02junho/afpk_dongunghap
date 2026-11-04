@@ -67,14 +67,10 @@ export default function Wait() {
           </span>
         </div>
         <h2 className="q" style={{ textAlign: 'center' }}>{nameOf(me, partner)}님이 아직<br />답하는 중이에요</h2>
-        <p className="note" style={{ textAlign: 'center' }}>두 분 다 끝나면 설계사님께 함께 전달돼요.</p>
         <div style={{ marginTop: 32 }}>
           <div className="who-line"><span className="avatar avatar-him">{nameOf(me, 'husband').slice(0, 1)}</span>{nameOf(me, 'husband')}<span className="who-state">{stateOf(me.role === 'husband' ? mine : theirs)}</span></div>
           <div className="who-line"><span className="avatar avatar-her">{nameOf(me, 'wife').slice(0, 1)}</span>{nameOf(me, 'wife')}<span className="who-state">{stateOf(me.role === 'wife' ? mine : theirs)}</span></div>
         </div>
-        <p className="note" style={{ marginTop: 28, textAlign: 'center' }}>
-          {me.live ? '이 화면을 열어두면 끝나는 대로 넘어가요.' : '알림을 켜두면 끝나는 대로 알려드려요.'}
-        </p>
         {err && <p className="note" style={{ color: 'var(--escalate)', textAlign: 'center' }}>{err}</p>}
       </div>
       <button className="btn btn-wide btn-quiet" onClick={() => nav(me.live ? '/c/home' : `/c/done/${id}`)}>닫기</button>

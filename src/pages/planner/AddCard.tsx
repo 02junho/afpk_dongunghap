@@ -47,7 +47,6 @@ export default function AddCard({ busy, onSave, onCancel }: {
   return (
     <>
       <p className="editor-title">카드 추가</p>
-      <p className="meta">설계안에 있는 전제를 한 장 더 만듭니다. 저장하면 v1이 바로 전제가 됩니다.</p>
 
       <label className="label" htmlFor="ac-cat">주제</label>
       <select id="ac-cat" className="field" style={fieldStyle} value={category} onChange={e => setCategory(e.target.value as Card['category'])}>

@@ -165,7 +165,6 @@ export default function Queue() {
       <Rail count={open.length + openNotices.length} />
       <main className="work">
         <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length + openNotices.length}건</span></h1>
-        <p className="meta">전제가 깨진 건과, 자동으로 판정하지 못한 건, 두 분 중 한 분이 먼저 알린 변화가 올라옵니다. 두 분이 같게 본 항목은 여기 오지 않습니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
         {liveMode && noticeHint && <p className="note" style={{ color: 'var(--talk)' }}>{noticeHint}</p>}
@@ -173,7 +172,7 @@ export default function Queue() {
 
         {liveMode && notices.length > 0 && (
           <div style={{ marginTop: 22 }}>
-            <p className="cat-head">먼저 알린 변화 · 맞춰보기를 기다리지 않고 한 분이 알렸습니다 (배우자에게는 보이지 않음)</p>
+            <p className="cat-head">먼저 알린 변화</p>
             {notices.map(n => {
               const cat = CATEGORIES[n.category] ?? CATEGORIES.housing
               const res = noticeDone[n.id]
@@ -184,7 +183,7 @@ export default function Queue() {
                     <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
                     <span style={{ fontSize: 16, fontWeight: 700 }}>{n.label}</span>
                     <span className={`chip ${res ? NOTICE_RESOLVED[res].cls : 'chip-talk'}`}>{res ? NOTICE_RESOLVED[res].text : '먼저 알림'}</span>
-                    <span className="meta">판정 없음 · AI 안 씀</span>
+                    <span className="meta">판정 없음</span>
                     <span className="queue-couple">{new Date(n.createdAt).toLocaleDateString('ko-KR')}</span>
                   </div>
                   <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
@@ -245,7 +244,7 @@ export default function Queue() {
                   <>
                     {liveMode && (
                       <input className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)', marginTop: 12 }}
-                        value={note[it.id] ?? ''} onChange={e => setNote(n => ({ ...n, [it.id]: e.target.value }))} placeholder="메모 (선택) — 왜 이렇게 닫는지 한 줄" />
+                        value={note[it.id] ?? ''} onChange={e => setNote(n => ({ ...n, [it.id]: e.target.value }))} placeholder="메모 (선택)" />
                     )}
                     <div className="actions">
                       <button className="btn btn-small" disabled={busy} title="두 분 생각이 설계와 달라졌습니다 — 앱 밖에서 다시 설계합니다"

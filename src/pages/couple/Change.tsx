@@ -40,7 +40,7 @@ export default function Change() {
     </div>
   )
   if (row === 'loading') return <main className="phone">{top}<div className="phone-body"><p className="note">불러오는 중…</p></div></main>
-  if (!row) return <main className="phone">{top}<div className="phone-body"><p className="note">{err || '이 계획을 찾지 못했어요. 설계사님이 계획을 바꿨을 수 있어요.'}</p></div></main>
+  if (!row) return <main className="phone">{top}<div className="phone-body"><p className="note">{err || '이 계획을 찾지 못했어요.'}</p></div></main>
 
   const { card, versionId } = row
   const cat = CATEGORIES[card.category]
@@ -62,8 +62,7 @@ export default function Change() {
         <div className="done-mark"><span className="pair-mark lg"><span className="p p-him" /><span className="p p-her" /></span></div>
         <h2 className="q" style={{ textAlign: 'center' }}>설계사님께<br />전달됐어요</h2>
         <p className="note" style={{ textAlign: 'center' }}>
-          설계사님이 확인하고 연락을 주실 거예요. 계획이 바뀌면 [내 설계]에 반영돼요.{' '}
-          {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요.
+          설계사님이 확인하고 연락드릴 거예요.
         </p>
       </div>
       <button className="btn btn-wide" onClick={() => nav('/c/home')}>내 설계 보러 가기</button>
@@ -83,7 +82,7 @@ export default function Change() {
         <h2 className="q" style={{ marginTop: 22 }}>바뀐 게 있으면<br />알려 주세요</h2>
         <ChangeInput card={card} state={change} onChange={setChange} />
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
-        <p className="note">설계사님께만 전달돼요. {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요. 보낸 뒤에는 고칠 수 없어요.</p>
+        <p className="note">보내면 고칠 수 없어요. {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요.</p>
       </div>
       <button className="btn btn-wide" disabled={!ready} onClick={() => void send()}>{busy ? '보내는 중…' : '설계사님께 알리기'}</button>
     </main>

@@ -156,7 +156,6 @@ export default function Cards() {
       <Rail />
       <main className="work">
         <h1 className="work-title">질문 카드 · {p.couple.label}</h1>
-        <p className="meta">두 분께 "지금도 그렇게 생각하시나요?"로 묻는 설계 전제입니다. 카드를 고르면 폰에 어떻게 나가는지 보입니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
 
@@ -206,8 +205,8 @@ export default function Cards() {
                   <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
                   <p className="editor-title" style={{ marginTop: 10 }}>{c.label}</p>
                   <p className="meta"><b>이 계획이 바뀌면 생기는 일</b> · {c.stake}</p>
-                  {sel.awaiting && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version} 값이 동의 대기 중입니다. 두 분이 먼저 묻기에 답한 뒤 다시 고칠 수 있습니다.</p>}
-                  {sel.pending && !sel.awaiting && <p className="will" style={{ color: 'var(--escalate)' }}>v{sel.version} 값은 먼저 묻기에서 두 분 동의를 받지 못해 전제가 되지 않았습니다. 처리 대기에서 사유를 확인하고, 값을 고쳐 다시 물을 수 있습니다.</p>}
+                  {sel.awaiting && <p className="will" style={{ color: 'var(--talk)' }}>v{sel.version} 동의 대기 중</p>}
+                  {sel.pending && !sel.awaiting && <p className="will" style={{ color: 'var(--escalate)' }}>v{sel.version}은 두 분 동의를 받지 못했습니다.</p>}
 
                   {!ALLOW_PREMISE_CHANGE ? (
                     <>
@@ -222,7 +221,6 @@ export default function Cards() {
                         <b>{c.label} · {showValue(c)}</b><br />
                         지금도 그렇게 생각하시나요? — 네, 그대로예요 / 아니요, 바뀌었어요
                       </div>
-                      <p className="note">앱 안에서는 전제를 바꾸지 않습니다. 두 분 생각이 달라지면 처리 대기에서 "재설계 필요"로 표시하고, 엑셀에서 다시 설계한 뒤 "엑셀 다시 읽기"로 반영합니다.</p>
                     </>
                   ) : (
                   <>
