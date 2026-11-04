@@ -260,13 +260,12 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
           <p className="label">재무설계 엑셀로 등록 (선택)</p>
-          {(['statement', 'cashflow'] as const).map(k => (
-            <div key={k} style={{ marginBottom: 6 }}>
-              <label className="meta" htmlFor={`imp-${k}`} style={{ display: 'block' }}>{KIND_LABEL[k]} 엑셀{importFiles[k] ? ` — ${importFiles[k]!.name}` : ''}</label>
-              <input id={`imp-${k}`} type="file" accept=".xlsx,.xls" disabled={needPass || busy} onChange={e => chooseImport(k, e.target.files?.[0])} />
-            </div>
-          ))}
-          <p className="was">파일 이름이 "남편이름_아내이름_재무제표.xlsx"면 이름이 채워집니다.</p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+            <label className={`btn btn-quiet btn-small${needPass || busy ? ' btn-off' : ''}`} htmlFor="imp-statement" style={{ cursor: 'pointer' }}>엑셀 고르기</label>
+            <input id="imp-statement" type="file" accept=".xlsx,.xls" hidden disabled={needPass || busy} onChange={e => chooseImport('statement', e.target.files?.[0])} />
+            <span className="meta">{importFiles.statement ? importFiles.statement.name : '고른 파일 없음'}</span>
+          </div>
+          <p className="was">파일 이름이 "남편이름_아내이름_재무설계.xlsx"면 이름이 채워집니다.</p>
           {importNote && <p className="note" style={{ color: importNote.startsWith('파일 이름에서') ? 'var(--agree)' : 'var(--talk)' }}>{importNote}</p>}
           <label className="label" htmlFor="h">남편 이름</label>
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />

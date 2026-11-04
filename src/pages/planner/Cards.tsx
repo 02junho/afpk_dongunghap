@@ -164,7 +164,7 @@ export default function Cards() {
             {/* 카드가 많아도 내리지 않고 바로 누르게 목록 맨 위에 (10.23 사용자 요청) */}
             <div className="actions" style={{ marginTop: 0, marginBottom: 14 }}>
               <button className="btn btn-small" onClick={() => { setAdding(true); setExtracting(false); setSel(null); setMsg('') }}>카드 추가</button>
-              <button className="btn btn-quiet btn-small" onClick={() => { setImportFile(null); setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>재무제표 엑셀로 만들기</button>
+              <button className="btn btn-quiet btn-small" onClick={() => { setImportFile(null); setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>엑셀로 만들기</button>
               {linked && <button className="btn btn-quiet btn-small" disabled={!(p.live && p.pass)} onClick={() => void rereadLinked()}
                 title="연결해 둔 엑셀을 지금 내용으로 다시 읽어, 바뀐 숫자만 보여 줍니다">엑셀 다시 읽기</button>}
             </div>

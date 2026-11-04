@@ -150,3 +150,6 @@ body {
 .label { display: block; font-size: 13px; font-weight: 700; margin: 20px 0 8px; }
 .was { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
 .will { font-size: 13px; line-height: 1.6; background: var(--paper); border-radius: 14px; padding: 12px 14px; margin: 20px 0 0; color: var(--muted); }
+
+/* 파일 고르기 버튼(label)을 잠글 때 (11.04) */
+.btn-off { opacity: 0.45; pointer-events: none; }

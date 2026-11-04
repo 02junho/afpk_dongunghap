@@ -70,7 +70,7 @@ await dshot(null, 'p2-new-couple', async pg => {
   await pg.waitForTimeout(600)
 }, 'main .editor')
 await dshot('/p/cards', 'p5-extract', async pg => {
-  await pg.click('button:has-text("재무제표 엑셀로 만들기")')
+  await pg.click('button:has-text("엑셀로 만들기")')
   if (hasXlsx) { await pg.setInputFiles('#xlsx-statement', XLSX); await pg.waitForSelector('text=확인한', { timeout: 15000 }) }
   // 예시 모드 안내 줄은 그림에서 뺀다 (실제 설계사 화면엔 없다)
   await pg.evaluate(() => document.querySelectorAll('.note').forEach(e => { if (e.textContent?.includes('예시 모드')) e.remove() }))
@@ -272,8 +272,8 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
       <div class="box"><h3>엑셀</h3>
         <ul>
           <li>표의 항목 이름과 금액을 <b>그대로</b> 옮긴다. 숫자는 AI를 거치지 않는다 ("만원"만 원으로)</li>
-          <li>파일 이름이 "남편이름_아내이름_재무제표.xlsx"면 이름이 채워진다</li>
-          <li>정해 둔 표 양식(재무제표 · 현금흐름표)만 읽는다. 양식이 아니면 "읽지 못했습니다"</li>
+          <li>엑셀은 한 파일 — 재무상태표와 현금흐름표가 한 시트에. 파일 이름이 "남편이름_아내이름_재무설계.xlsx"면 이름이 채워진다</li>
+          <li>정해 둔 표 양식만 읽는다. 양식이 아니면 "읽지 못했습니다"</li>
           <li><b>다시 읽기</b> — 파일을 한 번 연결해 두면, 엑셀을 고쳐 저장하고 버튼만 누른다. 바뀐 숫자만 보이고, 그대로인 항목은 다시 만들지 않는다</li>
           <li>맞춰보기에서 묻는 중인 카드는 반영할 수 없다. 파일 연결은 크롬 · 엣지 컴퓨터에서만</li>
         </ul>
@@ -289,6 +289,45 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
     </div>
   </div>
   <div class="foot">지금 상태: 자동 점검 107개 · 처음부터 끝까지 시험 39단계 통과 · AI 판단 새 10건 중 8건(다른 날 7건). 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다.</div>
+</section>
+<section class="page">
+  <div class="eyebrow">다음 단계 — 아직 없는 기능</div>
+  <h2>카드 골라 맞춰보기 열기</h2>
+  <div class="two">
+    <div class="col">
+      <div class="box"><h3>지금은</h3>
+        <p>첫 맞춰보기는 <b>정해 둔 카드 3장</b>(주택 취득 시점 · 승진·이직 계획 · 양가 지원)으로 열린다. 연습용 카드 10장으로 만든 부부에게는 이 3장이 있어서 바로 열린다.</p>
+      </div>
+      <div class="box"><h3>그래서 생기는 일</h3>
+        <p><b>엑셀로 만든 부부</b>(예: 에이피 · 에피케)는 카드가 남편 급여 · 월세 · 적금 같은 엑셀 항목이라 이 3장이 없다. 카드는 있는데 <b>두 분께 물어볼 방법이 없다.</b> "엑셀 등록 → 두 분이 답하기 → 처리 대기"가 한 부부로 이어지지 않는다.</p>
+      </div>
+      <div class="box"><h3>만들면</h3>
+        <ul>
+          <li>설계사가 <b>물어볼 카드를 직접 골라</b> 맞춰보기를 연다</li>
+          <li>바뀌는 건 "무엇을 물을지 설계사가 고른다" 하나. 판정 · 처리 대기 · 부부 화면은 그대로</li>
+          <li>AI는 쓰지 않는다</li>
+          <li>가상고객으로 처음부터 끝까지 시연할 수 있다 — "남편 연 급여 6,700만 원, 지금도 그렇게 생각하시나요?"</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <div class="box" style="background:#fff;border:0.4mm dashed #d8cdc6"><h3>만들면 이런 모양 (그림 예시)</h3>
+        <table style="font-size:9.5pt">
+          <tr><td style="width:8mm">☑</td><td>남편 연 급여(세전)</td><td style="text-align:right">6,700만원</td></tr>
+          <tr><td>☐</td><td>아내 연 매출</td><td style="text-align:right">4,000만원</td></tr>
+          <tr><td>☑</td><td>월세 (1년)</td><td style="text-align:right">1,140만원</td></tr>
+          <tr><td>☑</td><td>보증금</td><td style="text-align:right">2,000만원</td></tr>
+          <tr><td>☐</td><td>적금 (1년)</td><td style="text-align:right">500만원</td></tr>
+        </table>
+        <p style="margin:3mm 0 0"><span class="chip" style="background:#2b2a33;color:#fff;padding:1mm 3mm">고른 3장으로 맞춰보기 열기</span></p>
+        <p style="margin:3mm 0 0;font-size:9.2pt;color:#5f5866">→ 두 분 폰에 "정기 맞춰보기 · 3문항" → 답하면 지금처럼 판정 → 처리 대기</p>
+        <p style="margin:2mm 0 0;font-size:9.2pt;color:#5f5866">이미 열린 맞춰보기가 있으면 열지 않고 "끝난 뒤 다시"</p>
+      </div>
+      <div class="box"><h3>정할 것</h3>
+        <p>제출 전에 만들지(반나절), 보고서에 "다음 단계"로만 적을지. 만들지 않으면 폰 테스트 · 시연은 연습 부부로, 엑셀은 "카드 만들기"까지만 보여 준다.</p>
+      </div>
+    </div>
+  </div>
 </section>
 </body></html>`
 writeFileSync(`${OUT}/flow.html`, html)

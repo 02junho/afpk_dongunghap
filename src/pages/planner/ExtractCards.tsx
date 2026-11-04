@@ -170,9 +170,10 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
 
       {!live && <p className="note" style={{ color: 'var(--escalate)' }}>예시 모드라 저장은 안 됩니다. 왼쪽에 설계사 코드를 넣으세요.</p>}
 
-      {(['statement', 'cashflow'] as const).map(k => (
+      {/* 11.04: 엑셀은 한 칸 — 두 표가 한 파일에 든 재무설계 엑셀. 예전에 현금흐름표 칸에 연결해 둔 파일이 있으면 그 칸도 보인다 */}
+      {(linked.cashflow ? ['statement', 'cashflow'] as const : ['statement'] as const).map(k => (
         <div key={k}>
-          <label className="label" htmlFor={`xlsx-${k}`}>{KIND_LABEL[k]} 엑셀 (.xlsx){files[k] ? ` — ${files[k]!.name}` : ''}</label>
+          <p className="label">{KIND_LABEL[k]} 엑셀 (.xlsx)</p>
           {linked[k] ? (
             <p className="was" style={{ margin: 0 }}>
               연결됨: <b>{linked[k]}</b>
@@ -181,7 +182,9 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
             </p>
           ) : (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input id={`xlsx-${k}`} type="file" accept=".xlsx,.xls" disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; if (f) void pick({ ...files, [k]: f }) }} />
+              <label className={`btn btn-quiet btn-small${busy ? ' btn-off' : ''}`} htmlFor={`xlsx-${k}`} style={{ cursor: 'pointer', padding: '2px 10px', fontSize: 11 }}>엑셀 고르기</label>
+              <input id={`xlsx-${k}`} type="file" accept=".xlsx,.xls" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; if (f) void pick({ ...files, [k]: f }) }} />
+              <span className="meta">{files[k] ? files[k]!.name : '고른 파일 없음'}</span>
               {canLink && (
                 <button className="btn btn-quiet btn-small" style={{ padding: '2px 10px', fontSize: 11 }} disabled={!live || !!busy} onClick={() => void connect(k)}
                   title="다음부터는 엑셀을 고쳐 저장한 뒤 '다시 읽기'만 누르면 됩니다 (크롬 · 엣지 컴퓨터)">이 컴퓨터 파일로 연결</button>

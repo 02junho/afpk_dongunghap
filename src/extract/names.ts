@@ -1,9 +1,9 @@
 // 엑셀 라이브러리 없이 쓰는 작은 도우미 — 부부 목록 화면 번들에 엑셀 라이브러리가 딸려 오지 않게 따로 둔다
 
-/** 올리는 엑셀 두 칸 (10.27): 재무제표(자산·부채) / 현금흐름표(1년 들어오고 나가는 돈). 한 파일에 둘 다 있어도 된다 */
+/** 올리는 엑셀 (11.04: 한 칸으로) — 재무상태표 · 현금흐름표가 한 파일에 든 "재무설계" 엑셀. cashflow 칸은 예전에 연결해 둔 파일용으로만 남는다 */
 export type SheetKind = 'statement' | 'cashflow'
 
-export const KIND_LABEL: Record<SheetKind, string> = { statement: '재무제표', cashflow: '현금흐름표' }
+export const KIND_LABEL: Record<SheetKind, string> = { statement: '재무설계', cashflow: '현금흐름표' }
 
 /** 파일 이름 끝말 → 어느 칸 파일인가. 재무설계 = 두 표가 한 파일에 (처음 받은 양식) */
 const SUFFIX: Record<string, SheetKind> = { 재무설계: 'statement', 재무제표: 'statement', 재무상태표: 'statement', 현금흐름표: 'cashflow' }
