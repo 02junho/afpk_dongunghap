@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { canPush, pushBlocked, pushOn, turnOnPush } from '../../lib/push'
 import { DEMO_QUEUE } from '../../data/demo'
 import { usePlanner, useQueueCount } from './planner'
 
@@ -13,6 +14,15 @@ export default function Rail({ count }: { count?: number }) {
   const liveCount = useQueueCount(p, count ?? DEMO_QUEUE.length)
   const n = count ?? liveCount
   const [draft, setDraft] = useState('')
+  // 설계사 알림 (11.04): 먼저 알린 변화 · 처리 대기가 생기면 이 기기로. 크롬 · 엣지 컴퓨터에서 바로 된다
+  const [push, setPush] = useState<'hidden' | 'off' | 'on' | 'busy'>('hidden')
+  const [pushErr, setPushErr] = useState('')
+  useEffect(() => { if (p.live && p.pass && canPush() && !pushBlocked()) void pushOn('planner').then(on => setPush(on ? 'on' : 'off')); else setPush('hidden') }, [p.live, p.pass])
+  async function enablePush() {
+    setPush('busy'); setPushErr('')
+    try { await turnOnPush('planner', { passcode: p.pass ?? '' }); setPush('on') }
+    catch (e) { setPushErr((e as Error).message); setPush('off') }
+  }
   const on = (path: string) => `rail-item ${pathname === path ? 'rail-item-on' : ''}`
 
   return (
@@ -41,10 +51,15 @@ export default function Rail({ count }: { count?: number }) {
           <Link className={on('/p/cards')} to="/p/cards">질문 카드</Link>
           <Link className={on('/p/history')} to="/p/history">변경 이력</Link>
           {p.live && (
-            <p className="rail-group" style={{ marginTop: 24 }}>
+            <p className="rail-group" style={{ marginTop: 24, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {push !== 'hidden' && (
+                <button className="btn btn-quiet btn-small" style={{ padding: '6px 10px', fontSize: 12 }} disabled={push !== 'off'} onClick={() => void enablePush()}
+                  title={pushErr || undefined}>{push === 'on' ? '알림 켜짐 ✓' : push === 'busy' ? '켜는 중…' : '알림 켜기'}</button>
+              )}
               <button className="btn btn-quiet btn-small" style={{ padding: '6px 10px', fontSize: 12 }} onClick={p.clearPass}>나가기</button>
             </p>
           )}
+          {pushErr && <p className="meta" style={{ padding: '0 20px', color: 'var(--escalate)' }}>{pushErr}</p>}
         </>
       )}
       <p className="meta" style={{ padding: '24px 20px 0', fontSize: 11, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>

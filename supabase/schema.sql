@@ -247,3 +247,17 @@ alter view active_cards set (security_invoker = true);
 alter view latest_cards set (security_invoker = true);
 alter view card_verdict_history set (security_invoker = true);
 alter view planner_queue set (security_invoker = true);
+
+-- 폰 알림 (11.04) — patch-2026-11-04-push.sql 과 같다
+create table if not exists push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  endpoint    text not null unique,
+  p256dh      text not null,
+  auth        text not null,
+  member_id   uuid references members(id) on delete cascade,
+  for_planner boolean not null default false,
+  created_at  timestamptz not null default now(),
+  check (member_id is not null or for_planner)
+);
+create index if not exists push_subscriptions_member on push_subscriptions(member_id);
+

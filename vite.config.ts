@@ -10,9 +10,11 @@ import { VitePWA } from 'vite-plugin-pwa'
  * dev 편의: ALLOW_DEMO_JUDGE 가 없으면 1 로, LLM 키가 없으면 LLM_MOCK=1 로 둔다 (경로 확인용).
  */
 function devApi(): Plugin {
-  const handlers: Record<string, () => Promise<{ default: (req: Request) => Promise<Response> }>> = {
+  type H = (req: Request) => Promise<Response>
+  const handlers: Record<string, () => Promise<{ default?: H; POST?: H }>> = {
     judge: () => import('./api/judge'),
     planner: () => import('./api/planner'),
+    push: () => import('./api/push'),   // Node 함수 (web-push) — POST 로 내보낸다
   }
   return {
     name: 'dev-api',
@@ -45,7 +47,9 @@ function devApi(): Plugin {
             body: chunks.length ? Buffer.concat(chunks) : undefined,
           })
           const mod = await handlers[m[1]]()
-          const response = await mod.default(request)
+          const fn = mod.default ?? mod.POST
+          if (!fn) return next()
+          const response = await fn(request)
           res.statusCode = response.status
           response.headers.forEach((v, k) => res.setHeader(k, v))
           res.end(Buffer.from(await response.arrayBuffer()))
@@ -72,7 +76,8 @@ export default defineConfig({
       injectRegister: false, // src/main.tsx 의 registerSW 가 등록한다 (업데이트 시 자동 새로고침)
       // ★ 새 서비스워커가 '대기(waiting)'에 머물지 않고 바로 교체되게. 이게 없으면 새 버전을 받아 놓고도
       //   탭을 전부 닫을 때까지 옛 화면을 계속 보여준다 — 10.16부터의 "새로고침 두 번"의 진짜 원인 (10.18 배포 브라우저에서 waiting 확인).
-      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true },
+      // importScripts: 폰 알림을 받아 띄우는 코드 (public/push-sw.js, 11.04)
+      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true, importScripts: ['/push-sw.js'] },
       manifest: {
         name: '돈궁합',
         short_name: '돈궁합',

@@ -7,6 +7,7 @@ import { supabase } from './supabase'
 import type { Card } from '../judge/index'
 import type { Role } from './session'
 import { rowToCard } from './cards'
+import { pingPlannerNotice } from './push'
 
 export const isLive = () => supabase !== null
 
@@ -140,8 +141,17 @@ const NOTICE_PATCH_HINT = '지금은 보낼 수 없어요. 설계사님께 직�
  * 배우자는 못 본다 (RLS: 자기 것만 넣고 자기 것만 읽는다). 판정하지 않는다.
  */
 export async function submitNotice(coupleId: string, memberId: string, versionId: string, text: string, isCondition: boolean) {
-  const { error } = await sb().from('change_notices').insert({ couple_id: coupleId, member_id: memberId, card_version_id: versionId, text, is_condition: isCondition })
+  const { data, error } = await sb().from('change_notices').insert({ couple_id: coupleId, member_id: memberId, card_version_id: versionId, text, is_condition: isCondition }).select('id').single()
   if (error) throw new Error(/change_notices/.test(error.message) ? NOTICE_PATCH_HINT : error.message)
+  // 설계사 폰 알림 (11.04) — 실패해도 알림 자체는 이미 들어갔다
+  const token = await myAccessToken()
+  if (token && data?.id) pingPlannerNotice(token, data.id as string)
+}
+
+/** 이 폰의 로그인 토큰 — 알림 서버가 "누구 폰인지" 확인하는 데만 쓴다 */
+export async function myAccessToken(): Promise<string | null> {
+  const { data } = await sb().auth.getSession()
+  return data.session?.access_token ?? null
 }
 
 /** 내가 알렸고 설계사가 아직 처리하지 않은 카드 버전들 — [내 설계]에 "전달됨" 표시 */

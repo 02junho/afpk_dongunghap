@@ -27,6 +27,7 @@
  */
 import { extractCardDrafts, serviceClient, summarizeJudgment } from './judge'
 import { newCardKey, normalizeNewCard } from '../src/lib/card-form'
+import { notify } from './_notify'
 
 export const config = { runtime: 'edge' }
 
@@ -315,6 +316,7 @@ export default async function handler(req: Request): Promise<Response> {
           const { data: rd, error: e1 } = await sb.from('rounds').insert({ couple_id: n.couple_id, kind: 'regular', card_version_ids: [act.id] }).select('id').single()
           if (e1) return bad(e1.message, 500)
           roundId = rd.id
+          await notify(req.url, { coupleId: n.couple_id }, { title: '돈궁합', body: '설계사님이 확인 질문 1개를 보냈어요.', url: '/c/home', tag: 'questions' })
         }
         const { error: e2 } = await sb.from('change_notices')
           .update({ resolved_at: new Date().toISOString(), resolution, resolution_note: typeof note === 'string' && note.trim() ? note.trim() : null })
@@ -352,6 +354,7 @@ export default async function handler(req: Request): Promise<Response> {
           reason: reason.trim().slice(0, 300), created_by: pid, activated_at: new Date().toISOString(),
         }).select('id, version').single()
         if (e2) return bad(e2.message, 500)
+        await notify(req.url, { coupleId: latest.couple_id }, { title: '돈궁합', body: '설계사님이 [내 설계]를 새로 고쳤어요.', url: '/c/home', tag: 'plan' })
         return Response.json({ versionId: v.id, version: v.version })
       }
       case 'save_card': {
@@ -469,6 +472,7 @@ export default async function handler(req: Request): Promise<Response> {
         const kind = count ? 'regular' : 'baseline'
         const { data: rd, error: e1 } = await sb.from('rounds').insert({ couple_id: coupleId, kind, card_version_ids: sorted.map(c => c.id) }).select('id').single()
         if (e1) return bad(e1.message, 500)
+        await notify(req.url, { coupleId }, { title: '돈궁합', body: `설계사님이 질문 ${QUESTIONS_PER_ROUND}개를 보냈어요. 약 ${QUESTIONS_PER_ROUND}분이면 끝나요.`, url: '/c/home', tag: 'questions' })
         return Response.json({ roundId: rd.id, kind })
       }
 

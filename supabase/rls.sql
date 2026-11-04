@@ -152,3 +152,6 @@ create policy notif_push_update on notifications for update
 --   set role authenticated; select set_config('request.jwt.claims', '{"sub":"<익명uid>"}', true);
 --   select count(*) from answers;     -- 자기 답변 수만
 --   select count(*) from judgments;   -- 0 이어야 한다 (부부는 판정을 못 본다)
+
+-- 폰 알림 (11.04): 서버(service_role)만 읽고 쓴다. 정책 없음
+alter table push_subscriptions enable row level security;

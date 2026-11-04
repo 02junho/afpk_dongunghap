@@ -5,6 +5,8 @@ import { loadActiveCardRows, loadLastCheckAt, loadNames, loadOpenRound, myAnswer
 import { formatKDate, nextCheckDate } from '../../lib/cycle'
 import { clearMe, loadMe, nameOf, saveMe } from '../../lib/session'
 import InstallGuide from './InstallGuide'
+import { canPush, pushBlocked, pushOn, turnOnPush } from '../../lib/push'
+import { myAccessToken } from '../../lib/db'
 import type { Card } from '../../judge/index'
 
 /** 탭 두 개 — [내 설계] 평소에 보는 화면 / [맞춰보기] 점검 질문. 예슬 제안 반영. */
@@ -23,6 +25,15 @@ export default function Home() {
   const [noticed, setNoticed] = useState<Set<string>>(new Set())
   // 열린 맞춰보기에 내가 이미 다 답했으면 "시작하기" 대신 진행 상황으로 (11.04 팀원 테스트 전 확인: 다 답한 뒤에도 "이제부터 시작할게요"가 떴다)
   const [mineDone, setMineDone] = useState(false)
+  // 폰 알림 (11.04): 질문이 오면 알림. 아직 안 켰으면 버튼 하나 — 누른 자리에서만 허락을 묻는다
+  const [push, setPush] = useState<'unknown' | 'off' | 'on' | 'busy'>('unknown')
+  const [pushErr, setPushErr] = useState('')
+  useEffect(() => { if (me.live && canPush() && !pushBlocked()) void pushOn('member').then(on => setPush(on ? 'on' : 'off')) }, [me.live])
+  async function enablePush() {
+    setPush('busy'); setPushErr('')
+    try { await turnOnPush('member', { accessToken: (await myAccessToken()) ?? '' }); setPush('on') }
+    catch (e) { setPushErr((e as Error).message); setPush('off') }
+  }
 
   useEffect(() => {
     if (!me.live || !me.coupleId) return
@@ -139,6 +150,13 @@ export default function Home() {
             </div>
           </>
         )}
+        {tab === 'match' && (push === 'off' || push === 'busy') ? (
+          <div className="bubble" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <p style={{ margin: 0, flex: 1, fontWeight: 700 }}>질문이 오면 알림 받기</p>
+            <button className="btn btn-small" disabled={push === 'busy'} onClick={() => void enablePush()}>{push === 'busy' ? '켜는 중…' : '알림 켜기'}</button>
+          </div>
+        ) : null}
+        {pushErr && <p className="note" style={{ color: 'var(--escalate)' }}>{pushErr}</p>}
         <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
       </div>
       {tab === 'match' && canStart && (

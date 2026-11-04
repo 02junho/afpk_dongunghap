@@ -15,6 +15,7 @@
  *   · 키가 없으면 조용히 🟡이 되지 않고 500 으로 터진다.
  */
 import { createClient } from '@supabase/supabase-js'
+import { notify } from './_notify'
 import { judge, type Card, type Judgment } from '../src/judge/index'
 import { createLlmClient, mockLlm } from '../src/judge/text-llm'
 import { PROMPT_VERSIONS } from '../src/judge/prompt'
@@ -84,7 +85,7 @@ export function serviceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
-async function judgeRound(roundId: string): Promise<Response> {
+async function judgeRound(roundId: string, reqUrl = ''): Promise<Response> {
   const sb = serviceClient()
   if (!sb) return bad('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 가 설정되지 않았습니다', 500)
 
@@ -135,7 +136,7 @@ async function judgeRound(roundId: string): Promise<Response> {
   const release = () => sb.from('rounds').update({ judged_at: null }).eq('id', roundId).eq('status', 'open')
 
   try {
-    return await judgeClaimedRound(sb, round, roundId, cvs ?? [], byCv, llm)
+    return await judgeClaimedRound(sb, round, roundId, cvs ?? [], byCv, llm, reqUrl)
   } catch (e) {
     await release()
     throw e
@@ -149,6 +150,7 @@ async function judgeClaimedRound(
   cvs: any[],
   byCv: Map<string, Partial<Record<'husband' | 'wife', string>>>,
   llm: ReturnType<typeof createLlmClient> | undefined,
+  reqUrl = '',
 ): Promise<Response> {
   // 같은 카드의 직전 판정 (2연속 🟡 승격용)
   const { data: prevRows } = await sb
@@ -215,6 +217,13 @@ async function judgeClaimedRound(
       if (!error) activated++
     }
   }
+  // 설계사 알림 (11.04): 이 맞춰보기에서 처리 대기로 올라온 건이 있을 때만. 건수만 — 내용 · 금액은 넣지 않는다
+  const { data: js2 } = await sb.from('judgments').select('verdict, needs_review').eq('round_id', roundId)
+  const waiting = (js2 ?? []).filter(j => j.verdict === 'red' || j.needs_review).length
+  if (waiting) {
+    const { data: c } = await sb.from('couples').select('label').eq('id', round.couple_id).maybeSingle()
+    await notify(reqUrl, { planner: true }, { title: '돈궁합 · 처리 대기', body: `${c?.label ?? '담당 부부'} · 처리 대기 ${waiting}건`, url: '/p/couples', tag: `queue-${round.couple_id}` })
+  }
   return Response.json({ ok: true, judged, summarized, activated })
 }
 
@@ -229,7 +238,7 @@ export default async function handler(req: Request): Promise<Response> {
   // ── 2주차 본 경로: 라운드 판정 ────────────────────────────────────────
   if (typeof body.roundId === 'string') {
     if (!/^[0-9a-f-]{36}$/.test(body.roundId)) return bad('roundId 형식')
-    try { return await judgeRound(body.roundId) } catch (e) { return bad(`판정 실패: ${(e as Error).message}`, 500) }
+    try { return await judgeRound(body.roundId, req.url) } catch (e) { return bad(`판정 실패: ${(e as Error).message}`, 500) }
   }
 
   const { mode, card, a, b } = body as { mode?: string; card?: Card; a?: string; b?: string }
