@@ -62,7 +62,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
       <label className="label" htmlFor="ac-label">카드 이름</label>
       <input id="ac-label" className="field" style={fieldStyle} value={label} onChange={e => setLabel(e.target.value)} placeholder="예: 전세 보증금" maxLength={40} />
 
-      <label className="label" htmlFor="ac-q">두 분께 묻는 질문 (휴대폰에 그대로 나갑니다)</label>
+      <label className="label" htmlFor="ac-q">두 분께 묻는 질문</label>
       <textarea id="ac-q" className="field" style={fieldStyle} rows={2} value={question} onChange={e => setQuestion(e.target.value)} placeholder="예: 전세 보증금은 얼마로 생각하고 계세요?" />
 
       {k.type === 'choice' && (
@@ -90,7 +90,6 @@ export default function AddCard({ busy, onSave, onCancel }: {
           <label className="label" htmlFor="ac-tol">{k.type === 'number' ? '허용 범위 (±%)' : '허용 범위 (±개월)'}</label>
           <input id="ac-tol" className="field" style={{ ...fieldStyle, maxWidth: 160 }} inputMode="decimal" value={tol} onChange={e => setTol(e.target.value)}
             placeholder={k.type === 'number' ? String(DEFAULT_TOLERANCE.number * 100) : String(DEFAULT_TOLERANCE.date)} />
-          <p className="was">비우면 기본값. 이 범위 안이면 🟢, 두 배 안이면 🟡, 넘으면 🔴</p>
         </>
       )}
 
@@ -101,7 +100,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
         </label>
       )}
 
-      <label className="label" htmlFor="ac-stake">이 계획이 바뀌면 생기는 일 (설계사만 봅니다)</label>
+      <label className="label" htmlFor="ac-stake">이 계획이 바뀌면 생기는 일</label>
       <textarea id="ac-stake" className="field" style={fieldStyle} rows={2} value={stake} onChange={e => setStake(e.target.value)} placeholder="예: 자기자금을 뺀 나머지가 대출 금액. 근거 숫자가 있으면 함께" />
 
       <label className="label" style={{ fontWeight: 400, display: 'flex', gap: 8, alignItems: 'center' }}>

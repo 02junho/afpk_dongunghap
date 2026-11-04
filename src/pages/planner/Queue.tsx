@@ -231,7 +231,7 @@ export default function Queue() {
                 </dl>
                 <p className="summary" style={{ whiteSpace: 'pre-line' }}>
                   <span className="summary-by">
-                    {it.summary ? 'AI 요약 · ' : it.needsReview ? '자동 판정 불가 · ' : 'AI 판별 사유 · '}설계사 확인 필요
+                    {it.summary ? 'AI 요약' : it.needsReview ? '자동 판정 불가' : 'AI 판별 사유'}
                     {liveMode && !it.summary && !res && (
                       <button className="btn btn-quiet btn-small" style={{ marginLeft: 10, padding: '2px 10px', fontSize: 11 }} disabled={busy} onClick={() => summarize(it)}>
                         AI 요약 만들기

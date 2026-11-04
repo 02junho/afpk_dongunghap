@@ -245,7 +245,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
                     <input id={`ew-${r.id}`} className="field" style={fieldStyle} value={edit.wife} maxLength={20} onChange={e => setEdit({ ...edit, wife: e.target.value })} />
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label className="label" htmlFor={`el-${r.id}`}>표시 이름 (설계사 화면에만 · 비우면 "남편 · 아내")</label>
+                    <label className="label" htmlFor={`el-${r.id}`}>표시 이름 (선택)</label>
                     <input id={`el-${r.id}`} className="field" style={fieldStyle} value={edit.label} maxLength={40} onChange={e => setEdit({ ...edit, label: e.target.value })} />
                     <div className="actions">
                       <button className="btn btn-small" disabled={busy || !edit.husband.trim() || !edit.wife.trim()} onClick={() => void saveName()}>{busy ? '저장 중…' : '저장'}</button>
@@ -259,7 +259,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
 
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
-          <p className="label">재무설계 엑셀로 등록 (선택 · 하나만 있어도 됩니다)</p>
+          <p className="label">재무설계 엑셀로 등록 (선택)</p>
           {(['statement', 'cashflow'] as const).map(k => (
             <div key={k} style={{ marginBottom: 6 }}>
               <label className="meta" htmlFor={`imp-${k}`} style={{ display: 'block' }}>{KIND_LABEL[k]} 엑셀{importFiles[k] ? ` — ${importFiles[k]!.name}` : ''}</label>
@@ -272,22 +272,14 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />
           <label className="label" htmlFor="w">아내 이름</label>
           <input id="w" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.wife} onChange={e => setForm(f => ({ ...f, wife: e.target.value }))} placeholder="예: 지우" />
-          <label className="label" htmlFor="l">표시 이름 (설계사 화면에만 · 비우면 "남편 · 아내")</label>
+          <label className="label" htmlFor="l">표시 이름 (선택)</label>
           <input id="l" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="예: 김현우 · 박지우" />
           <p className="label">질문 카드</p>
           <div className="role-row">
             <button type="button" className={`role ${startEmpty ? 'role-on' : ''}`} style={{ padding: '12px 10px', fontSize: 14 }} onClick={() => setStartEmpty(true)}>빈 카드로 시작</button>
             <button type="button" className={`role ${!startEmpty ? 'role-on' : ''}`} style={{ padding: '12px 10px', fontSize: 14 }} onClick={() => setStartEmpty(false)}>연습용 카드 10장으로 시작</button>
           </div>
-          <p className="will">
-            {needPass
-              ? '⚠ 예시 모드입니다. 왼쪽에 설계사 코드를 넣어야 발급됩니다.'
-              : startEmpty && hasImport
-                ? '등록하면 엑셀에서 읽은 카드 후보가 나옵니다.'
-              : startEmpty
-                ? '발급한 뒤 질문 카드 화면에서 카드를 넣습니다.'
-                : '연습용 카드 10장과 첫 맞춰보기(3문항)가 열립니다.'}
-          </p>
+          {needPass && <p className="will">⚠ 예시 모드입니다. 왼쪽에 설계사 코드를 넣어야 발급됩니다.</p>}
           <div className="actions">
             <button className="btn btn-small" disabled={busy || needPass || !(form.label.trim() || form.husband.trim() || form.wife.trim())} onClick={create}>
               {busy ? '발급 중…' : hasImport ? '새 부부 등록하고 엑셀로 질문 카드 만들기' : '새 부부 등록하고 코드 발급'}
