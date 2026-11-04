@@ -62,7 +62,7 @@ export default function Change() {
         <div className="done-mark"><span className="pair-mark lg"><span className="p p-him" /><span className="p p-her" /></span></div>
         <h2 className="q" style={{ textAlign: 'center' }}>설계사님께<br />전달됐어요</h2>
         <p className="note" style={{ textAlign: 'center' }}>
-          설계사님이 확인하고 연락을 주실 거예요. 계획이 바뀌면 [내 설계]에 반영돼요.
+          설계사님이 확인하고 연락을 주실 거예요. 계획이 바뀌면 [내 설계]에 반영돼요.{' '}
           {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요.
         </p>
       </div>
