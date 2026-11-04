@@ -39,6 +39,24 @@ interface Item {
   roundLabel: string
 }
 
+/** 부부 한 사람이 "바뀐 게 있어요"로 먼저 알린 변화 (11.04). 판정이 없다 — 설계사가 읽고 정한다 */
+interface Notice {
+  id: string
+  key: string
+  category: Card['category']
+  label: string
+  planned: string
+  role: 'husband' | 'wife'
+  text: string
+  createdAt: string
+}
+type NoticeResolution = 'factcheck' | 'replan' | 'consult'
+const NOTICE_RESOLVED: Record<NoticeResolution, { text: string; cls: string }> = {
+  factcheck: { text: '두 분께 물어봄', cls: 'chip-talk' },
+  replan: { text: '재설계 필요', cls: 'chip-escalate' },
+  consult: { text: '상담 안건', cls: 'chip-agree' },
+}
+
 /**
  * 🔴 전부 + 자동 판정이 안 된 🟡(확인 필요)이 올라온다.
  * live: /api/planner (service_role, 설계사 코드 — Rail 이 받는다). 데모: 고정 데이터 또는 한 기기 데모 결과.
@@ -53,9 +71,31 @@ export default function Queue() {
   const [done, setDone] = useState<Record<string, Resolution>>({})
   const [note, setNote] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const [notices, setNotices] = useState<Notice[]>([])
+  const [noticeDone, setNoticeDone] = useState<Record<string, NoticeResolution>>({})
+  const [noticeHint, setNoticeHint] = useState('')
+
+  async function loadNotices() {
+    try {
+      const r = await p.call<{ items: any[]; needsPatch?: string }>('notices')
+      setNoticeHint(r.needsPatch ?? '')
+      setNotices(r.items.map(n => ({ ...n, planned: showPlanned(n.type, n.unit, String(n.planned ?? '')), text: showPlanned(n.type, n.unit, String(n.text ?? '')) })))
+    } catch (e) { setErr((e as Error).message) }
+  }
+
+  async function resolveNotice(n: Notice, r: NoticeResolution) {
+    setBusy(true); setErr(''); setMsg('')
+    try {
+      const out = await p.call<{ roundId: string | null }>('resolve_notice', { noticeId: n.id, resolution: r, note: note[n.id] ?? '' })
+      setNoticeDone(d => ({ ...d, [n.id]: r }))
+      if (out.roundId) setMsg(`"${n.label}" 한 문항으로 맞춰보기를 열었습니다. 두 분 홈에서 바로 답할 수 있어요.`)
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
 
   async function load() {
     setErr('')
+    void loadNotices()
     try {
       const { items } = await p.call<{ items: any[] }>('queue')
       // "네, 그대로예요"는 전제 값이 답으로 저장된다 (10.23) — 설계사에겐 "그대로예요"로 보여준다
@@ -118,16 +158,57 @@ export default function Queue() {
   const liveMode = p.live && p.pass
   const showing: Item[] = liveMode ? (items ?? []) : demoItems
   const open = showing.filter(i => !done[i.id])
+  const openNotices = liveMode ? notices.filter(n => !noticeDone[n.id]) : []
 
   return (
     <div className="console">
-      <Rail count={open.length} />
+      <Rail count={open.length + openNotices.length} />
       <main className="work">
-        <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length}건</span></h1>
-        <p className="meta">전제가 깨진 건과, 자동으로 판정하지 못한 건만 올라옵니다. 두 분이 같게 본 항목은 여기 오지 않습니다.</p>
+        <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length + openNotices.length}건</span></h1>
+        <p className="meta">전제가 깨진 건과, 자동으로 판정하지 못한 건, 두 분 중 한 분이 먼저 알린 변화가 올라옵니다. 두 분이 같게 본 항목은 여기 오지 않습니다.</p>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
+        {liveMode && noticeHint && <p className="note" style={{ color: 'var(--talk)' }}>{noticeHint}</p>}
         {liveMode && items === null && !err && <p className="note">불러오는 중…</p>}
+
+        {liveMode && notices.length > 0 && (
+          <div style={{ marginTop: 22 }}>
+            <p className="cat-head">먼저 알린 변화 · 맞춰보기를 기다리지 않고 한 분이 알렸습니다 (배우자에게는 보이지 않음)</p>
+            {notices.map(n => {
+              const cat = CATEGORIES[n.category] ?? CATEGORIES.housing
+              const res = noticeDone[n.id]
+              const him = n.role === 'husband'
+              return (
+                <div className="qcard" key={n.id} style={res ? { opacity: 0.6 } : undefined}>
+                  <div className="queue-top">
+                    <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{n.label}</span>
+                    <span className={`chip ${res ? NOTICE_RESOLVED[res].cls : 'chip-talk'}`}>{res ? NOTICE_RESOLVED[res].text : '먼저 알림'}</span>
+                    <span className="meta">판정 없음 · AI 안 씀</span>
+                    <span className="queue-couple">{new Date(n.createdAt).toLocaleDateString('ko-KR')}</span>
+                  </div>
+                  <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
+                    <dt className="meta" style={{ paddingTop: 3 }}>설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{n.planned}</dd>
+                    <dt><span className={`avatar ${him ? 'avatar-him' : 'avatar-her'}`}>{(him ? p.couple.husband : p.couple.wife).slice(0, 1)}</span></dt><dd>{n.text}</dd>
+                  </dl>
+                  {!res && (
+                    <>
+                      <input className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)', marginTop: 12 }}
+                        value={note[n.id] ?? ''} onChange={e => setNote(m => ({ ...m, [n.id]: e.target.value }))} placeholder="메모 (선택)" />
+                      <div className="actions">
+                        <button className="btn btn-small" disabled={busy} title={`${him ? p.couple.wife : p.couple.husband}님 생각도 들어 보려면 — 이 카드 한 문항으로 두 분께 맞춰보기를 엽니다`}
+                          onClick={() => resolveNotice(n, 'factcheck')}>두 분께 같이 묻기</button>
+                        <button className="btn btn-quiet btn-small" disabled={busy} title="엑셀에서 다시 설계한 뒤 질문 카드 → 엑셀 다시 읽기로 반영합니다"
+                          onClick={() => resolveNotice(n, 'replan')}>재설계 필요</button>
+                        <button className="btn btn-quiet btn-small" disabled={busy} onClick={() => resolveNotice(n, 'consult')}>상담 때 다루기</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         <div style={{ marginTop: 22 }}>
           {showing.map(it => {
@@ -180,7 +261,7 @@ export default function Queue() {
               </div>
             )
           })}
-          {!open.length && (!liveMode || items !== null) && <p className="note">처리할 건이 없습니다.</p>}
+          {!open.length && !openNotices.length && (!liveMode || items !== null) && <p className="note">처리할 건이 없습니다.</p>}
         </div>
 
         {liveMode && (

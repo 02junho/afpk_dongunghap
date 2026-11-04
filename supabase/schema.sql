@@ -157,6 +157,23 @@ create table disputes (
   created_at timestamptz default now()
 );
 
+-- "바뀐 게 있어요" — 부부 한 사람이 맞춰보기를 기다리지 않고 먼저 알린 변화 (11.04, docs/16).
+-- 판정하지 않는다(한 사람만 말했으니). 설계사 처리 대기로 간다. 내용은 고치거나 지울 수 없다.
+-- 정책·트리거는 supabase/patch-2026-11-04-change-notices.sql
+create table change_notices (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid references couples(id) not null,
+  member_id uuid references members(id) not null,
+  card_version_id uuid references card_versions(id) not null,
+  text text not null check (length(text) between 1 and 500),
+  is_condition boolean not null default false,
+  created_at timestamptz default now(),
+  resolved_at timestamptz,
+  resolution resolution,             -- factcheck = 두 분께 같이 묻기로 함
+  resolution_note text,
+  constraint notice_resolution_needs_time check ((resolved_at is null) = (resolution is null))
+);
+
 create table notifications (
   id uuid primary key default gen_random_uuid(),
   member_id uuid references members(id) not null,

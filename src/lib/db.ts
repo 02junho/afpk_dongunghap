@@ -123,7 +123,30 @@ export async function loadNames(coupleId: string): Promise<Partial<Record<Role, 
 
 /** [내 설계] 탭 — 활성 전제 */
 export async function loadActiveCards(coupleId: string): Promise<Card[]> {
+  return (await loadActiveCardRows(coupleId)).map(r => r.card)
+}
+
+/** 활성 전제 + 그 버전 id ("바뀐 게 있어요"가 어느 계획을 보고 알렸는지 남긴다) */
+export async function loadActiveCardRows(coupleId: string): Promise<{ versionId: string; card: Card }[]> {
   const { data, error } = await sb().from('active_cards').select('*').eq('couple_id', coupleId)
   if (error) throw new Error(error.message)
-  return (data ?? []).map(row => rowToCard(row, row))
+  return (data ?? []).map(row => ({ versionId: row.id as string, card: rowToCard(row, row) }))
+}
+
+const NOTICE_PATCH_HINT = '아직 이 기능을 쓸 수 없어요. 설계사님께 알려 주세요 (DB 패치 필요)'
+
+/**
+ * "바뀐 게 있어요" (11.04) — 맞춰보기를 기다리지 않고 먼저 알린다. 설계사 처리 대기로만 간다.
+ * 배우자는 못 본다 (RLS: 자기 것만 넣고 자기 것만 읽는다). 판정하지 않는다.
+ */
+export async function submitNotice(coupleId: string, memberId: string, versionId: string, text: string, isCondition: boolean) {
+  const { error } = await sb().from('change_notices').insert({ couple_id: coupleId, member_id: memberId, card_version_id: versionId, text, is_condition: isCondition })
+  if (error) throw new Error(/change_notices/.test(error.message) ? NOTICE_PATCH_HINT : error.message)
+}
+
+/** 내가 알렸고 설계사가 아직 처리하지 않은 카드 버전들 — [내 설계]에 "전달됨" 표시 */
+export async function myOpenNotices(memberId: string): Promise<Set<string>> {
+  const { data, error } = await sb().from('change_notices').select('card_version_id').eq('member_id', memberId).is('resolved_at', null)
+  if (error) return new Set()   // 패치 전이면 표가 없다 — 표시만 안 한다
+  return new Set((data ?? []).map(n => n.card_version_id as string))
 }

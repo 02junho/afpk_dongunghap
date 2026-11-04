@@ -6,8 +6,10 @@ import { rowToCard } from '../../lib/cards'
 import { usePlanner } from './planner'
 import AddCard from './AddCard'
 import ExtractCards from './ExtractCards'
-import { clearPendingImport, peekPendingImport } from './pendingImport'
+import { clearPendingImport, peekPendingImport, type ImportFiles } from './pendingImport'
 import type { NewCard } from '../../lib/card-form'
+import type { ExistingCard } from '../../extract/diff'
+import { linkedNames, readLinked } from '../../lib/fileLinks'
 
 /**
  * 카테고리별 카드 목록 + 1장 수정. 수정 = 새 버전 (card_versions insert, 동의 대기). 사유 필수.
@@ -38,7 +40,7 @@ function describeValue(card: Card, raw: string) {
  */
 const ALLOW_PREMISE_CHANGE = false
 
-interface Row { cardId: string; versionId: string; version: number; pending: boolean; awaiting: boolean; card: Card }
+interface Row { cardId: string; versionId: string; version: number; pending: boolean; awaiting: boolean; inOpenRound?: boolean; card: Card }
 
 const DEMO_ROWS: Row[] = CARDS.map(c => ({ cardId: c.key, versionId: c.key, version: 1, pending: false, awaiting: false, card: c }))
 
@@ -55,9 +57,21 @@ export default function Cards() {
   const [err, setErr] = useState('')
   const [adding, setAdding] = useState(false)
   // "재무설계 엑셀로 새 부부 등록"에서 넘어온 파일이 있으면 엑셀 화면을 바로 연다 (10.27)
-  const [importFile] = useState(() => peekPendingImport())
+  const [importFile, setImportFile] = useState<ImportFiles | null>(() => peekPendingImport())
   const [extracting, setExtracting] = useState(!!importFile)
   useEffect(() => { clearPendingImport() }, [])
+  // 지금 카드를 DB 에서 다 읽었나 — 엑셀 화면은 이걸 보고 이미 있는 카드와 맞춰 본다 (두 벌 방지, 11.04)
+  const [loaded, setLoaded] = useState(false)
+  // 이 컴퓨터에 연결해 둔 엑셀 (크롬 · 엣지). 있으면 맨 위에 "엑셀 다시 읽기"
+  const [linked, setLinked] = useState(false)
+  useEffect(() => { void linkedNames(p.couple.id).then(n => setLinked(!!(n.statement || n.cashflow))) }, [p.couple.id, extracting])
+
+  async function rereadLinked() {
+    setErr(''); setMsg('')
+    // 버튼을 누른 그 자리에서 읽어야 "읽어도 될까요?" 창이 뜬다 (lib/fileLinks.ts)
+    try { const fs = await readLinked(p.couple.id); setImportFile(fs); setExtracting(true); setAdding(false); setSel(null) }
+    catch (e) { setErr((e as Error).message) }
+  }
 
   async function add(card: NewCard, askNow: boolean) {
     const asCard: Card = {
@@ -83,10 +97,12 @@ export default function Cards() {
   }
 
   async function load() {
-    if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
+    if (!p.live || !p.pass) { setRows(DEMO_ROWS); setLoaded(true); return }
+    setLoaded(false)
     try {
       const { cards } = await p.call<{ cards: any[] }>('cards')
-      setRows(cards.map(r => ({ cardId: r.card_id, versionId: r.id, version: r.version, pending: r.pending, awaiting: r.awaiting ?? r.pending, card: rowToCard(r, r) })))
+      setRows(cards.map(r => ({ cardId: r.card_id, versionId: r.id, version: r.version, pending: r.pending, awaiting: r.awaiting ?? r.pending, inOpenRound: !!r.inOpenRound, card: rowToCard(r, r) })))
+      setLoaded(true)
       setErr('')
     } catch (e) { setErr((e as Error).message) }
   }
@@ -149,7 +165,9 @@ export default function Cards() {
             {/* 카드가 많아도 내리지 않고 바로 누르게 목록 맨 위에 (10.23 사용자 요청) */}
             <div className="actions" style={{ marginTop: 0, marginBottom: 14 }}>
               <button className="btn btn-small" onClick={() => { setAdding(true); setExtracting(false); setSel(null); setMsg('') }}>카드 추가</button>
-              <button className="btn btn-quiet btn-small" onClick={() => { setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>재무제표 엑셀로 만들기</button>
+              <button className="btn btn-quiet btn-small" onClick={() => { setImportFile(null); setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>재무제표 엑셀로 만들기</button>
+              {linked && <button className="btn btn-quiet btn-small" disabled={!(p.live && p.pass)} onClick={() => void rereadLinked()}
+                title="연결해 둔 엑셀을 지금 내용으로 다시 읽어, 바뀐 숫자만 보여 줍니다">엑셀 다시 읽기</button>}
             </div>
             {CATEGORY_ORDER.filter(k => rows.some(r => r.card.category === k)).map(k => (
               <div key={k}>
@@ -174,7 +192,13 @@ export default function Cards() {
           <div className="editor">
             {extracting ? (
               <ExtractCards live={!!(p.live && p.pass)} call={p.call} initialFiles={importFile} onCancel={() => setExtracting(false)}
-                onSaved={n => { setExtracting(false); setMsg(`엑셀에서 만든 질문 카드 ${n}장을 추가했습니다.`); void load() }} />
+                coupleId={p.couple.id}
+                existing={loaded ? rows.map((r): ExistingCard => ({ cardId: r.cardId, key: r.card.key, label: r.card.label, type: r.card.type, plannedValue: r.card.plannedValue, inOpenRound: r.inOpenRound })) : null}
+                onSaved={(added, applied) => {
+                  setExtracting(false)
+                  setMsg([applied && `바뀐 숫자 ${applied}건을 새 버전으로 반영했습니다 (예전 값은 변경 이력에 남습니다)`, added && `엑셀에서 만든 질문 카드 ${added}장을 추가했습니다`].filter(Boolean).join(' · ') + '.')
+                  void load()
+                }} />
             ) : adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {
               const c = sel.card, cat = CATEGORIES[c.category]
               return (
@@ -198,7 +222,7 @@ export default function Cards() {
                         <b>{c.label} · {showValue(c)}</b><br />
                         지금도 그렇게 생각하시나요? — 네, 그대로예요 / 아니요, 바뀌었어요
                       </div>
-                      <p className="note">앱 안에서는 전제를 바꾸지 않습니다. 두 분 생각이 달라지면 처리 대기에서 "재설계 필요"로 표시하고, 다시 설계한 뒤 반영합니다.</p>
+                      <p className="note">앱 안에서는 전제를 바꾸지 않습니다. 두 분 생각이 달라지면 처리 대기에서 "재설계 필요"로 표시하고, 엑셀에서 다시 설계한 뒤 "엑셀 다시 읽기"로 반영합니다.</p>
                     </>
                   ) : (
                   <>

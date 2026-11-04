@@ -1,15 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BASELINE, byKey, CATEGORIES, answerKey, judgmentKey, showValue, type RoundAnswers } from '../../data/demo'
-import { OTHER_PREFIX, parseWon, parseCount, type Card, type Judgment } from '../../judge/index'
+import type { Card, Judgment } from '../../judge/index'
 import { requestJudgment, triggerJudge } from '../../lib/api'
 import { loadOpenRound, myAnswered, submitAnswer } from '../../lib/db'
 import { loadMe, nameOf, partnerRole } from '../../lib/session'
-
-const UNITS = ['억', '천만', '백만', '만']
-const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-
-const OTHER = '__other'
+import ChangeInput, { changeValue, EMPTY_CHANGE, type ChangeState } from './ChangeInput'
 
 /**
  * 10.23 팀 결정(Q4·Q6·Q9): 빈 질문 대신 **기존 설계를 보여주고 "지금도 그렇게 생각하시나요?"** 로 묻는다.
@@ -18,10 +14,7 @@ const OTHER = '__other'
  *   한 사람이라도 크게 바뀌었거나 두 분이 다르면 🔴 → 설계사가 "재설계 필요"로 처리한다.
  *   (전제를 보여주면 "그대로"로 답하기 쉬워진다 — 팀이 고른 방식이다. 바뀐 경우를 놓치지 않게 버튼을 같은 크기로 둔다)
  * 선택형은 보기 끝에 "기타 — 직접 입력"(Q1). 기타 답은 추측하지 않고 설계사 확인으로 간다.
- *
- * 입력 UI가 파서의 구멍을 메운다:
- *   · 금액 — 숫자 + 단위 버튼. 입력한 값이 원 단위로 얼마인지 그 자리에서 보여준다
- *   · 시점 — 연·월 선택. 단, "정확한 시점 대신 조건으로" 답하는 길을 남긴다 (조건부는 🟡 + 설계사 확인)
+ * "바뀌었어요" 입력칸은 ChangeInput — "바뀐 게 있어요"(Change.tsx)와 같은 것을 쓴다.
  *
  * live: 라운드와 카드를 DB 에서 읽고, 답은 answers 에 한 장씩 넣는다. 제출 뒤엔 상대 진행만 본다.
  * 데모: sessionStorage. 한 폰에서 남편→아내 순서로.
@@ -38,14 +31,9 @@ export default function Round() {
   const [loading, setLoading] = useState(me.live)
   const [err, setErr] = useState('')
   const [i, setI] = useState(0)
-  const [text, setText] = useState('')
-  const [condition, setCondition] = useState(false)
-  const [year, setYear] = useState('')
-  // 월은 처음엔 비워 둔다 — 6월이 미리 골라져 있으면 연도만 고르고 넘어가 원치 않은 6월이 저장됐다 (10.27)
-  const [month, setMonth] = useState('')
+  const [change, setChange] = useState<ChangeState>(EMPTY_CHANGE)
   const [busy, setBusy] = useState(false)
   const [stance, setStance] = useState<'same' | 'changed' | null>(null)
-  const [other, setOther] = useState('')
 
   useEffect(() => {
     if (!me.live || !me.coupleId || !me.memberId) return
@@ -65,11 +53,6 @@ export default function Round() {
     })()
   }, [me.live, me.coupleId, me.memberId])
 
-  const years = useMemo(() => {
-    const y = new Date().getFullYear()
-    return Array.from({ length: 12 }, (_, k) => String(y + k))
-  }, [])
-
   if (loading) return <main className="phone"><div className="phone-body"><p className="note">불러오는 중…</p></div></main>
   if (err) return <main className="phone"><div className="phone-body"><p className="note" style={{ color: 'var(--escalate)' }}>{err}</p></div></main>
   if (!cards.length) return null
@@ -79,24 +62,14 @@ export default function Round() {
   const total = me.live ? cards.length : BASELINE.length
   const step = me.live ? i + 1 : i + 1
 
-  const changedValue = card.type === 'date' && !condition ? (year && month ? `${year}-${month}` : '')
-    : card.type === 'choice' && text === OTHER ? (other.trim() ? OTHER_PREFIX + other.trim() : '')
-    : text
+  const changed = changeValue(card, change)
   // "그대로예요"면 설계 전제 값을 그대로 답으로 남긴다 — 판정 규칙이 그대로 🟢 로 읽는다
-  const value = stance === 'same' ? String(card.plannedValue) : stance === 'changed' ? changedValue : ''
-  const isCondition = stance === 'changed' && condition
-  const preview = card.type === 'number'
-    ? (() => {
-        if (!text.trim()) return ''
-        const n = (card.unit ?? 'krw') === 'krw' ? parseWon(text) : parseCount(text)
-        if (isNaN(n)) return '단위를 골라주세요 (예: 6억, 8천만)'
-        return (card.unit ?? 'krw') === 'krw' ? `${n.toLocaleString()}원` : `${n}`
-      })()
-    : ''
-  const ready = value.trim().length > 0 && !(stance === 'changed' && preview.startsWith('단위')) && !busy
+  const value = stance === 'same' ? String(card.plannedValue) : stance === 'changed' ? changed.value : ''
+  const isCondition = stance === 'changed' && changed.isCondition
+  const ready = value.trim().length > 0 && !(stance === 'changed' && changed.preview.startsWith('단위')) && !busy
 
   function reset() {
-    setText(''); setCondition(false); setYear(''); setMonth(''); setStance(null); setOther('')
+    setChange(EMPTY_CHANGE); setStance(null)
   }
 
   async function submit() {
@@ -149,75 +122,7 @@ export default function Round() {
           <button className={`role ${stance === 'changed' ? 'role-on' : ''}`} onClick={() => setStance('changed')}>아니요, 바뀌었어요</button>
         </div>
 
-        {stance === 'changed' && (
-        <div style={{ marginTop: 22 }}>
-          <p className="meta" style={{ margin: '0 0 10px' }}>어떻게 바뀌었나요? <span style={{ opacity: 0.7 }}>— {card.question}</span></p>
-          {card.type === 'choice' && (
-            <>
-              <select className="field" value={text} onChange={e => setText(e.target.value)} aria-label={card.label}>
-                <option value="">고르기</option>
-                {card.options!.map(o => <option key={o}>{o}</option>)}
-                <option value={OTHER}>기타 — 직접 입력</option>
-              </select>
-              {text === OTHER && (
-                <textarea className="field" rows={2} style={{ marginTop: 10 }} value={other} onChange={e => setOther(e.target.value)}
-                  placeholder="보기에 없으면 직접 적어 주세요" aria-label="기타 직접 입력" />
-              )}
-            </>
-          )}
-          {card.type === 'number' && (
-            <>
-              <input className="field" inputMode="decimal" value={text} onChange={e => setText(e.target.value)}
-                placeholder="숫자를 쓰고 단위를 누르세요" aria-label={card.label} />
-              {(card.unit ?? 'krw') === 'krw' && (
-                <div className="actions" style={{ marginTop: 10 }}>
-                  {UNITS.map(u => (
-                    <button key={u} className="btn btn-quiet btn-small" onClick={() => setText(t => t + u)}>{u}</button>
-                  ))}
-                </div>
-              )}
-              <p className="note">{preview || ' '}</p>
-            </>
-          )}
-
-          {card.type === 'date' && !condition && (
-            <>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <select className="field" value={year} onChange={e => setYear(e.target.value)} aria-label="연도">
-                  <option value="">연도</option>
-                  {years.map(y => <option key={y} value={y}>{y}년</option>)}
-                </select>
-                <select className="field" value={month} onChange={e => setMonth(e.target.value)} aria-label="월">
-                  <option value="">월</option>
-                  {MONTHS.map(m => <option key={m} value={m}>{Number(m)}월</option>)}
-                </select>
-              </div>
-              {card.allowCondition && (
-                <div className="actions" style={{ marginTop: 12 }}>
-                  <button className="btn btn-quiet btn-small" onClick={() => { setCondition(true); setYear('') }}>
-                    정확한 시점 대신 조건으로 답하기
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          {((card.type === 'date' && condition) || card.type === 'text') && (
-            <>
-              <textarea className="field" rows={4} value={text} onChange={e => setText(e.target.value)}
-                placeholder={condition ? '예: 애 낳고 나서, 전세 만기 때' : '편하게 적어주세요'} aria-label={card.label} />
-              {condition && (
-                <>
-                  <p className="note">조건으로 답하면 설계사님이 직접 확인해요.</p>
-                  <div className="actions">
-                    <button className="btn btn-quiet btn-small" onClick={() => setCondition(false)}>연·월로 고르기</button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-        )}
+        {stance === 'changed' && <ChangeInput card={card} state={change} onChange={setChange} />}
 
         <p className="note">제출하면 고칠 수 없어요. {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요.</p>
       </div>

@@ -7,6 +7,7 @@ import Home from './pages/couple/Home'
 import Round from './pages/couple/Round'
 import Wait from './pages/couple/Wait'
 import Done from './pages/couple/Done'
+import Change from './pages/couple/Change'
 import Couples from './pages/planner/Couples'
 import Queue from './pages/planner/Queue'
 import Cards from './pages/planner/Cards'
@@ -35,6 +36,7 @@ export default function App() {
       <Route path="/c/round/:id" element={<NeedsJoin><Round /></NeedsJoin>} />
       <Route path="/c/wait/:id" element={<NeedsJoin><Wait /></NeedsJoin>} />
       <Route path="/c/done/:id" element={<NeedsJoin><Done /></NeedsJoin>} />
+      <Route path="/c/change/:key" element={<NeedsJoin><Change /></NeedsJoin>} />
       <Route path="/p" element={<Navigate to="/p/couples" replace />} />
       <Route path="/p/couples" element={<Couples />} />
       <Route path="/p/archived" element={<Couples archivedView />} />

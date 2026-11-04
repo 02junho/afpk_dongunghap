@@ -133,6 +133,16 @@ create policy disputes_planner_insert on disputes for insert
 create policy disputes_planner_read on disputes for select
   using (is_my_client((select r.couple_id from judgments j join rounds r on r.id = j.round_id where j.id = judgment_id)));
 
+-- ── "바뀐 게 있어요": 답변과 같다. 자기 것만 넣고 자기 것만 본다 (11.04) ──
+-- 트리거(고치기·지우기 금지)까지 supabase/patch-2026-11-04-change-notices.sql 에 있다.
+alter table change_notices enable row level security;
+create policy notices_insert_own on change_notices for insert
+  with check (
+    member_id = my_member_id() and couple_id = my_couple_id()
+    and (select c.couple_id from card_versions v join cards c on c.id = v.card_id where v.id = card_version_id) = my_couple_id()
+  );
+create policy notices_select_own on change_notices for select using (member_id = my_member_id());
+
 -- ── 알림 ─────────────────────────────────────────────────────────────────
 create policy notif_own on notifications for select using (member_id = my_member_id());
 create policy notif_push_update on notifications for update

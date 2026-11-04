@@ -15,7 +15,11 @@
  *   cards                                     카드 최신 버전 (동의 대기 포함). awaiting = 열린 라운드에서 답을 기다리는 중
  *   save_card { cardId, plannedValue, tolerance?, allowCondition?, reason }
  *                                             새 버전(v+1, 동의 대기) + 그 카드 1장짜리 factcheck 라운드
- *   add_card { card, askNow? }                새 카드 + v1(바로 전제). askNow 면 그 1장으로 정기 라운드
+ *   add_card { card, askNow?, sourceKey? }    새 카드 + v1(바로 전제). askNow 면 그 1장으로 정기 라운드. sourceKey = 엑셀 자리(xl:표|항목)
+ *   apply_sheet_value { cardId, plannedValue, reason }
+ *                                             엑셀 다시 읽기에서 바뀐 숫자 → 새 버전(v+1, 바로 전제). 설계사가 엑셀에서 다시 설계한 값이다
+ *   notices / resolve_notice { noticeId, resolution, note }
+ *                                             부부가 먼저 알린 변화 ("바뀐 게 있어요", 11.04). factcheck = 두 분께 같이 묻기(정기 1문항)
  *   history                                   변경 이력 (card_versions)
  *   rounds / new_round                        라운드 목록 / 0회차 다시 열기 (리허설)
  */
@@ -61,6 +65,9 @@ async function openVersionIds(sb: SB, coupleId: string): Promise<Set<string>> {
   return new Set((data ?? []).flatMap(r => r.card_version_ids as string[]))
 }
 
+const NOTICE_PATCH = 'DB 에 "바뀐 게 있어요" 표가 아직 없습니다 — supabase/patch-2026-11-04-change-notices.sql 을 SQL Editor 에서 한 번 실행해 주세요'
+const noTable = (m: string) => /change_notices/.test(m) && /does not exist|schema cache|Could not find/.test(m)
+
 /** 0회차 라운드를 연다 (활성 버전 중 BASELINE 3장, 묻는 순서대로) */
 async function openBaseline(sb: SB, coupleId: string) {
   const { data: active } = await sb.from('active_cards').select('id, key').eq('couple_id', coupleId).in('key', BASELINE_KEYS)
@@ -90,12 +97,14 @@ export default async function handler(req: Request): Promise<Response> {
     switch (body.action) {
       // ── 커플 ──────────────────────────────────────────────────────────
       case 'couples': {
-        const [{ data: couples }, { data: members }, { data: rounds }, { data: queue }, { data: cardRows }] = await Promise.all([
+        const [{ data: couples }, { data: members }, { data: rounds }, { data: queue }, { data: cardRows }, { data: notices }] = await Promise.all([
           sb.from('couples').select('*').order('created_at', { ascending: true }),
           sb.from('members').select('couple_id, role, display_name'),
           sb.from('rounds').select('id, couple_id, kind, status, opened_at, judged_at').order('opened_at', { ascending: false }),
           sb.from('planner_queue').select('couple_id'),
           sb.from('cards').select('couple_id').is('archived_at', null),
+          // 패치 전이면 표가 없다 → 오류는 무시하고 0건으로
+          sb.from('change_notices').select('couple_id').is('resolved_at', null),
         ])
         // 열린 맞춰보기에 답이 하나라도 있으면 "진행 중", 없으면 "시작 전" (10.25: 아무도 안 답했는데 진행 중으로 보였다)
         const openIds = (rounds ?? []).filter(r => r.status === 'open').map(r => r.id)
@@ -120,7 +129,7 @@ export default async function handler(req: Request): Promise<Response> {
             husband: ms.find(m => m.role === 'husband')?.display_name ?? '남편',
             wife: ms.find(m => m.role === 'wife')?.display_name ?? '아내',
             state, lastAt: last,
-            pending: (queue ?? []).filter(q => q.couple_id === c.id).length,
+            pending: [...(queue ?? []), ...(notices ?? [])].filter(q => q.couple_id === c.id).length,
             archivedAt: (c as { archived_at?: string | null }).archived_at ?? null,
           }
         })
@@ -259,13 +268,84 @@ export default async function handler(req: Request): Promise<Response> {
         return Response.json({ ok: true })
       }
 
+      // ── 부부가 먼저 알린 변화 (11.04) ─────────────────────────────────
+      case 'notices': {
+        const { data: rows, error } = await sb.from('change_notices').select('*').eq('couple_id', coupleId).is('resolved_at', null).order('created_at', { ascending: false })
+        if (error) return noTable(error.message) ? Response.json({ items: [], needsPatch: NOTICE_PATCH }) : bad(error.message, 500)
+        const vids = [...new Set((rows ?? []).map(r => r.card_version_id))]
+        const mids = [...new Set((rows ?? []).map(r => r.member_id))]
+        const [{ data: cvs }, { data: ms }] = await Promise.all([
+          vids.length ? sb.from('card_versions').select('id, card_id, label, planned_value, cards!inner(key, type, unit, category)').in('id', vids) : Promise.resolve({ data: [] as any[] }),
+          mids.length ? sb.from('members').select('id, role').in('id', mids) : Promise.resolve({ data: [] as any[] }),
+        ])
+        const cvById = new Map((cvs ?? []).map(cv => [cv.id, cv]))
+        const roleById = new Map((ms ?? []).map(m => [m.id, m.role]))
+        return Response.json({
+          items: (rows ?? []).map(r => {
+            const cv = cvById.get(r.card_version_id)
+            return {
+              id: r.id, cardId: cv?.card_id, key: cv?.cards?.key, category: cv?.cards?.category, type: cv?.cards?.type, unit: cv?.cards?.unit ?? null,
+              label: cv?.label ?? '', planned: cv?.planned_value ?? '', role: roleById.get(r.member_id) ?? 'husband',
+              text: r.text, isCondition: r.is_condition, createdAt: r.created_at,
+            }
+          }),
+        })
+      }
+      case 'resolve_notice': {
+        const { noticeId, resolution, note } = body
+        if (typeof noticeId !== 'string' || !['replan', 'consult', 'factcheck'].includes(resolution)) return bad('noticeId / resolution')
+        const { data: n, error: e0 } = await sb.from('change_notices').select('id, couple_id, card_version_id').eq('id', noticeId).is('resolved_at', null).maybeSingle()
+        if (e0) return bad(noTable(e0.message) ? NOTICE_PATCH : e0.message, 500)
+        if (!n) return bad('이미 처리했거나 없는 알림입니다', 404)
+        let roundId: string | null = null
+        if (resolution === 'factcheck') {
+          // 두 분께 같이 묻기 = 그 카드의 지금 계획 1장으로 정기 맞춰보기. 열린 맞춰보기가 있으면 겹치지 않게 열지 않는다
+          const { data: open } = await sb.from('rounds').select('id').eq('couple_id', n.couple_id).eq('status', 'open').limit(1)
+          if (open?.length) return bad('이미 진행 중인 맞춰보기가 있습니다. 끝난 뒤 다시 눌러 주세요')
+          const { data: cv } = await sb.from('card_versions').select('card_id').eq('id', n.card_version_id).maybeSingle()
+          const { data: act } = cv ? await sb.from('active_cards').select('id').eq('card_id', cv.card_id).maybeSingle() : { data: null }
+          if (!act) return bad('이 카드의 지금 계획을 찾지 못했습니다')
+          const { data: rd, error: e1 } = await sb.from('rounds').insert({ couple_id: n.couple_id, kind: 'regular', card_version_ids: [act.id] }).select('id').single()
+          if (e1) return bad(e1.message, 500)
+          roundId = rd.id
+        }
+        const { error: e2 } = await sb.from('change_notices')
+          .update({ resolved_at: new Date().toISOString(), resolution, resolution_note: typeof note === 'string' && note.trim() ? note.trim() : null })
+          .eq('id', noticeId).is('resolved_at', null)
+        if (e2) return bad(e2.message, 500)
+        return Response.json({ ok: true, roundId })
+      }
+
       // ── 카드 ──────────────────────────────────────────────────────────
       case 'cards': {
         const { data, error } = await sb.from('latest_cards').select('*').eq('couple_id', coupleId)
         if (error) return bad(error.message, 500)
         const open = await openVersionIds(sb, coupleId)
         // awaiting = 부부 답을 기다리는 중 (열린 라운드에 있음). pending 인데 awaiting 이 아니면 "동의 안 됨"
-        return Response.json({ cards: (data ?? []).map(c => ({ ...c, awaiting: c.pending && open.has(c.id) })) })
+        // inOpenRound = 지금 열린 맞춰보기가 이 버전을 묻는 중 (엑셀 다시 읽기는 끝난 뒤에 반영한다)
+        return Response.json({ cards: (data ?? []).map(c => ({ ...c, awaiting: c.pending && open.has(c.id), inOpenRound: open.has(c.id) })) })
+      }
+      case 'apply_sheet_value': {
+        // 설계사가 엑셀에서 다시 설계한 숫자를 반영한다 (11.04). 앱이 바꾸는 게 아니라 설계사가 바꾼 설계안을 옮기는 것 —
+        // add_card 처럼 바로 전제가 된다. 값은 덮어쓰지 않고 새 버전 (DB 트리거가 막는다).
+        const { cardId, reason } = body
+        const plannedValue = String(body.plannedValue ?? '')
+        if (typeof cardId !== 'string' || !/^\d+$/.test(plannedValue) || typeof reason !== 'string' || !reason.trim()) return bad('cardId / plannedValue(원 단위 숫자) / reason')
+        const { data: latest, error: e1 } = await sb.from('latest_cards').select('*').eq('card_id', cardId).maybeSingle()
+        if (e1) return bad(e1.message, 500)
+        if (!latest) return bad('카드 없음', 404)
+        if (latest.type !== 'number') return bad('금액 카드만 엑셀에서 반영합니다')
+        if ((await openVersionIds(sb, latest.couple_id)).has(latest.id))
+          return bad(`"${latest.label}"은(는) 지금 맞춰보기에서 묻는 중입니다. 두 분이 답한 뒤 다시 읽어 반영해 주세요`)
+        if (latest.planned_value === plannedValue) return Response.json({ unchanged: true })
+        const pid = await plannerId(sb)
+        const { data: v, error: e2 } = await sb.from('card_versions').insert({
+          card_id: latest.card_id, version: latest.version + 1, label: latest.label, question: latest.question,
+          planned_value: plannedValue, tolerance: latest.tolerance, options: latest.options, allow_condition: latest.allow_condition, stake: latest.stake,
+          reason: reason.trim().slice(0, 300), created_by: pid, activated_at: new Date().toISOString(),
+        }).select('id, version').single()
+        if (e2) return bad(e2.message, 500)
+        return Response.json({ versionId: v.id, version: v.version })
       }
       case 'save_card': {
         const { cardId, reason } = body
@@ -301,8 +381,15 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: couple } = await sb.from('couples').select('id').eq('id', coupleId).maybeSingle()
         if (!couple) return bad('부부를 찾을 수 없습니다', 404)
         const pid = await plannerId(sb)
+        // 엑셀에서 만든 카드는 key 에 엑셀 자리를 담는다 → 다시 읽을 때 같은 카드를 찾는다 (src/extract/diff.ts).
+        // 같은 key 가 이미 있으면(지운 카드 포함) 무작위 key 로 — 두 벌이 되는 건 화면에서 먼저 막는다
+        let key = newCardKey()
+        if (typeof body.sourceKey === 'string' && /^xl:/.test(body.sourceKey)) {
+          const { data: dup } = await sb.from('cards').select('id').eq('couple_id', coupleId).eq('key', body.sourceKey).maybeSingle()
+          if (!dup) key = body.sourceKey.slice(0, 120)
+        }
         const { data: card, error: e1 } = await sb.from('cards')
-          .insert({ couple_id: coupleId, key: newCardKey(), type: c.type, category: c.category, unit: c.unit })
+          .insert({ couple_id: coupleId, key, type: c.type, category: c.category, unit: c.unit })
           .select('id').single()
         if (e1) return bad(e1.message, 500)
         const { data: v, error: e2 } = await sb.from('card_versions').insert({

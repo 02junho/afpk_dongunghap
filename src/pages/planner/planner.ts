@@ -78,7 +78,9 @@ export function useQueueCount(p: ReturnType<typeof usePlanner>, fallback: number
   const [n, setN] = useState(fallback)
   useEffect(() => {
     if (!p.live || !p.pass) { setN(fallback); return }
-    p.call<{ items: unknown[] }>('queue').then(r => setN(r.items.length)).catch(() => {})
+    // 판정된 건 + 부부가 먼저 알린 변화 (11.04). 알림 표가 아직 없으면(패치 전) 0건으로 온다
+    Promise.all([p.call<{ items: unknown[] }>('queue'), p.call<{ items: unknown[] }>('notices').catch(() => ({ items: [] }))])
+      .then(([q, n]) => setN(q.items.length + n.items.length)).catch(() => {})
   }, [p.live, p.pass, p.couple.id])
   return n
 }

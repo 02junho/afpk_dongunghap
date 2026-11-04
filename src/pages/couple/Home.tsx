@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
-import { loadActiveCards, loadLastCheckAt, loadNames, loadOpenRound } from '../../lib/db'
+import { loadActiveCardRows, loadLastCheckAt, loadNames, loadOpenRound, myOpenNotices } from '../../lib/db'
 import { CHECK_MONTHS, formatKDate, nextCheckDate } from '../../lib/cycle'
 import { clearMe, loadMe, nameOf, saveMe } from '../../lib/session'
 import InstallGuide from './InstallGuide'
@@ -19,12 +19,19 @@ export default function Home() {
   // [내 설계] 카테고리 접기·펼치기 (10.23 Q13). 처음엔 모두 접혀 있다 — 누른 것만 펼친다
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({})
   const [round, setRound] = useState<{ id: string; kind: string; count: number } | null | 'loading'>(me.live ? 'loading' : { id: 'baseline', kind: 'baseline', count: 3 })
+  // "바뀐 게 있어요"로 이미 알렸고 설계사가 아직 처리하지 않은 카드 (key) — 같은 걸 두 번 보내지 않게 표시만
+  const [noticed, setNoticed] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!me.live || !me.coupleId) return
     // DB 순서는 임의다 → 카테고리 순(주거→소득→…)으로 정렬해 시드와 같은 모양으로
-    loadActiveCards(me.coupleId)
-      .then(cs => setCards([...cs].sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key))))
+    loadActiveCardRows(me.coupleId)
+      .then(async rs => {
+        setCards(rs.map(r => r.card).sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key)))
+        if (!me.memberId) return
+        const sent = await myOpenNotices(me.memberId)
+        setNoticed(new Set(rs.filter(r => sent.has(r.versionId)).map(r => r.card.key)))
+      })
       .catch(() => {})
     loadOpenRound(me.coupleId).then(r => setRound(r ? { id: r.id, kind: r.kind, count: r.cards.length } : null)).catch(() => setRound(null))
     loadLastCheckAt(me.coupleId).then(setLastCheck).catch(() => {})
@@ -87,13 +94,17 @@ export default function Home() {
                   </button>
                   {open && cs.map(c => (
                     <div className="plan-card" key={c.key} style={{ marginLeft: 18 }}>
-                      <div><p className="k">{c.label}</p><p className="v">{showValue(c)}</p></div>
+                      <div style={{ flex: 1 }}><p className="k">{c.label}</p><p className="v">{showValue(c)}</p></div>
+                      {noticed.has(c.key)
+                        ? <span className="meta" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>설계사님께 전달됨</span>
+                        : <button className="btn btn-quiet btn-small" style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}
+                            onClick={() => nav(`/c/change/${encodeURIComponent(c.key)}`)}>바뀐 게 있어요</button>}
                     </div>
                   ))}
                 </div>
               )
             })}
-            <p className="note">설계사님과 정한 계획이에요. 설계사님이 설계를 수정하면 알려드릴게요.</p>
+            <p className="note">설계사님과 정한 계획이에요. 사정이 바뀌었으면 맞춰보기를 기다리지 말고 "바뀐 게 있어요"로 알려 주세요 — 설계사님께만 전달돼요.</p>
           </>
         ) : (
           <>
