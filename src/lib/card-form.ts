@@ -72,7 +72,7 @@ export function normalizeNewCard(x: NewCardInput): NewCardResult {
   if (!label) return { ok: false, error: '카드 이름이 필요합니다' }
   if (!question) return { ok: false, error: '두 분께 묻는 질문이 필요합니다' }
   if (!raw) return { ok: false, error: '설계 전제 값이 필요합니다' }
-  if (!stake) return { ok: false, error: '"이 계획이 바뀌면 생기는 일"을 한 줄 적어 주세요 — 처리 대기의 AI 요약이 이 문장을 근거로 씁니다' }
+  if (!stake) return { ok: false, error: '"이 계획이 바뀌면 생기는 일"을 한 줄 적어 주세요' }
   if (label.length > 40) return { ok: false, error: '카드 이름은 40자 이내로' }
 
   let unit: NumberUnit | null = null

@@ -81,11 +81,11 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
           category: c.category, type: 'number', unit: 'krw', label: c.label, question: c.question,
           plannedValue: String(c.item.value), options: null, stake: c.stake,
           source: `${c.item.sheet} ${c.item.cell}`,
-          note: `${c.item.table} · ${c.item.group} · 엑셀 "${c.item.label}" ${(c.item.value / (c.item.unitNote === '만원' ? 10_000 : 1)).toLocaleString()}${c.item.unitNote}${c.known ? '' : ' · 새 항목 — 쓸지 판단해 주세요'}`,
+          note: `${c.item.table} · ${c.item.group} · 엑셀 "${c.item.label}" ${(c.item.value / (c.item.unitNote === '만원' ? 10_000 : 1)).toLocaleString()}${c.item.unitNote}${c.known ? '' : ' · 새 항목'}`,
           checked: c.pick,
           item: { table: c.item.table, label: c.item.label, value: c.item.value }, origLabel: c.label,
         })))
-        setInfo(`엑셀 표에서 항목 ${cs.length}개를 그대로 옮겼습니다 (AI가 숫자를 읽거나 고치지 않음) · 기본 선택 ${cs.filter(c => c.pick).length}개`)
+        setInfo(`엑셀 표에서 항목 ${cs.length}개를 읽었습니다 · 기본 선택 ${cs.filter(c => c.pick).length}개`)
         setMode('rules')
       } else setMode('ai')
     }
