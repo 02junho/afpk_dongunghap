@@ -81,14 +81,14 @@ export default function Cards() {
     if (!p.live || !p.pass) {
       const id = `demo-${Date.now()}`
       setRows(rs => [...rs, { cardId: id, versionId: id, version: 1, pending: false, awaiting: false, card: { ...asCard, key: id } }])
-      setMsg(`(데모) "${card.label}" v1 추가 — 실제로는 DB에 저장되고 바로 전제가 됩니다`)
+      setMsg(`(예시) "${card.label}" 추가`)
       setAdding(false)
       return
     }
     setBusy(true); setErr('')
     try {
       const r = await p.call<{ roundId: string | null; askSkipped: string | null }>('add_card', { card, askNow })
-      setMsg(`"${card.label}" v1 추가 — 바로 전제가 됐습니다.` +
+      setMsg(`"${card.label}" 추가했습니다.` +
         (r.roundId ? ' 두 분 폰에 1문항이 열렸습니다.' : r.askSkipped ? ` ${r.askSkipped}` : ''))
       setAdding(false)
       await load()
@@ -195,7 +195,7 @@ export default function Cards() {
                 existing={loaded ? rows.map((r): ExistingCard => ({ cardId: r.cardId, key: r.card.key, label: r.card.label, type: r.card.type, plannedValue: r.card.plannedValue, inOpenRound: r.inOpenRound })) : null}
                 onSaved={(added, applied) => {
                   setExtracting(false)
-                  setMsg([applied && `바뀐 숫자 ${applied}건을 새 버전으로 반영했습니다 (예전 값은 변경 이력에 남습니다)`, added && `엑셀에서 만든 질문 카드 ${added}장을 추가했습니다`].filter(Boolean).join(' · ') + '.')
+                  setMsg([applied && `바뀐 숫자 ${applied}건 반영`, added && `질문 카드 ${added}장 추가`].filter(Boolean).join(' · ') + '.')
                   void load()
                 }} />
             ) : adding ? <AddCard busy={busy} onSave={add} onCancel={() => setAdding(false)} /> : sel ? (() => {

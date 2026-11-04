@@ -57,7 +57,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
       <select id="ac-kind" className="field" style={fieldStyle} value={kind} onChange={e => { setKind(e.target.value); setTol('') }}>
         {KIND_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
       </select>
-      <p className="was">{k.type === 'text' ? '서술형은 AI가 같은 뜻인지 판별합니다. 숫자·시점·선택으로 받을 수 있으면 그쪽이 정확합니다.' : '정해진 규칙으로 판정합니다 (AI 없이).'}</p>
+      <p className="was">{k.type === 'text' ? 'AI 판별' : '규칙 판별 (AI 없음)'}</p>
 
       <label className="label" htmlFor="ac-label">카드 이름</label>
       <input id="ac-label" className="field" style={fieldStyle} value={label} onChange={e => setLabel(e.target.value)} placeholder="예: 전세 보증금" maxLength={40} />
@@ -97,7 +97,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
       {k.type === 'date' && (
         <label className="label" style={{ fontWeight: 400, display: 'flex', gap: 8, alignItems: 'center' }}>
           <input type="checkbox" checked={allowCondition} onChange={e => setAllowCondition(e.target.checked)} />
-          "정확한 시점 대신 조건으로" 답하는 것을 허용 — 조건부 답변은 처리 대기로 옵니다
+          "정확한 시점 대신 조건으로" 답하기 허용
         </label>
       )}
 
@@ -110,10 +110,6 @@ export default function AddCard({ busy, onSave, onCancel }: {
       </label>
 
       {touched && !result.ok && <p className="note" style={{ color: 'var(--escalate)' }}>{result.error}</p>}
-      <p className="will">
-        저장하면 v1이 <b>바로 전제</b>가 됩니다 — 상담에서 합의한 설계안의 값이니까요. 나중에 값을 바꿀 때만 두 분께 먼저 묻습니다.
-        {askNow ? ' 바로 묻기를 켰으니 두 분 폰에 1문항이 열립니다 (이미 진행 중인 맞춰보기가 있으면 열지 않습니다).' : ''}
-      </p>
       <div className="actions">
         <button className="btn btn-small" disabled={busy || !result.ok} onClick={() => result.ok && onSave(result.card, askNow)}>
           {busy ? '저장 중…' : askNow ? '추가하고 바로 묻기' : '카드 추가'}

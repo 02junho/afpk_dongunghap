@@ -88,7 +88,7 @@ export default function Queue() {
     try {
       const out = await p.call<{ roundId: string | null }>('resolve_notice', { noticeId: n.id, resolution: r, note: note[n.id] ?? '' })
       setNoticeDone(d => ({ ...d, [n.id]: r }))
-      if (out.roundId) setMsg(`"${n.label}" 한 문항으로 맞춰보기를 열었습니다. 두 분 홈에서 바로 답할 수 있어요.`)
+      if (out.roundId) setMsg(`"${n.label}" 한 문항으로 맞춰보기를 열었습니다.`)
     } catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
@@ -133,7 +133,7 @@ export default function Queue() {
 
   async function newRound() {
     setBusy(true)
-    try { await p.call('new_round'); setMsg('새 맞춰보기를 열었습니다. 두 분 홈에서 바로 시작할 수 있어요.') }
+    try { await p.call('new_round'); setMsg('새 맞춰보기를 열었습니다.') }
     catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }

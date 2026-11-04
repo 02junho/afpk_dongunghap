@@ -213,7 +213,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
       {rows && (
         <>
           <p className="meta" style={{ marginTop: 14 }}>{info}</p>
-          {!rows.length && <p className="note">뽑을 전제를 찾지 못했습니다. 상담 내용 시트가 들어 있는지 확인해 주세요.</p>}
+          {!rows.length && <p className="note">읽을 항목을 찾지 못했습니다.</p>}
           {mode === 'rules' && !matched && <p className="note">이미 있는 질문 카드와 맞춰 보는 중…</p>}
           {mode === 'rules' && matched && (count('same') > 0 || count('changed') > 0) && (
             <p className="will">
