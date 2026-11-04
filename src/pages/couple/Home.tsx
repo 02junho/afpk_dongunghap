@@ -117,7 +117,7 @@ export default function Home() {
             {waiting
               ? <h2 className="q">답을 모두 보냈어요</h2>
               : isFactcheck
-              ? <h2 className="q">설계사님이 전제 하나를<br />바꾸려고 해요<br />두 분께 먼저 여쭤볼게요</h2>
+              ? <h2 className="q">설계사님이 계획 하나를<br />바꾸려고 해요<br />두 분께 먼저 여쭤볼게요</h2>
               : canStart
                 ? <h2 className="q">이제부터 시작할게요</h2>
                 : round === 'loading' ? <h2 className="q">&nbsp;</h2>
@@ -130,7 +130,7 @@ export default function Home() {
                 <div>
                   <p style={{ margin: 0, fontWeight: 700 }}>
                     {round === 'loading' ? '불러오는 중…'
-                      : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : isRegular ? `정기 맞춰보기 · ${round.count}문항` : `첫 맞춰보기 · ${round.count}문항`)
+                      : round ? (isFactcheck ? `확인 질문 · ${round.count}문항` : isRegular ? `정기 맞춰보기 · ${round.count}문항` : `첫 맞춰보기 · ${round.count}문항`)
                       : '지금은 열린 맞춰보기가 없어요'}
                   </p>
                   {round && round !== 'loading' && <p className="meta">{waiting ? `${nameOf(me, me.role === 'wife' ? 'husband' : 'wife')}님 차례예요` : `약 ${Math.max(1, round.count)}분`}</p>}

@@ -56,7 +56,7 @@ export default function Wait() {
     <main className="phone">
       <div className="phone-top">
         <h1 className="wordmark"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</h1>
-        <p className="meta">{kind === 'factcheck' ? '먼저 묻기' : kind === 'baseline' ? '첫 맞춰보기' : '정기 맞춰보기'}</p>
+        <p className="meta">{kind === 'factcheck' ? '확인 질문' : kind === 'baseline' ? '첫 맞춰보기' : '정기 맞춰보기'}</p>
       </div>
       <div className="phone-body">
         <div className="done-mark">

@@ -140,7 +140,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
           await call('apply_sheet_value', { cardId: e.cardId, plannedValue: String(r.item!.value), reason: `엑셀 다시 읽기 (${r.source}): ${was} → ${now}` }); applied++
         }
       }
-    } catch (e) { setErr(`새 카드 ${added}장 · 반영 ${applied}건 뒤 멈춤: ${(e as Error).message}`) }
+    } catch (e) { setErr(`새 카드 ${added}장, 반영 ${applied}건까지 하고 멈췄습니다: ${(e as Error).message}`) }
     setBusy('')
     if (added || applied) onSaved(added, applied)
   }
@@ -182,9 +182,9 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
             </p>
           ) : (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <label className={`btn btn-quiet btn-small${busy ? ' btn-off' : ''}`} htmlFor={`xlsx-${k}`} style={{ cursor: 'pointer', padding: '2px 10px', fontSize: 11 }}>엑셀 고르기</label>
+              <label className={`btn btn-quiet btn-small${busy ? ' btn-off' : ''}`} htmlFor={`xlsx-${k}`} style={{ cursor: 'pointer', padding: '2px 10px', fontSize: 11 }}>파일 선택</label>
               <input id={`xlsx-${k}`} type="file" accept=".xlsx,.xls" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; if (f) void pick({ ...files, [k]: f }) }} />
-              <span className="meta">{files[k] ? files[k]!.name : '고른 파일 없음'}</span>
+              <span className="meta">{files[k] ? files[k]!.name : '선택된 파일 없음'}</span>
               {canLink && (
                 <button className="btn btn-quiet btn-small" style={{ padding: '2px 10px', fontSize: 11 }} disabled={!live || !!busy} onClick={() => void connect(k)}
                   title="다음부터는 엑셀을 고쳐 저장한 뒤 '다시 읽기'만 누르면 됩니다 (크롬 · 엣지 컴퓨터)">이 컴퓨터 파일로 연결</button>
@@ -289,7 +289,7 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
             <button className="btn btn-small" disabled={!live || !(addCount + applyCount) || !!busy} onClick={() => void save()}>
               {busy === 'saving' ? '저장 중…'
                 : applyCount ? `바뀐 숫자 ${applyCount}건 반영${addCount ? ` · 새 카드 ${addCount}장 저장` : ''}`
-                : `확인한 ${addCount}장 저장`}
+                : `고른 ${addCount}장 저장`}
             </button>
             <button className="btn btn-quiet btn-small" onClick={onCancel}>닫기</button>
           </div>

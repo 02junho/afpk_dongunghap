@@ -54,7 +54,7 @@ export default function InstallGuide({ code, compact = false }: { code?: string;
           )}
           {code && (
             <p className="note" style={{ marginTop: 8 }}>
-              {p === 'ios' ? '아이콘으로 처음 열면 코드를 한 번 더 넣어요' : '아이콘으로 열었을 때 코드를 물으면'}: <b style={{ letterSpacing: '0.12em', color: 'var(--ink)' }}>{code}</b>
+              {p === 'ios' ? '아이콘으로 처음 열면 코드를 한 번 더 넣어요' : '아이콘으로 열 때 코드를 물으면 이 번호를 넣어요'}: <b style={{ letterSpacing: '0.12em', color: 'var(--ink)' }}>{code}</b>
             </p>
           )}
           <button onClick={dismiss}

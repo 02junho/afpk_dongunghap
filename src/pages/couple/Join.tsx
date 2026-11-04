@@ -42,8 +42,8 @@ export default function Join() {
         <h1 className="wordmark"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</h1>
       </div>
       <div className="phone-body">
-        <h2 className="q">설계사님께 받은<br />입장 코드를 넣어주세요</h2>
-        {params.get('removed') && <p className="note" style={{ color: 'var(--escalate)' }}>연결이 정리됐어요. 설계사님께 코드를 다시 확인해 주세요.</p>}
+        <h2 className="q">설계사님께 받은<br />입장 코드를 넣어 주세요</h2>
+        {params.get('removed') && <p className="note" style={{ color: 'var(--escalate)' }}>입장이 해제됐어요. 설계사님께 코드를 다시 확인해 주세요.</p>}
         <InstallGuide code={code.length === 6 ? code : undefined} />
         <input className="field code-field" style={{ marginTop: 24 }} inputMode="numeric" maxLength={6} placeholder="······"
           aria-label="입장 코드 여섯 자리" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} />

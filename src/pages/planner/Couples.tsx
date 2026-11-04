@@ -80,7 +80,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
   async function create() {
     const label = form.label.trim() || [form.husband.trim(), form.wife.trim()].filter(Boolean).join(' · ')
     if (!label) return
-    if (needPass) { setErr('설계사 코드를 먼저 넣어야 실제로 발급됩니다 (왼쪽 레일).'); return }
+    if (needPass) { setErr('왼쪽에 설계사 코드를 넣어야 발급됩니다.'); return }
     if (!p.live) {
       const code = String(100000 + Math.floor(Math.random() * 900000))
       setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: startEmpty ? '질문 카드 준비 중' : '첫 맞춰보기 시작 전', lastAt: null, pending: 0 }])
@@ -261,9 +261,9 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
         <div className="editor" style={{ maxWidth: 560 }}>
           <p className="label">재무설계 엑셀로 등록 (선택)</p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-            <label className={`btn btn-quiet btn-small${needPass || busy ? ' btn-off' : ''}`} htmlFor="imp-statement" style={{ cursor: 'pointer' }}>엑셀 고르기</label>
+            <label className={`btn btn-quiet btn-small${needPass || busy ? ' btn-off' : ''}`} htmlFor="imp-statement" style={{ cursor: 'pointer' }}>파일 선택</label>
             <input id="imp-statement" type="file" accept=".xlsx,.xls" hidden disabled={needPass || busy} onChange={e => chooseImport('statement', e.target.files?.[0])} />
-            <span className="meta">{importFiles.statement ? importFiles.statement.name : '고른 파일 없음'}</span>
+            <span className="meta">{importFiles.statement ? importFiles.statement.name : '선택된 파일 없음'}</span>
           </div>
           <p className="was">파일 이름이 "남편이름_아내이름_재무설계.xlsx"면 이름이 채워집니다.</p>
           {importNote && <p className="note" style={{ color: importNote.startsWith('파일 이름에서') ? 'var(--agree)' : 'var(--talk)' }}>{importNote}</p>}

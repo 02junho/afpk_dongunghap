@@ -15,7 +15,7 @@ import { usePlanner } from './planner'
 type Resolution = 'replan' | 'factcheck' | 'consult' | 'false_positive'
 const RESOLVED = {
   replan: { text: '재설계 필요', cls: 'chip-escalate' },
-  factcheck: { text: '카드 고치러 감', cls: 'chip-talk' },
+  factcheck: { text: '두 분께 다시 물음', cls: 'chip-talk' },
   consult: { text: '상담 안건', cls: 'chip-agree' },
   false_positive: { text: '같은 뜻으로 정리', cls: 'chip-agree' },
 } as const
@@ -227,7 +227,7 @@ export default function Queue() {
                   <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
                   <span style={{ fontSize: 16, fontWeight: 700 }}>{it.label}</span>
                   <span className={`chip ${chip.cls}`}>{chip.text}</span>
-                  <span className="meta">{it.method === 'llm' ? `AI 판별 · 프롬프트 ${it.promptVersion ?? '-'}` : '규칙 판별'}</span>
+                  <span className="meta">{it.method === 'llm' ? `AI 판별 · ${it.promptVersion ?? '-'}` : '규칙 판별'}</span>
                   <span className="queue-couple">{p.couple.label} · {it.roundLabel}</span>
                 </div>
                 <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
@@ -253,12 +253,12 @@ export default function Queue() {
                         value={note[it.id] ?? ''} onChange={e => setNote(n => ({ ...n, [it.id]: e.target.value }))} placeholder="메모 (선택)" />
                     )}
                     <div className="actions">
-                      <button className="btn btn-small" disabled={busy} title="두 분 생각이 설계와 달라졌습니다 — 앱 밖에서 다시 설계합니다"
+                      <button className="btn btn-small" disabled={busy} title="엑셀에서 다시 설계합니다"
                         onClick={() => resolve(it, 'replan')}>재설계 필요</button>
-                      <button className="btn btn-quiet btn-small" disabled={busy} title="앱 밖에서. 다음 상담 안건으로"
+                      <button className="btn btn-quiet btn-small" disabled={busy} title="다음 상담 안건으로 남깁니다"
                         onClick={() => resolve(it, 'consult')}>상담 때 다루기</button>
                       <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy}
-                        title="AI 오판 표시 — golden set 후보로 기록됩니다"
+                        title="AI가 잘못 판단한 건으로 기록합니다"
                         onClick={() => resolve(it, 'false_positive')}>이건 같은 뜻이에요</button>
                     </div>
                   </>

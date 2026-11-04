@@ -101,7 +101,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
       )}
 
       <label className="label" htmlFor="ac-stake">이 계획이 바뀌면 생기는 일</label>
-      <textarea id="ac-stake" className="field" style={fieldStyle} rows={2} value={stake} onChange={e => setStake(e.target.value)} placeholder="예: 자기자금을 뺀 나머지가 대출 금액. 근거 숫자가 있으면 함께" />
+      <textarea id="ac-stake" className="field" style={fieldStyle} rows={2} value={stake} onChange={e => setStake(e.target.value)} placeholder="예: 자기자금을 뺀 나머지가 대출 금액이 된다 (근거 숫자가 있으면 함께)" />
 
       <label className="label" style={{ fontWeight: 400, display: 'flex', gap: 8, alignItems: 'center' }}>
         <input type="checkbox" checked={askNow} onChange={e => setAskNow(e.target.checked)} />

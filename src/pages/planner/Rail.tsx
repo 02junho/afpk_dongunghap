@@ -27,9 +27,9 @@ export default function Rail({ count }: { count?: number }) {
           <p className="rail-group" style={{ padding: '8px 0 6px' }}>설계사 코드</p>
           <input className="field" type="password" value={draft} onChange={e => setDraft(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && draft.trim() && p.setPass(draft.trim())}
-            placeholder="상담소 코드" style={{ padding: '10px 12px', fontSize: 14, boxShadow: 'none', border: '2px solid var(--line)' }} />
+            placeholder="설계사 코드" style={{ padding: '10px 12px', fontSize: 14, boxShadow: 'none', border: '2px solid var(--line)' }} />
           <button className="btn btn-small" style={{ marginTop: 8, width: '100%' }} disabled={!draft.trim()} onClick={() => p.setPass(draft.trim())}>들어가기</button>
-          <p className="meta" style={{ marginTop: 8 }}>코드 전엔 예시 데이터가 보입니다.</p>
+          <p className="meta" style={{ marginTop: 8 }}>코드를 넣기 전에는 예시 화면이 보입니다.</p>
         </div>
       ) : (
         <>
@@ -42,7 +42,7 @@ export default function Rail({ count }: { count?: number }) {
           <Link className={on('/p/history')} to="/p/history">변경 이력</Link>
           {p.live && (
             <p className="rail-group" style={{ marginTop: 24 }}>
-              <button className="btn btn-quiet btn-small" style={{ padding: '6px 10px', fontSize: 12 }} onClick={p.clearPass}>코드 잠그기</button>
+              <button className="btn btn-quiet btn-small" style={{ padding: '6px 10px', fontSize: 12 }} onClick={p.clearPass}>나가기</button>
             </p>
           )}
         </>

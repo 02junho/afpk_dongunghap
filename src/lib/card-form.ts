@@ -66,14 +66,14 @@ export function normalizeNewCard(x: NewCardInput): NewCardResult {
   const category = s(x.category) as CardCategory
   const type = s(x.type) as CardType
   if (!CATEGORY_KEYS.includes(category)) return { ok: false, error: '주제를 고르세요' }
-  if (!TYPE_KEYS.includes(type)) return { ok: false, error: '타입을 고르세요' }
+  if (!TYPE_KEYS.includes(type)) return { ok: false, error: '답의 형태를 고르세요' }
 
   const label = s(x.label), question = s(x.question), stake = s(x.stake), raw = s(x.plannedValue)
   if (!label) return { ok: false, error: '카드 이름이 필요합니다' }
   if (!question) return { ok: false, error: '두 분께 묻는 질문이 필요합니다' }
   if (!raw) return { ok: false, error: '설계 전제 값이 필요합니다' }
   if (!stake) return { ok: false, error: '"이 계획이 바뀌면 생기는 일"을 한 줄 적어 주세요' }
-  if (label.length > 40) return { ok: false, error: '카드 이름은 40자 이내로' }
+  if (label.length > 40) return { ok: false, error: '카드 이름은 40자까지 쓸 수 있습니다' }
 
   let unit: NumberUnit | null = null
   let plannedValue = raw
@@ -95,11 +95,11 @@ export function normalizeNewCard(x: NewCardInput): NewCardResult {
     if (!ym) return { ok: false, error: '시점을 읽을 수 없습니다 (예: 2029-06)' }
     plannedValue = ym
     tolerance = x.tolerance == null ? DEFAULT_TOLERANCE.date : Number(x.tolerance)
-    if (!(Number.isInteger(tolerance) && tolerance >= 0 && tolerance <= 60)) return { ok: false, error: '허용 범위는 0~60개월 정수로' }
+    if (!(Number.isInteger(tolerance) && tolerance >= 0 && tolerance <= 60)) return { ok: false, error: '허용 범위는 0~60개월 사이 정수로 넣어 주세요' }
     allowCondition = !!x.allowCondition
   } else if (type === 'choice') {
     options = splitOptions(x.options)
-    if (options.length < 2) return { ok: false, error: '선택지는 두 개 이상' }
+    if (options.length < 2) return { ok: false, error: '선택지를 두 개 이상 넣어 주세요' }
     if (!options.includes(raw)) return { ok: false, error: '설계 전제 값은 선택지 중 하나여야 합니다' }
   }
 

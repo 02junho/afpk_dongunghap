@@ -21,7 +21,7 @@ export async function joinCouple(code: string, role: Role) {
   const { data: sess } = await s.auth.getSession()
   if (!sess.session) {
     const { error } = await s.auth.signInAnonymously()
-    if (error) throw new Error(`익명 로그인 실패: ${error.message}`)
+    if (error) throw new Error(`연결하지 못했어요. 잠시 뒤 다시 해 주세요 (${error.message})`)
   }
   let { data: coupleId, error } = await s.rpc('join_couple', { code, want_role: role })
   // 이 기기(uid)가 이미 다른 역할/커플에 묶여 있으면 — 새 익명 uid 로 갈아타고 한 번 더.
@@ -29,14 +29,14 @@ export async function joinCouple(code: string, role: Role) {
   if (error && /members_auth_user_id_key|이미 다른 기기/.test(error.message)) {
     await s.auth.signOut()
     const { error: e } = await s.auth.signInAnonymously()
-    if (e) throw new Error(`익명 로그인 실패: ${e.message}`)
+    if (e) throw new Error(`연결하지 못했어요. 잠시 뒤 다시 해 주세요 (${e.message})`)
     ;({ data: coupleId, error } = await s.rpc('join_couple', { code, want_role: role }))
   }
   if (error) throw new Error(error.message)
   const { data: members, error: e2 } = await s.from('members').select('id, role, display_name').eq('couple_id', coupleId)
   if (e2) throw new Error(e2.message)
   const mine = members?.find(m => m.role === role)
-  if (!mine) throw new Error('역할을 찾지 못했습니다')
+  if (!mine) throw new Error('남편 · 아내 정보를 찾지 못했어요. 다시 입장해 주세요')
   const names = { husband: '남편', wife: '아내' } as Record<Role, string>
   for (const m of members ?? []) if (m.display_name) names[m.role as Role] = m.display_name
   return { coupleId: coupleId as string, memberId: mine.id as string, names }
@@ -133,7 +133,7 @@ export async function loadActiveCardRows(coupleId: string): Promise<{ versionId:
   return (data ?? []).map(row => ({ versionId: row.id as string, card: rowToCard(row, row) }))
 }
 
-const NOTICE_PATCH_HINT = '아직 이 기능을 쓸 수 없어요. 설계사님께 알려 주세요 (DB 패치 필요)'
+const NOTICE_PATCH_HINT = '지금은 보낼 수 없어요. 설계사님께 직접 알려 주세요'
 
 /**
  * "바뀐 게 있어요" (11.04) — 맞춰보기를 기다리지 않고 먼저 알린다. 설계사 처리 대기로만 간다.

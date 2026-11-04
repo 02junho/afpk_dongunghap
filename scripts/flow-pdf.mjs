@@ -71,7 +71,7 @@ await dshot(null, 'p2-new-couple', async pg => {
 }, 'main .editor')
 await dshot('/p/cards', 'p5-extract', async pg => {
   await pg.click('button:has-text("엑셀로 만들기")')
-  if (hasXlsx) { await pg.setInputFiles('#xlsx-statement', XLSX); await pg.waitForSelector('text=확인한', { timeout: 15000 }) }
+  if (hasXlsx) { await pg.setInputFiles('#xlsx-statement', XLSX); await pg.waitForSelector('text=고른', { timeout: 15000 }) }
   // 예시 모드 안내 줄은 그림에서 뺀다 (실제 설계사 화면엔 없다)
   await pg.evaluate(() => document.querySelectorAll('.note').forEach(e => { if (e.textContent?.includes('예시 모드')) e.remove() }))
 }, 'main .editor')

@@ -96,7 +96,7 @@ export default function ChangeInput({ card, state: s, onChange }: { card: Card; 
       {((card.type === 'date' && s.condition) || card.type === 'text') && (
         <>
           <textarea className="field" rows={4} value={s.text} onChange={e => set({ text: e.target.value })}
-            placeholder={s.condition ? '예: 애 낳고 나서, 전세 만기 때' : '편하게 적어주세요'} aria-label={card.label} />
+            placeholder={s.condition ? '예: 애 낳고 나서, 전세 만기 때' : '편하게 적어 주세요'} aria-label={card.label} />
           {s.condition && (
             <>
               <div className="actions">

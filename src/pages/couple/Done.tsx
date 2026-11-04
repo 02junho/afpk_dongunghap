@@ -4,7 +4,7 @@ import { loadRoundInfo } from '../../lib/db'
 import { loadMe } from '../../lib/session'
 import { CHECK_MONTHS, addMonths, formatKDate } from '../../lib/cycle'
 
-const KIND_LABEL: Record<string, string> = { baseline: '첫 맞춰보기', factcheck: '먼저 묻기', regular: '정기 맞춰보기', event: '수시' }
+const KIND_LABEL: Record<string, string> = { baseline: '첫 맞춰보기', factcheck: '확인 질문', regular: '정기 맞춰보기', event: '수시' }
 
 /** 결과 화면을 대신한다. 부부는 판정도 상대 답도 보지 않는다 — 앱은 듣고, 설계사가 말한다. */
 export default function Done() {
