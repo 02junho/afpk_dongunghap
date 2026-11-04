@@ -7,7 +7,7 @@
  *   { passcode, action, coupleId? , ... }
  *   couples                                   담당 커플 목록 (진행 상태·대기 건수)
  *   new_couple { label, husband, wife }       커플 + 입장 코드 발급 + 기본 카드 10장(데모 세트) + 0회차
- *   extract_cards { sheetText }               재무제표 엑셀 글 → 질문 카드 초안 (AI, 저장 안 함 — 설계사가 골라 add_card)
+ *   extract_cards { sheetText }               표가 아닌 엑셀 글 → 질문 카드 초안 (AI, 저장 안 함). 11.04 꺼짐 — ENABLE_SHEET_AI=1 일 때만
  *   archive_couple / restore_couple           부부 지우기(보관) · 되돌리기. 기록은 지우지 않는다
  *   rename_couple { husband, wife, label? }   이름 고치기 (label 은 설계사 화면용, 비우면 "남편 · 아내")
  *   queue                                     처리 대기 (🔴 + 확인 필요)
@@ -167,6 +167,8 @@ export default async function handler(req: Request): Promise<Response> {
 
       case 'extract_cards': {
         // AI 활용 3번 (10.23 Q3). 초안만 돌려준다 — 저장은 설계사가 골라서 add_card 로 (자동 반영 없음).
+        // 11.04 결정 "가(표만)": 엑셀은 정한 표 양식으로만 받는다. AI 초안은 정확도를 잰 뒤 켤 다음 단계 (docs/17)
+        if (process.env.ENABLE_SHEET_AI !== '1') return bad('표가 아닌 엑셀의 AI 초안은 꺼져 있습니다 (ENABLE_SHEET_AI=1)', 404)
         const sheetText = String(body.sheetText ?? '')
         if (!sheetText.trim()) return bad('엑셀 내용이 비어 있습니다')
         if (sheetText.length > 60_000) return bad('엑셀 내용이 너무 깁니다 (6만 자까지)')

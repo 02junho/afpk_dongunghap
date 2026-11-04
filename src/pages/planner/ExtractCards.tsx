@@ -34,6 +34,9 @@ function check(r: Row) {
   return normalizeNewCard({ ...r, tolerance: null })
 }
 
+/** 표가 아닌 엑셀 → AI 카드 초안. 11.04 "가(표만)" 결정으로 끈다. 켜려면 서버 ENABLE_SHEET_AI=1 도 필요 (docs/17) */
+const ALLOW_SHEET_AI = false
+
 export default function ExtractCards({ live, call, onSaved, onCancel, initialFiles, existing, coupleId }: {
   live: boolean
   /** "재무설계 엑셀로 새 부부 등록"·"엑셀 다시 읽기"에서 넘어온 파일들 — 열리자마자 읽는다 */
@@ -55,7 +58,8 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
   const [busy, setBusy] = useState<'' | 'reading' | 'saving'>('')
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
-  // rules = 재무제표 표를 규칙으로 읽음 (AI 안 씀, 10.27) / ai = 표가 아닌 상담 글 → AI 초안
+  // rules = 재무제표 표를 규칙으로 읽음 (AI 안 씀, 10.27) / ai = 표가 아닌 상담 글
+  // 11.04 결정 "가(표만)": 표가 아니면 AI 초안을 만들지 않고 안내만 한다. 코드는 남기고 ALLOW_SHEET_AI 로 끈다 (docs/17)
   const [mode, setMode] = useState<'rules' | 'ai' | null>(null)
 
   async function pick(next: ImportFiles) {
@@ -196,11 +200,11 @@ export default function ExtractCards({ live, call, onSaved, onCancel, initialFil
           {sheet.file} · 시트 {sheet.sheets.length}개 · 칸 {sheet.cells}개 읽음{sheet.truncated ? ' · 너무 길어 앞부분만 보냅니다' : ''}
         </p>
       )}
-      <p className="will">{mode === 'rules'
-        ? '금액은 엑셀의 "만원"을 원으로 바꾼 값입니다.'
-        : '실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요.'}</p>
+      {mode === 'rules' && <p className="will">금액은 엑셀의 "만원"을 원으로 바꾼 값입니다.</p>}
+      {mode === 'ai' && !ALLOW_SHEET_AI && <p className="will" style={{ color: 'var(--talk)' }}>표 모양이 아니라 읽지 못했습니다. 재무제표 · 현금흐름표 양식으로 올려 주세요.</p>}
+      {mode === 'ai' && ALLOW_SHEET_AI && <p className="will">실제 고객이면 이름·연락처·주민번호는 지우고 올려 주세요.</p>}
 
-      {sheet && !rows && mode === 'ai' && (
+      {sheet && !rows && mode === 'ai' && ALLOW_SHEET_AI && (
         <div className="actions">
           <button className="btn btn-small" disabled={!live || !!busy} onClick={() => void extract()}>
             {busy === 'reading' ? 'AI가 읽는 중… (30초~1분)' : 'AI로 질문 카드 초안 만들기'}
