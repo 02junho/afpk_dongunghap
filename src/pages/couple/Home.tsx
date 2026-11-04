@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
-import { loadActiveCardRows, loadLastCheckAt, loadNames, loadOpenRound, myOpenNotices } from '../../lib/db'
+import { loadActiveCardRows, loadLastCheckAt, loadNames, loadOpenRound, myAnswered, myOpenNotices } from '../../lib/db'
 import { formatKDate, nextCheckDate } from '../../lib/cycle'
 import { clearMe, loadMe, nameOf, saveMe } from '../../lib/session'
 import InstallGuide from './InstallGuide'
@@ -21,6 +21,8 @@ export default function Home() {
   const [round, setRound] = useState<{ id: string; kind: string; count: number } | null | 'loading'>(me.live ? 'loading' : { id: 'baseline', kind: 'baseline', count: 3 })
   // "바뀐 게 있어요"로 이미 알렸고 설계사가 아직 처리하지 않은 카드 (key) — 같은 걸 두 번 보내지 않게 표시만
   const [noticed, setNoticed] = useState<Set<string>>(new Set())
+  // 열린 맞춰보기에 내가 이미 다 답했으면 "시작하기" 대신 진행 상황으로 (11.04 팀원 테스트 전 확인: 다 답한 뒤에도 "이제부터 시작할게요"가 떴다)
+  const [mineDone, setMineDone] = useState(false)
 
   useEffect(() => {
     if (!me.live || !me.coupleId) return
@@ -33,7 +35,10 @@ export default function Home() {
         setNoticed(new Set(rs.filter(r => sent.has(r.versionId)).map(r => r.card.key)))
       })
       .catch(() => {})
-    loadOpenRound(me.coupleId).then(r => setRound(r ? { id: r.id, kind: r.kind, count: r.cards.length } : null)).catch(() => setRound(null))
+    loadOpenRound(me.coupleId).then(async r => {
+      setRound(r ? { id: r.id, kind: r.kind, count: r.cards.length } : null)
+      if (r && me.memberId) setMineDone((await myAnswered(r.id, me.memberId)).size >= r.cards.length)
+    }).catch(() => setRound(null))
     loadLastCheckAt(me.coupleId).then(setLastCheck).catch(() => {})
     // 설계사가 이름을 고쳤으면 이 폰에도 반영 (입장할 때 저장한 이름은 그때 값이다)
     loadNames(me.coupleId).then(n => {
@@ -50,7 +55,8 @@ export default function Home() {
   // regular = 설계사가 카드를 추가하고 "바로 묻기"로 연 정기 맞춰보기
   const isRegular = round !== null && round !== 'loading' && (round.kind === 'regular' || round.kind === 'event')
 
-  const canStart = round !== null && round !== 'loading'
+  const canStart = round !== null && round !== 'loading' && !mineDone
+  const waiting = round !== null && round !== 'loading' && mineDone
   const next = nextCheckDate(lastCheck)
   const groups = CATEGORY_ORDER.map(k => ({ k, cards: cards.filter(c => c.category === k) })).filter(g => g.cards.length)
   const isOpen = (k: string) => openCats[k] ?? false
@@ -108,7 +114,9 @@ export default function Home() {
         ) : (
           <>
             {/* 10.23 Q10: 질문이 열렸으면 "이제부터 시작할게요", 없으면 다음 정기 맞춰보기 날짜 */}
-            {isFactcheck
+            {waiting
+              ? <h2 className="q">답을 모두 보냈어요</h2>
+              : isFactcheck
               ? <h2 className="q">설계사님이 전제 하나를<br />바꾸려고 해요<br />두 분께 먼저 여쭤볼게요</h2>
               : canStart
                 ? <h2 className="q">이제부터 시작할게요</h2>
@@ -125,7 +133,7 @@ export default function Home() {
                       : round ? (isFactcheck ? `먼저 묻기 · ${round.count}문항` : isRegular ? `정기 맞춰보기 · ${round.count}문항` : `첫 맞춰보기 · ${round.count}문항`)
                       : '지금은 열린 맞춰보기가 없어요'}
                   </p>
-                  {round && round !== 'loading' && <p className="meta">약 {Math.max(1, round.count)}분</p>}
+                  {round && round !== 'loading' && <p className="meta">{waiting ? `${nameOf(me, me.role === 'wife' ? 'husband' : 'wife')}님 차례예요` : `약 ${Math.max(1, round.count)}분`}</p>}
                 </div>
               </div>
             </div>
@@ -135,6 +143,9 @@ export default function Home() {
       </div>
       {tab === 'match' && canStart && (
         <button className="btn btn-wide" onClick={() => nav(`/c/round/${(round as { id: string }).id}`)}>시작하기</button>
+      )}
+      {tab === 'match' && waiting && (
+        <button className="btn btn-wide" onClick={() => nav(`/c/wait/${(round as { id: string }).id}`)}>진행 상황 보기</button>
       )}
       {/* 역할을 잘못 골랐거나, 폰을 바꾸거나, 시연에서 한 폰으로 남편·아내를 번갈아 보여줄 때.
           코드는 채워진 채로 입장 화면이 열린다 — 역할만 다시 고르면 된다 */}
