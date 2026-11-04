@@ -12,7 +12,15 @@
  * 키(VAPID_PRIVATE_KEY · PUSH_SECRET)는 서버에만 있다. 없으면 알림만 조용히 건너뛴다 — 앱은 그대로 돈다.
  */
 import webpush from 'web-push'
-import { serviceClient } from './judge'
+import { createClient } from '@supabase/supabase-js'
+
+// Node 함수는 파일마다 따로 돌아서(묶지 않음) 확장자 없는 상대 경로 import('./judge')가 깨진다 — 여기서 직접 만든다
+function serviceClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+}
 
 type Sub = { endpoint: string; keys: { p256dh: string; auth: string } }
 type Msg = { title: string; body: string; url: string; tag?: string }
