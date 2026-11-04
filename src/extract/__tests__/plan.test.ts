@@ -78,3 +78,17 @@ describe('Word 글 읽기 · 파일 이름', () => {
     expect(namesFromFilename('설계안.docx')).toBeNull()
   })
 })
+
+describe('허용 범위 없음 (11.05) — 계획과 다르면 다른 것', () => {
+  it('금액 1원 · 시점 1개월 · 나이 1살만 달라도 🔴, 같으면 🟢', async () => {
+    const { judge } = await import('../../judge/index')
+    const { slotCard } = await import('../../data/template')
+    const won = slotCard(slotByKey('t1_next_deposit')!, 300000000)
+    expect((await judge(won, '300000000', '300000000')).verdict).toBe('green')
+    expect((await judge(won, '300000000', '300000001')).verdict).toBe('red')
+    const when = slotCard(slotByKey('t1_buy_when')!, '2032-06')
+    expect((await judge(when, '2032-06', '2032-07')).verdict).toBe('red')
+    const age = slotCard(slotByKey('t3_husband_retire')!, 60)
+    expect(await judge(age, '61', '61')).toMatchObject({ verdict: 'red', redKind: 'plan_stale' })
+  })
+})

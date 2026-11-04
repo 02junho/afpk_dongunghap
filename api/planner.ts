@@ -20,7 +20,7 @@
  *   history / rounds                          변경 이력 · 라운드 목록
  */
 import { extractPlanValues, serviceClient, summarizeJudgment } from './judge'
-import { SLOTS, WEEKS, PER_THEME, themeOfWeek } from '../src/data/template'
+import { EXACT, SLOTS, WEEKS, PER_THEME, themeOfWeek } from '../src/data/template'
 import { planValue } from '../src/lib/plan-values'
 import { notify } from './_notify'
 import { CYCLE_PATCH, cycleEndsAt, latestCycle, nextCycleAt, noCycleTable, tickCouple, weekOf } from './_cycle'
@@ -212,7 +212,7 @@ export default async function handler(req: Request): Promise<Response> {
           const version = (cur?.version ?? 0) + 1
           const { error: e2 } = await sb.from('card_versions').insert({
             card_id: cardId, version, label: s.label, question: s.question, planned_value: v.value,
-            tolerance: s.tolerance ?? null, options: s.options ?? null, allow_condition: !!s.allowCondition, stake: s.stake,
+            tolerance: EXACT, options: s.options ?? null, allow_condition: !!s.allowCondition, stake: s.stake,
             reason: `${cur ? '계획 값 바꿈' : '최초 설정'} (${sourceLabel})`, created_by: pid, activated_at: new Date().toISOString(),
           })
           if (e2) { errors.push({ key: s.key, error: e2.message }); continue }
