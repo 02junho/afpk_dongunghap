@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { triggerJudge } from '../../lib/api'
-import { loadOpenRound, roundProgress } from '../../lib/db'
+import { loadRoundInfo, roundProgress } from '../../lib/db'
+import { themeOfWeek } from '../../data/template'
 import { loadMe, nameOf, partnerRole, type Role } from '../../lib/session'
 
 /**
@@ -16,6 +17,7 @@ export default function Wait() {
   const partner = partnerRole(me.role)
   const [total, setTotal] = useState(3)
   const [kind, setKind] = useState('baseline')
+  const [week, setWeek] = useState<number | null>(me.live ? null : 1)
   const [done, setDone] = useState<Record<Role, number>>(me.live ? { husband: 0, wife: 0 } : { husband: 3, wife: 2 })
   const [err, setErr] = useState('')
 
@@ -26,17 +28,17 @@ export default function Wait() {
 
     async function tick() {
       try {
-        const [r, p] = await Promise.all([loadOpenRound(me.coupleId!), roundProgress(id)])
+        const [r, p] = await Promise.all([loadRoundInfo(id), roundProgress(id)])
         if (!alive) return
-        const n = r?.id === id ? r.cards.length : total
-        if (r?.id === id) { setTotal(n); setKind(r.kind) }
+        const n = r ? r.count : total
+        if (r) { setTotal(n); setKind(r.kind); setWeek(r.week) }
         setDone(p)
         if (p.husband >= n && p.wife >= n) {
           await triggerJudge(id) // 이미 판정됐으면 already, 아니면 지금 판정. 결과는 이 폰에 안 온다
           if (alive) nav(`/c/done/${id}`)
           return
         }
-        if (!r) { // 라운드가 닫혔다 = 판정 끝
+        if (!r || r.status !== 'open') { // 라운드가 닫혔다 = 판정 끝
           if (alive) nav(`/c/done/${id}`)
           return
         }
@@ -56,7 +58,7 @@ export default function Wait() {
     <main className="phone">
       <div className="phone-top">
         <h1 className="wordmark"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</h1>
-        <p className="meta">{kind === 'factcheck' ? '확인 질문' : kind === 'baseline' ? '첫 맞춰보기' : '정기 맞춰보기'}</p>
+        <p className="meta">{week ? `${week}주차 · ${themeOfWeek(week).label}` : kind === 'factcheck' ? '확인 질문' : '맞춰보기'}</p>
       </div>
       <div className="phone-body">
         <div className="done-mark">

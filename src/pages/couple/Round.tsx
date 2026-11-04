@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { BASELINE, byKey, CATEGORIES, answerKey, judgmentKey, showValue, type RoundAnswers } from '../../data/demo'
 import type { Card, Judgment } from '../../judge/index'
 import { requestJudgment, triggerJudge } from '../../lib/api'
-import { loadOpenRound, myAnswered, submitAnswer } from '../../lib/db'
+import { loadMyNextRound, myAnswered, submitAnswer } from '../../lib/db'
 import { loadMe, nameOf, partnerRole } from '../../lib/session'
 import ChangeInput, { changeValue, EMPTY_CHANGE, type ChangeState } from './ChangeInput'
 
@@ -21,7 +21,10 @@ import ChangeInput, { changeValue, EMPTY_CHANGE, type ChangeState } from './Chan
  * 부부는 판정을 보지 않는다 (10.14). 제출 → 대기/전달 화면으로 끝.
  */
 export default function Round() {
-  const { id = 'baseline' } = useParams()
+  const { id: urlId = 'baseline' } = useParams()
+  // 실제로 답하는 라운드 — 주소의 id 가 아니라 "내가 답할 게 남은 것" (지난주 질문이 먼저, 11.04)
+  const [roundId, setRoundId] = useState(urlId)
+  const id = roundId
   const nav = useNavigate()
   const me = loadMe()
   const him = me.role !== 'wife'
@@ -39,12 +42,12 @@ export default function Round() {
     if (!me.live || !me.coupleId || !me.memberId) return
     ;(async () => {
       try {
-        const r = await loadOpenRound(me.coupleId!)
-        if (!r) { nav('/c/home'); return }
+        // 내가 답할 게 남은 질문 — 지난주 것부터 (11.04). 다 답했으면 배우자를 기다리는 화면으로
+        const { round: r, waitingId } = await loadMyNextRound(me.coupleId!, me.memberId!)
+        if (!r) { nav(waitingId ? `/c/wait/${waitingId}` : '/c/home'); return }
         const done = await myAnswered(r.id, me.memberId!)
-        const remaining = r.cards.filter(c => !done.has(c.versionId))
-        if (!remaining.length) { nav(`/c/wait/${r.id}`); return }
-        setCards(remaining)
+        setRoundId(r.id)
+        setCards(r.cards.filter(c => !done.has(c.versionId)))
       } catch (e) {
         setErr((e as Error).message)
       } finally {

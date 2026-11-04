@@ -1,23 +1,14 @@
-// 엑셀 라이브러리 없이 쓰는 작은 도우미 — 부부 목록 화면 번들에 엑셀 라이브러리가 딸려 오지 않게 따로 둔다
-
-/** 올리는 엑셀 (11.04: 한 칸으로) — 재무상태표 · 현금흐름표가 한 파일에 든 "재무설계" 엑셀. cashflow 칸은 예전에 연결해 둔 파일용으로만 남는다 */
-export type SheetKind = 'statement' | 'cashflow'
-
-export const KIND_LABEL: Record<SheetKind, string> = { statement: '재무설계', cashflow: '현금흐름표' }
-
-/** 파일 이름 끝말 → 어느 칸 파일인가. 재무설계 = 두 표가 한 파일에 (처음 받은 양식) */
-const SUFFIX: Record<string, SheetKind> = { 재무설계: 'statement', 재무제표: 'statement', 재무상태표: 'statement', 현금흐름표: 'cashflow' }
-
 /**
- * 파일 이름 규칙: 남편이름_아내이름_재무제표.xlsx · 남편이름_아내이름_현금흐름표.xlsx
- * (두 표가 한 파일이면 남편이름_아내이름_재무설계.xlsx — 10.27 사용자 결정)
- * 맞지 않으면 null — 이름은 직접 입력받는다.
+ * 재무설계 결과 Word 파일 이름 → 두 분 이름 (11.04). 라이브러리 없이 — 부부 목록 화면에서 쓴다.
+ * 규칙: 남편이름_아내이름_재무설계.docx (재무설계결과 · 재무설계안도 받는다). 맞지 않으면 null — 이름은 직접 입력.
  */
-export function namesFromFilename(name: string): { husband: string; wife: string; kind: SheetKind } | null {
-  const base = name.replace(/\.(xlsx|xls)$/i, '').normalize('NFC').trim()
+const SUFFIX = new Set(['재무설계', '재무설계결과', '재무설계안'])
+
+export function namesFromFilename(name: string): { husband: string; wife: string } | null {
+  const base = name.replace(/\.docx$/i, '').normalize('NFC').trim()
   const parts = base.split('_').map(s => s.trim())
-  if (parts.length !== 3 || !(parts[2] in SUFFIX)) return null
+  if (parts.length !== 3 || !SUFFIX.has(parts[2])) return null
   const [husband, wife] = parts
   if (!husband || !wife || husband.length > 20 || wife.length > 20) return null
-  return { husband, wife, kind: SUFFIX[parts[2]] }
+  return { husband, wife }
 }

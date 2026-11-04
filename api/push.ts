@@ -5,7 +5,6 @@
  *     { action: 'key' }                                       → { publicKey }  (공개 열쇠 — 비밀 아님)
  *     { action: 'subscribe_member', accessToken, subscription } 부부 폰 등록 (토큰으로 누구인지 서버가 확인)
  *     { action: 'subscribe_planner', passcode, subscription }   설계사 기기 등록
- *     { action: 'notice', accessToken, noticeId }              부부가 "바뀐 게 있어요"를 보낸 뒤 → 설계사에게
  *     { action: 'send', ... }  + 헤더 x-push-secret            서버 안에서만 (api/_notify.ts)
  *
  * 알림 문구에는 판정 · 상대 답 · 금액을 넣지 않는다. 잠금 화면에 그대로 보이기 때문이다.
@@ -43,10 +42,11 @@ async function memberOf(sb: NonNullable<ReturnType<typeof serviceClient>>, acces
 }
 
 /** 대상 기기들에 보낸다. 사라진 기기(404 · 410)는 지운다. 보낸 수를 돌려준다 */
-export async function sendTo(sb: NonNullable<ReturnType<typeof serviceClient>>, to: { coupleId?: string; planner?: boolean }, msg: Msg): Promise<number> {
+export async function sendTo(sb: NonNullable<ReturnType<typeof serviceClient>>, to: { coupleId?: string; memberIds?: string[]; planner?: boolean }, msg: Msg): Promise<number> {
   if (!ready()) return 0
   let q = sb.from('push_subscriptions').select('id, endpoint, p256dh, auth')
   if (to.planner) q = q.eq('for_planner', true)
+  else if (to.memberIds?.length) q = q.in('member_id', to.memberIds)
   else if (to.coupleId) {
     const { data: ms } = await sb.from('members').select('id').eq('couple_id', to.coupleId)
     const ids = (ms ?? []).map(m => m.id)
@@ -93,21 +93,12 @@ export async function POST(req: Request): Promise<Response> {
       if (!validSub(body.subscription)) return bad('subscription')
       return save(body.subscription, { for_planner: true })
     }
-    case 'notice': {
-      // 부부가 "바뀐 게 있어요"를 보낸 직후. 보낸 사람이 맞는지 서버가 확인하고 설계사에게만 알린다
-      const m = await memberOf(sb, body.accessToken)
-      if (!m || typeof body.noticeId !== 'string') return bad('확인 실패', 401)
-      const { data: n } = await sb.from('change_notices').select('id, couple_id, member_id, created_at').eq('id', body.noticeId).maybeSingle()
-      if (!n || n.member_id !== m.id || Date.now() - new Date(n.created_at).getTime() > 10 * 60_000) return bad('알림을 찾지 못했습니다', 404)
-      const { data: c } = await sb.from('couples').select('label').eq('id', n.couple_id).maybeSingle()
-      const sent = await sendTo(sb, { planner: true }, { title: '돈궁합 · 먼저 알린 변화', body: `${c?.label ?? '담당 부부'} · 먼저 알린 변화 1건`, url: '/p/couples', tag: `notice-${n.couple_id}` })
-      return Response.json({ ok: true, sent })
-    }
     case 'send': {
       if (!process.env.PUSH_SECRET || req.headers.get('x-push-secret') !== process.env.PUSH_SECRET) return bad('forbidden', 403)
       const msg = body.msg as Msg
       if (!msg?.title || !msg?.body || !msg?.url) return bad('msg')
-      const sent = await sendTo(sb, { coupleId: typeof body.coupleId === 'string' ? body.coupleId : undefined, planner: !!body.planner }, msg)
+      const memberIds = Array.isArray(body.memberIds) ? body.memberIds.filter((x: unknown) => typeof x === 'string') : undefined
+      const sent = await sendTo(sb, { coupleId: typeof body.coupleId === 'string' ? body.coupleId : undefined, memberIds, planner: !!body.planner }, msg)
       return Response.json({ ok: true, sent })
     }
     default:

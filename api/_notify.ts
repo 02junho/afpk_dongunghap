@@ -7,7 +7,7 @@
  */
 export interface PushMsg { title: string; body: string; url: string; tag?: string }
 
-export async function notify(reqUrl: string, to: { coupleId?: string; planner?: boolean }, msg: PushMsg): Promise<void> {
+export async function notify(reqUrl: string, to: { coupleId?: string; memberIds?: string[]; planner?: boolean }, msg: PushMsg): Promise<void> {
   const secret = process.env.PUSH_SECRET
   if (!secret || !process.env.VAPID_PUBLIC_KEY) return
   let origin: string

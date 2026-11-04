@@ -51,8 +51,3 @@ export async function turnOnPush(kind: 'member' | 'planner', auth: { accessToken
     : { action: 'subscribe_planner', passcode: auth.passcode, subscription: sub.toJSON() })
   try { localStorage.setItem(FLAG(kind), sub.endpoint) } catch { /* 표시만 못 한다 */ }
 }
-
-/** 부부가 "바뀐 게 있어요"를 보낸 직후 — 설계사에게 알림을 부탁한다. 실패해도 조용히 */
-export function pingPlannerNotice(accessToken: string, noticeId: string) {
-  void post({ action: 'notice', accessToken, noticeId }).catch(() => {})
-}

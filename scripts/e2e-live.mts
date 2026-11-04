@@ -4,7 +4,8 @@
  *   npm run e2e                     # 설계사 API·판정 모두 로컬 핸들러 (.env 의 키로)
  *   npm run e2e -- --deployed-judge # 판정만 배포 서버(/api/judge)로 — 배포 env(LLM 키·요약 플래그) 확인용
  *
- * 매번 새 테스트 부부("E2E 자동테스트 …")를 하나 만든다. 부부는 지울 수 없으니(이력 보존) 목록에 남는다.
+ * 11.04 새 방향: 질문 틀 30칸 → 6주 사이클 → 매주 5문항 → 판정 → 처리 대기 "확인함" → 사이클 정리 → 상담 요청.
+ * 매번 새 테스트 부부("E2E 자동테스트 …")를 하나 만들고, 끝나면 지우기(보관)로 정리한다.
  * 키 값은 출력하지 않는다. LLM 판별 결과는 "참고(soft)"로만 본다 — 실패해도 전체 실패로 치지 않는다.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
@@ -54,11 +55,12 @@ async function join(p: SupabaseClient, code: string, role: 'husband' | 'wife') {
   return { coupleId: data as string, memberId: ms?.find(m => m.role === role)?.id as string }
 }
 async function openRound(p: SupabaseClient, coupleId: string) {
-  const { data } = await p.from('rounds').select('id, kind, card_version_ids').eq('couple_id', coupleId).eq('status', 'open').order('opened_at', { ascending: false }).limit(1)
+  const { data } = await p.from('rounds').select('id, kind, week, card_version_ids').eq('couple_id', coupleId).eq('status', 'open').order('opened_at', { ascending: false }).limit(1)
   const r = data?.[0]
   if (!r) return null
   const { data: cvs } = await p.from('card_versions').select('id, label, planned_value, cards!inner(key)').in('id', r.card_version_ids)
-  return { id: r.id as string, kind: r.kind as string, cards: (cvs ?? []).map((c: any) => ({ id: c.id, key: c.cards.key, label: c.label })) }
+  const byId = new Map((cvs ?? []).map((c: any) => [c.id, c]))
+  return { id: r.id as string, kind: r.kind as string, week: r.week as number | null, cards: (r.card_version_ids as string[]).map(id => byId.get(id)).filter(Boolean).map((c: any) => ({ id: c.id, key: c.cards.key, label: c.label, planned: c.planned_value })) }
 }
 async function answer(p: SupabaseClient, roundId: string, memberId: string, byKey: Record<string, string>, cards: { id: string; key: string }[]) {
   for (const c of cards) {
@@ -69,8 +71,11 @@ async function answer(p: SupabaseClient, roundId: string, memberId: string, byKe
   }
 }
 
+import { SLOTS, slotsOfWeek } from '../src/data/template'
+
 const t0 = Date.now()
 const stamp = new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+const same = (cards: { key: string; planned: string }[]) => Object.fromEntries(cards.map(c => [c.key, c.planned]))
 
 // ───────────────────────────────────────────────────────────────────
 section('설계사 API 기본')
@@ -79,195 +84,93 @@ section('설계사 API 기본')
   check('틀린 설계사 코드는 401', r.status === 401, `status ${r.status}`)
 }
 const created = await planner('new_couple', { label: `E2E 자동테스트 (${stamp})`, husband: '테스트남', wife: '테스트여' })
-check('새 부부 등록 + 코드 발급', created.status === 200 && /^\d{6}$/.test(created.body.code ?? ''), `code ${created.body.code ? '발급됨' : created.body.error}`)
-const coupleId: string = created.body.coupleId
-const code: string = created.body.code
-{
-  const { body } = await planner('cards', { coupleId })
-  const cards = body.cards ?? []
-  check('새 부부 카드 10장 v1 활성', cards.length === 10 && cards.every((c: any) => c.version === 1 && !c.pending), `${cards.length}장`)
-  const { body: rb } = await planner('rounds', { coupleId })
-  const open = (rb.rounds ?? []).filter((r: any) => r.status === 'open')
-  check('0회차 3문항 자동으로 열림', open.length === 1 && open[0].kind === 'baseline' && open[0].card_version_ids.length === 3)
-}
+const coupleId: string = created.body.coupleId, code: string = created.body.code
+check('새 부부 등록 + 코드 발급', created.status === 200 && /^\d{6}$/.test(code ?? ''), code)
 
-// ───────────────────────────────────────────────────────────────────
-section('입장 (부부 폰)')
-const him = phone(), her = phone(), stranger = phone()
-{
-  await stranger.auth.signInAnonymously()
-  const bad = await stranger.rpc('join_couple', { code: '000000', want_role: 'husband' })
-  check('틀린 입장 코드는 거부', !!bad.error, bad.error?.message.slice(0, 40))
-}
-const H = await join(him, code, 'husband')
-const W = await join(her, code, 'wife')
-check('남편 폰 입장', !('error' in H), (H as any).error)
-check('아내 폰 입장', !('error' in W), (W as any).error)
-const h = H as { coupleId: string; memberId: string }, w = W as { coupleId: string; memberId: string }
-
-{
-  const { data } = await stranger.from('rounds').select('id').eq('couple_id', coupleId)
-  const { data: c2 } = await stranger.from('card_versions').select('id').limit(5)
-  check('입장 안 한 기기는 라운드·카드를 못 읽음', (data ?? []).length === 0 && (c2 ?? []).length === 0)
-}
-
-// ───────────────────────────────────────────────────────────────────
-section('0회차 — 블라인드')
-const base = await openRound(him, h.coupleId)
-check('남편 폰에 0회차 3문항', base?.kind === 'baseline' && base.cards.length === 3)
-const baseAnswers = {
-  husband: { home_when: '2029-06', raise_plan: '저 내년에 이직해요', family_help: '1.5억 정도 해주신다고 했어요' },
-  wife: { home_when: '2029-03', raise_plan: '남편 이직 준비 중이에요', family_help: '그건 빌리는 거예요, 주시는 게 아니라' },
-}
-await answer(him, base!.id, h.memberId, baseAnswers.husband, base!.cards)
-{
-  const { data: prog } = await her.rpc('round_progress', { rid: base!.id })
-  const hp = (prog ?? []).find((r: any) => r.role === 'husband')
-  check('아내 폰은 진행 수만 봄 (남편 3/3)', hp?.answered === 3 && !Object.keys(hp).some(k => k.includes('text')), JSON.stringify(prog))
-  const { data: peek } = await her.from('answers').select('text, member_id').eq('round_id', base!.id)
-  check('아내 폰은 남편 답 내용을 못 읽음', (peek ?? []).every((a: any) => a.member_id === w.memberId), `${(peek ?? []).length}행 보임`)
-  const forge = await her.from('answers').insert({ round_id: base!.id, card_version_id: base!.cards[0].id, member_id: h.memberId, text: '위조', is_condition: false })
-  check('아내 폰이 남편 이름으로 답 못 넣음', !!forge.error)
-}
-await answer(her, base!.id, w.memberId, baseAnswers.wife, base!.cards)
-{
-  const { data: mine } = await her.from('answers').select('id, text').eq('round_id', base!.id).eq('member_id', w.memberId)
-  const upd = await her.from('answers').update({ text: '고침' }).eq('id', mine?.[0]?.id ?? '')
-  const { data: after } = await her.from('answers').select('text').eq('id', mine?.[0]?.id ?? '').maybeSingle()
-  check('제출한 답은 고칠 수 없음 (이력 보존)', !!upd.error || after?.text !== '고침', upd.error?.message.slice(0, 40) ?? '변경 안 됨')
-}
-const j0 = await judgeRound(base!.id)
-check(`판정 요청 (${useDeployedJudge ? '배포 서버' : '로컬'})`, j0.status === 200 && j0.body.judged === 3, `judged ${j0.body.judged ?? j0.body.error}, 요약 ${j0.body.summarized ?? '-'}`)
-{
-  const { data: js } = await her.from('judgments').select('*').limit(5)
-  const { data: q } = await her.from('planner_queue').select('*').limit(5)
-  const { data: hist } = await her.from('card_verdict_history').select('*').limit(5)
-  check('부부 폰은 판정·큐를 전혀 못 읽음', (js ?? []).length === 0 && (q ?? []).length === 0 && (hist ?? []).length === 0)
-  const r = await openRound(her, w.coupleId)
-  check('판정 뒤 부부 폰엔 열린 라운드 없음', r === null)
-}
-
-// ───────────────────────────────────────────────────────────────────
-section('설계사 큐')
-const q0 = (await planner('queue', { coupleId })).body.items ?? []
-const byKey = (k: string) => q0.find((i: any) => i.key === k)
-check('큐에 🔴 건이 올라옴', q0.length >= 1, q0.map((i: any) => `${i.key}:${i.verdict}${i.redKind ? `/${i.redKind}` : ''}`).join(', '))
-check('집 시점(3개월 차이, 허용 ±6) 은 큐에 없음 — 🟢', !byKey('home_when'))
-{
-  // 새 부부는 데모 부부의 "현재" 카드를 복사한다 — 데모에서 먼저 묻기로 값이 바뀌었으면 기대값도 달라진다
-  const plan = String((await planner('cards', { coupleId })).body.cards.find((c: any) => c.key === 'raise_plan')?.planned_value ?? '')
-  if (plan.includes('유지')) check('승진·이직: 둘 다 이직 → 🔴 전제 폐기', byKey('raise_plan')?.redKind === 'plan_stale', byKey('raise_plan')?.reason?.slice(0, 50), true)
-  else check('승진·이직: 전제가 이미 "이직"이라 🔴 아님 (큐에 없음)', !byKey('raise_plan') || byKey('raise_plan').redKind !== 'plan_stale', `전제: ${plan.slice(0, 24)}…`, true)
-}
-check('양가 지원: 증여 vs 차용 → 🔴 부부 불일치', byKey('family_help')?.redKind === 'couple_conflict', byKey('family_help')?.reason?.slice(0, 50), true)
-const withSummary = q0.filter((i: any) => i.summary)
-check('🔴 건에 AI 3줄 요약', withSummary.length === q0.length && withSummary.every((i: any) => i.summary.split('\n').length === 3),
-  `${withSummary.length}/${q0.length}건`, true)
-{
-  const it = byKey('family_help') ?? q0[0]
-  const r = await planner('resolve', { coupleId, judgmentId: it.id, resolution: 'consult', note: 'E2E: 상담 때 다룸' })
-  const left = (await planner('queue', { coupleId })).body.items ?? []
-  check('"상담 때 다루기" → 큐에서 빠짐', r.status === 200 && !left.some((i: any) => i.id === it.id))
-  const again = await planner('resolve', { coupleId, judgmentId: it.id, resolution: 'consult' })
-  const still = (await planner('queue', { coupleId })).body.items ?? []
-  check('이미 닫은 건을 다시 닫아도 문제 없음', again.status === 200 && still.length === left.length)
-}
-
-// ───────────────────────────────────────────────────────────────────
-section('먼저 묻기 — 둘 다 동의하면 반영')
-const cardsNow = (await planner('cards', { coupleId })).body.cards
-const raise = cardsNow.find((c: any) => c.key === 'raise_plan')
-{
-  const it = byKey('raise_plan')
-  if (it) await planner('resolve', { coupleId, judgmentId: it.id, resolution: 'factcheck', note: 'E2E' })
-  const noReason = await planner('save_card', { coupleId, cardId: raise.card_id, plannedValue: '내년 이직', reason: ' ' })
-  check('사유 없이 저장 거부', noReason.status === 400)
-  const s = await planner('save_card', { coupleId, cardId: raise.card_id, plannedValue: '내년에 이직 예정, 연봉 약 20% 상승 예상', reason: 'E2E: 0회차에서 두 분 모두 이직을 전제' })
-  check('새 버전 v2 저장 → 먼저 묻기 라운드', s.status === 200 && s.body.version === 2 && !!s.body.roundId)
-  const dup = await planner('save_card', { coupleId, cardId: raise.card_id, plannedValue: '또 바꿈', reason: 'E2E' })
-  check('동의 대기 중엔 다시 못 고침', dup.status === 400, dup.body.error?.slice(0, 30))
-  const { data: act } = await him.from('active_cards').select('version').eq('couple_id', coupleId).eq('key', 'raise_plan').single()
-  check('동의 전 [내 설계]는 옛 버전(v1) 그대로', act?.version === 1, `v${act?.version}`)
-}
-{
-  const fc = await openRound(her, coupleId)
-  check('부부 폰에 먼저 묻기 1문항', fc?.kind === 'factcheck' && fc.cards.length === 1)
-  await answer(him, fc!.id, h.memberId, { raise_plan: '내년에 이직하고 연봉 20% 정도 오를 거예요' }, fc!.cards)
-  await answer(her, fc!.id, w.memberId, { raise_plan: '남편 내년에 이직해요. 연봉도 20% 정도 오른대요' }, fc!.cards)
-  const j = await judgeRound(fc!.id)
-  check('판정 → 🟢 이면 v2 활성화', j.status === 200 && j.body.activated === 1, `activated ${j.body.activated}`, true)
-  const { data: act } = await him.from('active_cards').select('version, planned_value').eq('couple_id', coupleId).eq('key', 'raise_plan').single()
-  check('[내 설계]가 v2 로 바뀜', act?.version === 2, `v${act?.version}`, true)
-}
-
-// ───────────────────────────────────────────────────────────────────
-section('먼저 묻기 — 어긋나면 반영 안 됨')
-const home = cardsNow.find((c: any) => c.key === 'home_when')
-{
-  const s = await planner('save_card', { coupleId, cardId: home.card_id, plannedValue: '2030-06', reason: 'E2E: 매수 1년 연기' })
-  const fc = await openRound(him, coupleId)
-  await answer(him, fc!.id, h.memberId, { home_when: '2030-06' }, fc!.cards)
-  await answer(her, fc!.id, w.memberId, { home_when: '2028-01' }, fc!.cards)
-  const j = await judgeRound(fc!.id)
-  check('한 명만 동의 → 활성화 안 함', s.status === 200 && j.body.activated === 0)
-  const { data: act } = await her.from('active_cards').select('planned_value').eq('couple_id', coupleId).eq('key', 'home_when').single()
-  check('[내 설계]는 옛 값 유지', act?.planned_value !== '2030-06', String(act?.planned_value))
-  const q = (await planner('queue', { coupleId })).body.items ?? []
-  const it = q.find((i: any) => i.key === 'home_when' && i.roundKind === 'factcheck')
-  check('어긋난 먼저 묻기는 큐로 옴', !!it, it ? `${it.verdict}/${it.redKind}` : '')
-  if (it) await planner('resolve', { coupleId, judgmentId: it.id, resolution: 'factcheck', note: 'E2E: 다시 묻기' })
-  const cardsMid = (await planner('cards', { coupleId })).body.cards
-  const failed = cardsMid.find((c: any) => c.key === 'home_when')
-  check('설계사 화면: "동의 안 됨" (대기 아님)', failed?.pending === true && failed?.awaiting === false)
-  const retry = await planner('save_card', { coupleId, cardId: home.card_id, plannedValue: '2029-12', reason: 'E2E: 절충안으로 다시 묻기' })
-  check('동의가 안 된 카드를 설계사가 다시 고칠 수 있음', retry.status === 200, retry.body.error ?? `v${retry.body.version}`)
-  // 다음 섹션이 깨끗하게 돌도록 이 라운드를 닫는다 (둘 다 절충안에 동의)
-  if (retry.status === 200) {
-    const fc2 = await openRound(him, coupleId)
-    await answer(him, fc2!.id, h.memberId, { home_when: '2029-12' }, fc2!.cards)
-    await answer(her, fc2!.id, w.memberId, { home_when: '2029-11' }, fc2!.cards)
-    const j2 = await judgeRound(fc2!.id)
-    check('다시 물은 절충안에 둘 다 동의 → 활성화', j2.body.activated === 1)
+try {
+  // ─────────────────────────────────────────────────────────────────
+  section('질문 틀 30칸')
+  {
+    const early = await planner('cycle_start', { coupleId })
+    check('틀이 비어 있으면 사이클을 시작할 수 없음', early.status === 400, early.body.error)
+    const bad = await planner('template_save', { coupleId, values: { t1_buy_when: '6~7년 안', t1_next_deposit: '3억' }, source: 'manual' })
+    check('상대 시점은 저장 안 됨 · 금액은 규칙으로 원 단위', bad.body.errors?.length === 1 && bad.body.saved === 1, JSON.stringify(bad.body.errors))
+    const all = await planner('template_save', { coupleId, values: Object.fromEntries(SLOTS.map(s => [s.key, s.example])), source: 'example' })
+    check('예시 값으로 30칸 저장', all.status === 200 && all.body.saved === 29, `saved ${all.body.saved} (보증금은 같은 값이라 건너뜀)`)
+    const t = await planner('template', { coupleId })
+    check('30칸 모두 v1', Object.keys(t.body.values).length === 30 && Object.values(t.body.values).every((v: any) => v.version === 1))
+    const again = await planner('template_save', { coupleId, values: { t1_next_deposit: '3억 2천만' }, source: 'manual' })
+    const t2 = await planner('template', { coupleId })
+    check('값을 바꾸면 새 버전 (덮어쓰지 않음)', again.body.saved === 1 && t2.body.values.t1_next_deposit.version === 2 && t2.body.values.t1_next_deposit.planned === '320000000')
   }
-}
 
-// ───────────────────────────────────────────────────────────────────
-section('카드 추가 + 바로 묻기')
-{
-  const bad = await planner('add_card', { coupleId, card: { category: 'housing', type: 'date', label: 'x', question: 'x', plannedValue: '내년', stake: 'x' } })
-  check('잘못된 값은 거부 (연도 없는 시점)', bad.status === 400, bad.body.error)
-  const add = await planner('add_card', { coupleId, askNow: true, card: {
-    category: 'housing', type: 'choice', label: '전세대출 명의', question: '전세대출은 누구 이름으로 받기로 했나요?',
-    options: ['남편', '아내', '둘 다', '아직 모름'], plannedValue: '남편', stake: '아내 신고소득이 낮게 잡히면 한도가 줄어듦',
-  } })
-  check('선택형 카드 추가 → v1 바로 전제 + 정기 1문항', add.status === 200 && !!add.body.roundId, add.body.error ?? '')
-  const rg = await openRound(her, coupleId)
-  check('부부 폰에 정기 1문항', rg?.kind === 'regular' && rg.cards.length === 1)
-  const { data: act } = await her.from('active_cards').select('label').eq('couple_id', coupleId).eq('label', '전세대출 명의')
-  check('[내 설계]에 새 카드가 보임', (act ?? []).length === 1)
-  if (rg) {
-    const k = rg.cards[0].key
-    await answer(him, rg.id, h.memberId, { [k]: '남편' }, rg.cards)
-    await answer(her, rg.id, w.memberId, { [k]: '아직 모름' }, rg.cards)
-    // 마지막 답을 낸 폰의 답변 화면·대기 화면이 거의 동시에 판정을 부른다 — 한 번만 판정해야 한다
-    const both = await Promise.all([judgeRound(rg.id), judgeRound(rg.id), judgeRound(rg.id)])
-    const ran = both.filter(r => r.body.judged === 1).length
-    check('판정 요청이 동시에 3번 와도 한 번만 판정', ran === 1 && both.every(r => r.status === 200), both.map(r => r.body.judged ? 'judged' : r.body.inProgress ? 'inProgress' : r.body.already ? 'already' : r.status).join(', '))
-    const j = both.find(r => r.body.judged === 1) ?? both[0]
-    const q = (await planner('queue', { coupleId })).body.items ?? []
-    const it = q.find((i: any) => i.label === '전세대출 명의')
-    check('선택형은 AI 없이 판정 (남편 vs 아직 모름)', j.status === 200 && (!it || it.method === 'deterministic'), it ? `${it.verdict}/${it.redKind ?? ''} · ${it.method}` : '큐에 없음(🟢/🟡)')
-  }
-}
+  // ─────────────────────────────────────────────────────────────────
+  section('사이클 시작 · 1주차')
+  const him = phone(), her = phone()
+  const h = await join(him, code, 'husband'), w = await join(her, code, 'wife')
+  check('두 폰 입장', !('error' in h) && !('error' in w))
+  const st = await planner('cycle_start', { coupleId, periodMonths: 3 })
+  check('사이클 시작 → 1주차가 열림', st.status === 200 && st.body.week === 1 && st.body.opened === 1, JSON.stringify(st.body))
+  const dup = await planner('cycle_start', { coupleId })
+  check('진행 중이면 또 시작 못 함', dup.status === 400, dup.body.error)
+  const r1 = await openRound(him, coupleId)
+  check('남편 폰에 1주차 주택 5문항 (틀 순서)', r1?.week === 1 && r1.cards.length === 5 && r1.cards.map(c => c.key).join() === slotsOfWeek(1).map(s => s.key).join(), r1?.cards.map(c => c.label).join(' · '))
 
-// ───────────────────────────────────────────────────────────────────
-section('기기 바꾸기')
-{
-  const newPhone = phone()
-  const r = await join(newPhone, code, 'husband')
-  check('같은 역할로 다른 폰 입장 → 새 폰으로 넘어감', !('error' in r), (r as any).error)
-  const { data: old } = await him.from('rounds').select('id').eq('couple_id', coupleId)
-  check('예전 폰은 더 이상 못 읽음', (old ?? []).length === 0, `${(old ?? []).length}행`)
+  // ─────────────────────────────────────────────────────────────────
+  section('따로 답하기 — 블라인드')
+  await answer(him, r1!.id, (h as any).memberId, same(r1!.cards), r1!.cards)
+  const { data: prog } = await her.rpc('round_progress', { rid: r1!.id })
+  check('아내 폰은 진행 수만 봄', JSON.stringify(prog).includes('"answered":5'), JSON.stringify(prog))
+  const { data: peek } = await her.from('answers').select('*').eq('round_id', r1!.id)
+  check('아내 폰은 남편 답 내용을 못 읽음', (peek ?? []).length === 0, `${(peek ?? []).length}행`)
+  await answer(her, r1!.id, (w as any).memberId, { ...same(r1!.cards), t1_buy_when: '2034-06' }, r1!.cards)
+  const j1 = await judgeRound(r1!.id)
+  check('판정', j1.status === 200 && j1.body.judged === 5, JSON.stringify(j1.body))
+  const { data: jj } = await him.from('judgments').select('id')
+  check('부부 폰은 판정을 못 읽음', (jj ?? []).length === 0)
+
+  // ─────────────────────────────────────────────────────────────────
+  section('처리 대기 · 확인함 · 사이클 정리')
+  const q = await planner('queue', { coupleId })
+  const hit = q.body.items.find((i: any) => i.key === 't1_buy_when')
+  check('내 집 마련 시점만 🔴 부부 불일치', q.body.items.length === 1 && hit?.verdict === 'red' && hit?.redKind === 'couple_conflict', q.body.items.map((i: any) => `${i.key}:${i.verdict}/${i.redKind}`).join())
+  const rs = await planner('resolve', { coupleId, judgmentId: hit.id, resolution: 'consult', note: '아내분 이직 계획 확인' })
+  check('확인함', rs.status === 200)
+  const q2 = await planner('queue', { coupleId })
+  check('확인한 건은 처리 대기에서 빠짐', q2.body.items.length === 0)
+  const c1 = await planner('cycle', { coupleId })
+  const rv = c1.body.review?.[0]
+  check('사이클 정리에 ✓ 와 메모로 남음', c1.body.review.length === 1 && rv.resolution === 'consult' && rv.note === '아내분 이직 계획 확인' && rv.week === 1)
+  check('사이클 정리: 1주차 끝남 · 2주차 아직', c1.body.weeks[0].status === 'judged' && !c1.body.weeks[1].roundId)
+
+  // ─────────────────────────────────────────────────────────────────
+  section('다음 주 · 답 안 하면 남고 · 한 번 더 알림')
+  const sk = await planner('cycle_skip_week', { coupleId })
+  check('다음 주로 넘기기 → 2주차 출산/육아 열림', sk.status === 200 && sk.body.week === 2 && sk.body.opened === 1, JSON.stringify(sk.body))
+  const r2 = await openRound(her, coupleId)
+  await answer(him, r2!.id, (h as any).memberId, same(r2!.cards), r2!.cards)   // 남편만 답하고, 아내는 안 함
+  const sk2 = await planner('cycle_skip_week', { coupleId })
+  check('3주차 노후 열림', sk2.body.week === 3 && sk2.body.opened === 1)
+  const { data: openRs } = await her.from('rounds').select('week, reminded_at').eq('couple_id', coupleId).eq('status', 'open').order('week')
+  check('2주차는 닫히지 않고 남아 있음 (다음 주로 넘어감)', (openRs ?? []).map((r: any) => r.week).join() === '2,3', JSON.stringify(openRs))
+  check('열린 지 4일 지난 2주차에 한 번 더 알림 표시', !!(openRs ?? []).find((r: any) => r.week === 2)?.reminded_at)
+  const c2 = await planner('cycle', { coupleId })
+  check('사이클 정리: 2주차 남편 5/5 · 아내 0/5', c2.body.weeks[1].husband === 5 && c2.body.weeks[1].wife === 0)
+
+  // ─────────────────────────────────────────────────────────────────
+  section('상담 요청 · 다음 사이클')
+  const cr = await planner('consult_request', { coupleId })
+  check('상담 요청 → 사이클 닫힘', cr.status === 200 && !!cr.body.nextAt)
+  const { data: after } = await her.from('rounds').select('id').eq('couple_id', coupleId).eq('status', 'open')
+  check('남은 질문도 닫힘', (after ?? []).length === 0)
+  const c3 = await planner('cycle', { coupleId })
+  const months = (new Date(c3.body.cycle.nextAt).getTime() - new Date(c3.body.cycle.startedAt).getTime()) / 86_400_000
+  check('다음 사이클 = 시작일 + 3개월', c3.body.cycle.closedAt && months > 88 && months < 93, `${months.toFixed(0)}일`)
+  const list = await planner('couples')
+  check('부부 목록 상태: 상담 요청함', /상담 요청함/.test(list.body.items.find((c: any) => c.id === coupleId)?.state ?? ''), list.body.items.find((c: any) => c.id === coupleId)?.state)
+} finally {
+  const a = await planner('archive_couple', { coupleId })
+  console.log(`\n· 테스트 부부 지움 (${a.status === 200 ? 'ok' : a.body.error})`)
 }
 
 // ───────────────────────────────────────────────────────────────────

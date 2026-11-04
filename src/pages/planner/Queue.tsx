@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
 import {
   byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, KIND_CHIP, loadLiveRound, showAnswer, showPlanned,
 } from '../../data/demo'
 import type { Card, Judgment, RedKind } from '../../judge/index'
 import { usePlanner } from './planner'
+import { THEMES } from '../../data/template'
 
 /**
- * 큐를 닫는 버튼 셋 = judgments.resolution 값 그대로.
- * 10.23 팀 결정(Q2): 앱 안에서 전제를 바꾸지 않는다 — "두 분께 먼저 묻기"(factcheck)는 숨기고
- * 어긋난 건은 "재설계 필요"(replan)로 표시해 앱 밖에서 다시 설계한다. factcheck 는 예전 기록 표시용으로만 남는다.
+ * 큐를 닫는 버튼 = judgments.resolution 값 그대로.
+ * 11.04 새 방향(docs/21): 6주 뒤 상담에서 한꺼번에 다루므로 "확인함"(consult)과 "이건 같은 뜻이에요"(AI 오판) 둘만.
+ * 확인한 건은 사이클 정리 화면에 ✓ 와 메모로 남는다. replan · factcheck 는 예전 기록 표시용.
  */
 type Resolution = 'replan' | 'factcheck' | 'consult' | 'false_positive'
 const RESOLVED = {
   replan: { text: '재설계 필요', cls: 'chip-escalate' },
   factcheck: { text: '두 분께 다시 물음', cls: 'chip-talk' },
-  consult: { text: '상담 안건', cls: 'chip-agree' },
+  consult: { text: '확인함', cls: 'chip-agree' },
   false_positive: { text: '같은 뜻으로 정리', cls: 'chip-agree' },
 } as const
 
@@ -39,35 +39,12 @@ interface Item {
   roundLabel: string
 }
 
-/** 부부 한 사람이 "바뀐 게 있어요"로 먼저 알린 변화 (11.04). 판정이 없다 — 설계사가 읽고 정한다 */
-interface Notice {
-  id: string
-  key: string
-  category: Card['category']
-  label: string
-  planned: string
-  role: 'husband' | 'wife'
-  text: string
-  createdAt: string
-}
-type NoticeResolution = 'factcheck' | 'replan' | 'consult'
-// 예시 모드(코드 전·데모 서버)에서 보여 줄 "먼저 알린 변화" 한 건 — 흐름도 캡처와 처음 보는 사람용
-const DEMO_NOTICES: Notice[] = [
-  { id: 'demo-n1', key: 'home_when', category: 'housing', label: '주택 취득 시점', planned: '2029년 6월', role: 'wife', text: '2031년 3월', createdAt: '2026-11-03T10:00:00+09:00' },
-]
-const NOTICE_RESOLVED: Record<NoticeResolution, { text: string; cls: string }> = {
-  factcheck: { text: '두 분께 물어봄', cls: 'chip-talk' },
-  replan: { text: '재설계 필요', cls: 'chip-escalate' },
-  consult: { text: '상담 안건', cls: 'chip-agree' },
-}
-
 /**
  * 🔴 전부 + 자동 판정이 안 된 🟡(확인 필요)이 올라온다.
  * live: /api/planner (service_role, 설계사 코드 — Rail 이 받는다). 데모: 고정 데이터 또는 한 기기 데모 결과.
  * "이건 같은 뜻이에요"(AI 오판 표시)는 부부가 아니라 설계사가 누른다 — 부부는 판정을 보지 않으므로.
  */
 export default function Queue() {
-  const nav = useNavigate()
   const p = usePlanner()
   const [items, setItems] = useState<Item[] | null>(null)
   const [err, setErr] = useState('')
@@ -75,32 +52,9 @@ export default function Queue() {
   const [done, setDone] = useState<Record<string, Resolution>>({})
   const [note, setNote] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
-  const [notices, setNotices] = useState<Notice[]>([])
-  const [noticeDone, setNoticeDone] = useState<Record<string, NoticeResolution>>({})
-  const [noticeHint, setNoticeHint] = useState('')
-
-  async function loadNotices() {
-    try {
-      const r = await p.call<{ items: any[]; needsPatch?: string }>('notices')
-      setNoticeHint(r.needsPatch ?? '')
-      setNotices(r.items.map(n => ({ ...n, planned: showPlanned(n.type, n.unit, String(n.planned ?? '')), text: showPlanned(n.type, n.unit, String(n.text ?? '')) })))
-    } catch (e) { setErr((e as Error).message) }
-  }
-
-  async function resolveNotice(n: Notice, r: NoticeResolution) {
-    if (!liveMode) { setNoticeDone(d => ({ ...d, [n.id]: r })); return }   // 예시 모드 — 저장하지 않는다
-    setBusy(true); setErr(''); setMsg('')
-    try {
-      const out = await p.call<{ roundId: string | null }>('resolve_notice', { noticeId: n.id, resolution: r, note: note[n.id] ?? '' })
-      setNoticeDone(d => ({ ...d, [n.id]: r }))
-      if (out.roundId) setMsg(`"${n.label}" 한 문항으로 맞춰보기를 열었습니다.`)
-    } catch (e) { setErr((e as Error).message) }
-    setBusy(false)
-  }
 
   async function load() {
     setErr('')
-    void loadNotices()
     try {
       const { items } = await p.call<{ items: any[] }>('queue')
       // "네, 그대로예요"는 전제 값이 답으로 저장된다 (10.23) — 설계사에겐 "그대로예요"로 보여준다
@@ -111,7 +65,7 @@ export default function Queue() {
       }
       setItems(items.map(r => ({
         ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? '')),
-        roundLabel: r.roundKind === 'baseline' ? '첫 맞춰보기' : r.roundKind === 'factcheck' ? '먼저 묻기' : '정기 맞춰보기',
+        roundLabel: '맞춰보기',
       })))
     } catch (e) { setErr((e as Error).message) }
   }
@@ -149,7 +103,7 @@ export default function Queue() {
       return {
         id: k, key: k, category: c.category, label: c.label, planned: showAnswer(c, String(c.plannedValue)), type: c.type,
         verdict: j.verdict, redKind: j.redKind, needsReview: j.needsReview, method: j.method, promptVersion: j.promptVersion,
-        a: showAnswer(c, a.husband), b: showAnswer(c, a.wife), reason: j.reason, summary: DEMO_SUMMARY[k], roundLabel: '첫 맞춰보기',
+        a: showAnswer(c, a.husband), b: showAnswer(c, a.wife), reason: j.reason, summary: DEMO_SUMMARY[k], roundLabel: `${THEMES.find(t => t.category === c.category)?.week ?? 1}주차`,
       }
     })
   })()
@@ -157,57 +111,15 @@ export default function Queue() {
   const liveMode = p.live && p.pass
   const showing: Item[] = liveMode ? (items ?? []) : demoItems
   const open = showing.filter(i => !done[i.id])
-  const shownNotices = liveMode ? notices : DEMO_NOTICES
-  const openNotices = shownNotices.filter(n => !noticeDone[n.id])
 
   return (
     <div className="console">
-      <Rail count={open.length + openNotices.length} />
+      <Rail count={open.length} />
       <main className="work">
-        <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length + openNotices.length}건</span></h1>
+        <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length}건</span></h1>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
-        {liveMode && noticeHint && <p className="note" style={{ color: 'var(--talk)' }}>{noticeHint}</p>}
         {liveMode && items === null && !err && <p className="note">불러오는 중…</p>}
-
-        {shownNotices.length > 0 && (
-          <div style={{ marginTop: 22 }}>
-            <p className="cat-head">먼저 알린 변화</p>
-            {shownNotices.map(n => {
-              const cat = CATEGORIES[n.category] ?? CATEGORIES.housing
-              const res = noticeDone[n.id]
-              const him = n.role === 'husband'
-              return (
-                <div className="qcard" key={n.id} style={res ? { opacity: 0.6 } : undefined}>
-                  <div className="queue-top">
-                    <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
-                    <span style={{ fontSize: 16, fontWeight: 700 }}>{n.label}</span>
-                    <span className={`chip ${res ? NOTICE_RESOLVED[res].cls : 'chip-talk'}`}>{res ? NOTICE_RESOLVED[res].text : '먼저 알림'}</span>
-                    <span className="meta">판정 없음</span>
-                    <span className="queue-couple">{new Date(n.createdAt).toLocaleDateString('ko-KR')}</span>
-                  </div>
-                  <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
-                    <dt className="meta" style={{ paddingTop: 3 }}>설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{n.planned}</dd>
-                    <dt><span className={`avatar ${him ? 'avatar-him' : 'avatar-her'}`}>{(him ? p.couple.husband : p.couple.wife).slice(0, 1)}</span></dt><dd>{n.text}</dd>
-                  </dl>
-                  {!res && (
-                    <>
-                      <input className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)', marginTop: 12 }}
-                        value={note[n.id] ?? ''} onChange={e => setNote(m => ({ ...m, [n.id]: e.target.value }))} placeholder="메모 (선택)" />
-                      <div className="actions">
-                        <button className="btn btn-small" disabled={busy} title={`${him ? p.couple.wife : p.couple.husband}님 생각도 들어 보려면 — 이 카드 한 문항으로 두 분께 맞춰보기를 엽니다`}
-                          onClick={() => resolveNotice(n, 'factcheck')}>두 분께 같이 묻기</button>
-                        <button className="btn btn-quiet btn-small" disabled={busy} title="엑셀에서 다시 설계한 뒤 질문 카드 → 엑셀 다시 읽기로 반영합니다"
-                          onClick={() => resolveNotice(n, 'replan')}>재설계 필요</button>
-                        <button className="btn btn-quiet btn-small" disabled={busy} onClick={() => resolveNotice(n, 'consult')}>상담 때 다루기</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
 
         <div style={{ marginTop: 22 }}>
           {showing.map(it => {
@@ -247,10 +159,8 @@ export default function Queue() {
                         value={note[it.id] ?? ''} onChange={e => setNote(n => ({ ...n, [it.id]: e.target.value }))} placeholder="메모 (선택)" />
                     )}
                     <div className="actions">
-                      <button className="btn btn-small" disabled={busy} title="엑셀에서 다시 설계합니다"
-                        onClick={() => resolve(it, 'replan')}>재설계 필요</button>
-                      <button className="btn btn-quiet btn-small" disabled={busy} title="다음 상담 안건으로 남깁니다"
-                        onClick={() => resolve(it, 'consult')}>상담 때 다루기</button>
+                      <button className="btn btn-small" disabled={busy} title="봤다는 표시와 메모가 사이클 정리에 남습니다. 상담 때 함께 봅니다"
+                        onClick={() => resolve(it, 'consult')}>확인함</button>
                       <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy}
                         title="AI가 잘못 판단한 건으로 기록합니다"
                         onClick={() => resolve(it, 'false_positive')}>이건 같은 뜻이에요</button>
@@ -260,12 +170,11 @@ export default function Queue() {
               </div>
             )
           })}
-          {!open.length && !openNotices.length && (!liveMode || items !== null) && <p className="note">처리할 건이 없습니다.</p>}
+          {!open.length && (!liveMode || items !== null) && <p className="note">처리할 건이 없습니다.</p>}
         </div>
 
         {liveMode && (
           <div className="actions" style={{ marginTop: 28 }}>
-            <button className="btn btn-quiet btn-small" disabled={busy} onClick={() => nav('/p/cards?send=1')}>두 분께 질문 보내기</button>
             <button className="btn btn-quiet btn-small" disabled={busy} onClick={load}>새로고침</button>
           </div>
         )}

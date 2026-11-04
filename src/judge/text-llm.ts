@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { Card, Judgment, LlmClient, TextJudgeInput, TextJudgeOutput } from './types'
 import { buildPrompt, buildSummaryPrompt } from './prompt'
-import { buildExtractPrompt } from '../extract/prompt'
+import { buildPlanPrompt } from '../extract/plan'
 
 /**
  * 서버에서만 사용 (api/judge.ts, eval/run.ts, scripts/, vite dev 미들웨어). 브라우저에서 import 금지.
@@ -59,9 +59,9 @@ export function createLlmClient(env: LlmEnv): LlmClient {
       const text = await call(buildSummaryPrompt(card, a, b, judgment), 4000)
       return text.trim().split('\n').filter(l => l.trim()).slice(0, 3).join('\n')
     },
-    async extract(sheetText: string) {
-      // 카드 15장 JSON — 출력이 길어 max_tokens 를 넉넉히 (thinking 몫 포함)
-      return call(buildExtractPrompt(sheetText), 16000)
+    async extractPlan(docText: string) {
+      // 30칸 JSON — 출력이 길어 max_tokens 를 넉넉히 (thinking 몫 포함)
+      return call(buildPlanPrompt(docText), 16000)
     },
   }
 }
@@ -91,9 +91,9 @@ export const mockLlm: LlmClient = {
   async summarize({ card }) {
     return `mock 요약 (${card.label})\n품질 기대 금지\n실제 측정은 LLM_API_KEY 필요`
   },
-  async extract(sheetText: string) {
-    // 첫 셀 하나로 카드 1장 — 화면 흐름 확인용
-    const m = sheetText.match(/^\[([^\]]+)\] (.+)$/m)
-    return JSON.stringify(m ? [{ category: 'housing', type: 'text', unit: null, label: '(mock) 첫 줄', question: '이 내용이 지금도 맞나요?', plannedValue: m[2].slice(0, 60), options: null, stake: 'mock — 실제 추출은 LLM_API_KEY 필요', source: m[1], note: '' }] : [])
+  async extractPlan(docText: string) {
+    // 화면 흐름 확인용 — 문서 첫 줄의 "YYYY년 M월"만 첫 칸(이사 시점)에 넣는다. 나머지는 못 찾음
+    const m = docText.match(/\d{4}년\s*\d{1,2}월/)
+    return JSON.stringify(m ? [{ key: 't1_move_when', found: m[0], quote: m[0], note: 'mock — 실제 추출은 LLM_API_KEY 필요' }] : [])
   },
 }

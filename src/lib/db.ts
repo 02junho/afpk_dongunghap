@@ -7,7 +7,6 @@ import { supabase } from './supabase'
 import type { Card } from '../judge/index'
 import type { Role } from './session'
 import { rowToCard } from './cards'
-import { pingPlannerNotice } from './push'
 
 export const isLive = () => supabase !== null
 
@@ -48,39 +47,61 @@ export { rowToCard } from './cards'
 export interface OpenRound {
   id: string
   kind: string
+  /** 6주 사이클의 몇 주차 (11.04). 예전 라운드는 null */
+  week: number | null
   /** 라운드가 묻는 순서대로 */
   cards: { versionId: string; card: Card }[]
 }
 
-/** 내 커플의 열린 라운드 하나 (없으면 null) */
-export async function loadOpenRound(coupleId: string): Promise<OpenRound | null> {
-  const s = sb()
-  const { data: rounds, error } = await s
-    .from('rounds').select('id, kind, card_version_ids')
-    .eq('couple_id', coupleId).eq('status', 'open')
-    .order('opened_at', { ascending: false }).limit(1)
+/** 라운드의 카드들을 묻는 순서대로 */
+async function roundCards(ids: string[]): Promise<{ versionId: string; card: Card }[]> {
+  const { data: cvs, error } = await sb().from('card_versions').select('*, cards!inner(key, type, category, unit)').in('id', ids)
   if (error) throw new Error(error.message)
-  const r = rounds?.[0]
-  if (!r) return null
-  const ids: string[] = r.card_version_ids
-  const { data: cvs, error: e2 } = await s.from('card_versions').select('*, cards!inner(key, type, category, unit)').in('id', ids)
-  if (e2) throw new Error(e2.message)
   const byId = new Map((cvs ?? []).map(cv => [cv.id, cv]))
-  return {
-    id: r.id,
-    kind: r.kind,
-    cards: ids.filter(id => byId.has(id)).map(id => {
-      const cv = byId.get(id)!
-      return { versionId: id, card: rowToCard(cv, cv.cards) }
-    }),
+  return ids.filter(id => byId.has(id)).map(id => { const cv = byId.get(id)!; return { versionId: id, card: rowToCard(cv, cv.cards) } })
+}
+
+/** 열린 라운드들 — 오래된 것부터 (지난주에 못 다 한 질문이 먼저, 11.04) */
+async function openRoundRows(coupleId: string) {
+  const { data, error } = await sb().from('rounds').select('id, kind, week, card_version_ids')
+    .eq('couple_id', coupleId).eq('status', 'open').order('opened_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+/** 내 커플의 열린 라운드 하나 — 가장 오래된 것 (없으면 null) */
+export async function loadOpenRound(coupleId: string): Promise<OpenRound | null> {
+  const r = (await openRoundRows(coupleId))[0]
+  if (!r) return null
+  return { id: r.id, kind: r.kind, week: r.week ?? null, cards: await roundCards(r.card_version_ids) }
+}
+
+/**
+ * 내가 아직 답할 게 남은 라운드 (오래된 것부터). 다 답했으면 round = null 이고,
+ * 배우자를 기다리는 라운드가 있으면 waitingId. openCount = 열린 라운드 수 (2 이상이면 지난주 질문이 남아 있다)
+ */
+export async function loadMyNextRound(coupleId: string, memberId: string): Promise<{ round: OpenRound | null; waitingId: string | null; openCount: number }> {
+  const rows = await openRoundRows(coupleId)
+  for (const r of rows) {
+    const done = await myAnswered(r.id, memberId)
+    if ((r.card_version_ids as string[]).some(id => !done.has(id)))
+      return { round: { id: r.id, kind: r.kind, week: r.week ?? null, cards: await roundCards(r.card_version_ids) }, waitingId: null, openCount: rows.length }
   }
+  return { round: null, waitingId: rows[0]?.id ?? null, openCount: rows.length }
+}
+
+/** 이번 주 질문이 열릴 때가 됐나 서버에 확인 (6주 사이클, api/cycle). 실패해도 화면은 그대로 */
+export async function tickCycle(): Promise<void> {
+  const token = await myAccessToken()
+  if (!token) return
+  await fetch('/api/cycle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accessToken: token }) }).catch(() => {})
 }
 
 /** 라운드 하나의 종류·문항 수 (판정이 끝난 라운드도). 대기·전달 화면 문구용 */
-export async function loadRoundInfo(roundId: string): Promise<{ kind: string; count: number; status: string } | null> {
-  const { data, error } = await sb().from('rounds').select('kind, status, card_version_ids').eq('id', roundId).maybeSingle()
+export async function loadRoundInfo(roundId: string): Promise<{ kind: string; count: number; status: string; week: number | null } | null> {
+  const { data, error } = await sb().from('rounds').select('kind, status, week, card_version_ids').eq('id', roundId).maybeSingle()
   if (error || !data) return null
-  return { kind: data.kind, status: data.status, count: (data.card_version_ids as string[]).length }
+  return { kind: data.kind, status: data.status, week: data.week ?? null, count: (data.card_version_ids as string[]).length }
 }
 
 /** 내가 이 라운드에 이미 답한 카드 버전 id 들 (이어서 답하기) */
@@ -134,29 +155,9 @@ export async function loadActiveCardRows(coupleId: string): Promise<{ versionId:
   return (data ?? []).map(row => ({ versionId: row.id as string, card: rowToCard(row, row) }))
 }
 
-const NOTICE_PATCH_HINT = '지금은 보낼 수 없어요. 설계사님께 직접 알려 주세요'
-
-/**
- * "바뀐 게 있어요" (11.04) — 맞춰보기를 기다리지 않고 먼저 알린다. 설계사 처리 대기로만 간다.
- * 배우자는 못 본다 (RLS: 자기 것만 넣고 자기 것만 읽는다). 판정하지 않는다.
- */
-export async function submitNotice(coupleId: string, memberId: string, versionId: string, text: string, isCondition: boolean) {
-  const { data, error } = await sb().from('change_notices').insert({ couple_id: coupleId, member_id: memberId, card_version_id: versionId, text, is_condition: isCondition }).select('id').single()
-  if (error) throw new Error(/change_notices/.test(error.message) ? NOTICE_PATCH_HINT : error.message)
-  // 설계사 폰 알림 (11.04) — 실패해도 알림 자체는 이미 들어갔다
-  const token = await myAccessToken()
-  if (token && data?.id) pingPlannerNotice(token, data.id as string)
-}
-
 /** 이 폰의 로그인 토큰 — 알림 서버가 "누구 폰인지" 확인하는 데만 쓴다 */
 export async function myAccessToken(): Promise<string | null> {
   const { data } = await sb().auth.getSession()
   return data.session?.access_token ?? null
 }
 
-/** 내가 알렸고 설계사가 아직 처리하지 않은 카드 버전들 — [내 설계]에 "전달됨" 표시 */
-export async function myOpenNotices(memberId: string): Promise<Set<string>> {
-  const { data, error } = await sb().from('change_notices').select('card_version_id').eq('member_id', memberId).is('resolved_at', null)
-  if (error) return new Set()   // 패치 전이면 표가 없다 — 표시만 안 한다
-  return new Set((data ?? []).map(n => n.card_version_id as string))
-}

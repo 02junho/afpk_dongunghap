@@ -15,6 +15,7 @@ function devApi(): Plugin {
     judge: () => import('./api/judge'),
     planner: () => import('./api/planner'),
     push: () => import('./api/push'),   // Node 함수 (web-push) — POST 로 내보낸다
+    cycle: () => import('./api/cycle'),
   }
   return {
     name: 'dev-api',

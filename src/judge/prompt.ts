@@ -19,11 +19,13 @@
  * extract v1 최초 (10.23 팀 결정 Q3). 엑셀 글 → 질문 카드 초안. 값은 엑셀 표기 그대로(앱이 원 단위로 바꿈),
  *           상대 시점·서로 다른 값은 비워 두고 메모. 출처(시트·셀) 없는 카드는 버림. 설계사 확인 뒤에만 저장.
  * extract v2 카드 틀 확정(10.25)으로 주제에 결혼(wedding)·부채·소비(debt) 추가. 다른 규칙은 그대로 (엑셀 양식 미확정이라 손대지 않음).
+ * extract v3 새 방향(11.04): 엑셀 카드 초안 → 재무설계 Word 에서 고정 틀 30칸의 계획 값 찾기. 문서 표기 그대로 + 근거 문장.
+ *           단위 바꾸기 · 상대 시점 계산 금지(앱 규칙이 바꿈), 근거 없으면 null, 값이 서로 다르면 null. 설계사 확인 뒤에만 저장.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
   summary: 'v1',
-  extract: 'v2',   // 재무제표 엑셀 → 질문 카드 초안 (src/extract/prompt.ts)
+  extract: 'v3',   // 재무설계 결과(Word) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
 /** @deprecated PROMPT_VERSIONS.judge 를 쓸 것. eval 출력 파일명 호환용으로 남겨둔다. */

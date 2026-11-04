@@ -72,6 +72,6 @@ export interface LlmClient {
   judgeText(input: TextJudgeInput): Promise<TextJudgeOutput>
   /** 🔴 건의 설계사용 3줄 요약 (AI 활용 2번). 선택 구현. */
   summarize?(input: { card: Card; a: string; b: string; judgment: Judgment }): Promise<string>
-  /** 재무제표 엑셀 글 → 질문 카드 초안 JSON 원문 (AI 활용 3번, src/extract). 선택 구현. */
-  extract?(sheetText: string): Promise<string>
+  /** 재무설계 결과(Word) 글 → 질문 틀 30칸의 계획 값 JSON 원문 (AI 활용 3번, src/extract/plan.ts). 선택 구현. */
+  extractPlan?(docText: string): Promise<string>
 }

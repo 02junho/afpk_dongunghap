@@ -1,11 +1,13 @@
-import seed from './seed-cards.json'
 import type { Card, Judgment } from '../judge/index'
 import { fmt } from '../engine/index'
+import { SLOTS, slotCard, slotsOfWeek } from './template'
 
-export const CARDS = seed as Card[]
+/** 예시 화면(설계사 코드 전 · 데모 서버)의 카드 = 질문 틀 30칸 + 가상고객 예시 값 (11.04 새 방향) */
+export const CARDS: Card[] = SLOTS.map(s => slotCard(s, s.example))
 export const byKey = (k: string) => CARDS.find(c => c.key === k)!
 
-export const BASELINE = ['home_when', 'raise_plan', 'family_help']
+/** 예시 화면의 "이번 주" = 1주차 주택 5문항 */
+export const BASELINE = slotsOfWeek(1).map(s => s.key)
 
 /** 한 기기 데모에서 라운드 답변·판정을 두는 자리. 2주차에 answers/judgments 테이블로. */
 export const answerKey = (id: string) => `round:${id}`
@@ -19,29 +21,29 @@ export type RoundAnswers = Record<string, Partial<Record<'husband' | 'wife', Dra
  * 실제 플로우는 lib/api.ts → /api/judge 를 탄다. DEMO는 거기서만 분기한다.
  */
 export const DEMO_ANSWERS: Record<string, { husband: string; wife: string }> = {
-  home_when: { husband: '2029-06', wife: '2029-03' },
-  raise_plan: { husband: '사실 이직 준비 중이에요. 연봉 20% 정도 올려서', wife: '남편이 이직 알아보고 있어요' },
-  family_help: { husband: '1.5억 정도 해주신다고 하셨어요', wife: '그건 주시는 게 아니라 빌리는 거라고 들었는데' },
+  t1_buy_when: { husband: '2032-06', wife: '2032-03' },
+  t3_husband_income: { husband: '사실 이직 준비 중이에요. 연봉 20% 정도 올려서', wife: '남편이 이직 알아보고 있어요' },
+  t5_support_kind: { husband: '받는 돈', wife: '빌리는 돈' },
   // 조건부 답변 — 자동 판정 불가. 🟡이지만 설계사가 봐야 한다 (needs_review)
-  child_when: { husband: '2027-09', wife: '집 사고 나서요' },
+  t2_child_when: { husband: '2029-03', wife: '집 사고 나서요' },
 }
 
 export const DEMO_JUDGMENTS: Record<string, Judgment> = {
-  home_when: {
+  t1_buy_when: {
     verdict: 'green', aVsPlan: 'match', bVsPlan: 'match', abAgree: true,
     reason: '', method: 'deterministic',
   },
-  raise_plan: {
+  t3_husband_income: {
     verdict: 'red', redKind: 'plan_stale', aVsPlan: 'major', bVsPlan: 'major', abAgree: true,
     reason: '두 분 다 이직을 전제하고 있으나 설계안은 현 직장 유지를 전제함',
     method: 'llm', promptVersion: 'v3',
   },
-  family_help: {
+  t5_support_kind: {
     verdict: 'red', redKind: 'couple_conflict', aVsPlan: 'match', bVsPlan: 'major', abAgree: false,
-    reason: '금액은 같으나 증여와 차용으로 성격이 갈림',
-    method: 'llm', promptVersion: 'v3',
+    reason: '남편은 받는 돈, 아내는 빌리는 돈으로 답함',
+    method: 'deterministic',
   },
-  child_when: {
+  t2_child_when: {
     verdict: 'yellow', aVsPlan: 'match', bVsPlan: 'unparsed', abAgree: false,
     reason: '시점 대신 조건으로 답했습니다 — 설계사 확인 필요',
     method: 'deterministic', needsReview: true,
@@ -50,9 +52,9 @@ export const DEMO_JUDGMENTS: Record<string, Judgment> = {
 
 /** 설계사 큐의 AI 3줄 요약 (AI 활용 2번). 실제로는 judgments.planner_summary. */
 export const DEMO_SUMMARY: Record<string, string> = {
-  raise_plan: '소득 상한까지 여유 900만원. 두 분 모두 남편 이직을 전제로 답했고 설계안은 현 직장 유지를 전제함. 합산 +900만을 넘기면 신혼부부 구입자금 자격 상실 — 이직 후 예상 소득 확인이 먼저.',
-  family_help: '금액 1.5억은 일치, 성격이 갈림. 남편은 증여로, 아내는 차용으로 인지. 증여면 혼인 증여재산공제 창구 2027.10 마감, 차용이면 적정이자율 문제. 어느 쪽인지 확인이 먼저.',
-  child_when: '아내가 시점 대신 조건("집 사고 나서")으로 답함 — 자동 판정 불가. 출산 시점에 따라 신생아 특례 접수 기한이 바뀜. 조건을 연·월로 확정할 수 있는지 확인.',
+  t3_husband_income: '소득 상한까지 여유 900만원. 두 분 모두 남편 이직을 전제로 답했고 설계안은 현 직장 유지를 전제함. 합산 +900만을 넘기면 신혼부부 구입자금 자격 상실 — 이직 후 예상 소득 확인이 먼저.',
+  t5_support_kind: '지원금 1억의 성격이 갈림. 남편은 증여로, 아내는 차용으로 인지. 증여면 혼인 증여재산공제 창구 2027.10 마감, 차용이면 적정이자율 문제. 어느 쪽인지 확인이 먼저.',
+  t2_child_when: '아내가 시점 대신 조건("집 사고 나서")으로 답함 — 자동 판정 불가. 출산 시점에 따라 신생아 특례 접수 기한이 바뀜. 조건을 연·월로 확정할 수 있는지 확인.',
 }
 
 /** 큐에 올라오는 것: 🔴 전부 + 확인 필요 🟡 (planner_queue 뷰와 같은 조건) */
@@ -98,7 +100,7 @@ export const KIND_CHIP = {
 } as const
 
 export const typeLabel = (c: Card) =>
-  c.type === 'number' ? (c.unit === 'age' ? '나이' : '금액')
+  c.type === 'number' ? (c.unit === 'age' ? '나이' : c.unit === 'count' ? '개수' : c.unit === 'percent' ? '비율' : '금액')
   : c.type === 'date' ? '시점'
   : c.type === 'choice' ? '선택' : '서술'
 
@@ -110,7 +112,7 @@ export function showValue(c: Card): string {
   }
   if (c.type !== 'number') return String(c.plannedValue)
   const n = Number(c.plannedValue)
-  return c.unit === 'age' ? `만 ${n}세` : fmt(n)
+  return c.unit === 'age' ? `만 ${n}세` : c.unit === 'count' ? `${n}` : c.unit === 'percent' ? `${n}%` : fmt(n)
 }
 
 /**
@@ -132,17 +134,20 @@ export function showAnswer(c: Card, s: string): string {
   return s
 }
 
-/** 10.25 카드 틀 확정(docs/09, 주제 10개): 결혼·부채·소비가 새로 들어왔다. 세금은 틀에선 양가 지원에 합쳤지만 예전 카드 호환으로 남긴다 */
+/**
+ * 11.04 새 방향: 테마 6개 (주택 · 출산/육아 · 노후 · 보험 · 부채 · 투자 — src/data/template.ts THEMES).
+ * DB enum 은 그대로 두고 이름만 바꿨다. 결혼 · 소득 · 양가 · 세금은 예전 카드 표시용으로만 남는다.
+ */
 export const CATEGORIES: Record<Card['category'], { label: string; bg: string; fg: string; short: string }> = {
-  wedding:   { label: '결혼',      short: '결혼', bg: '#fbe9f1', fg: '#b04a7a' },
-  housing:   { label: '주거',      short: '주거', bg: '#e9effd', fg: '#3f63c9' },
-  income:    { label: '소득·직업', short: '소득', bg: '#fdeae6', fg: '#c25a4a' },
-  children:  { label: '출산·양육', short: '양육', bg: '#fdf1dc', fg: '#a86a12' },
-  family:    { label: '양가 지원', short: '양가', bg: '#eee9fb', fg: '#6b4fc0' },
-  debt:      { label: '부채·소비', short: '부채', bg: '#f1ece4', fg: '#8a5a2b' },
-  saving:    { label: '저축·투자', short: '저축', bg: '#e4f5ec', fg: '#1f7a52' },
+  housing:   { label: '주택',      short: '주택', bg: '#e9effd', fg: '#3f63c9' },
+  children:  { label: '출산/육아', short: '육아', bg: '#fdf1dc', fg: '#a86a12' },
+  retire:    { label: '노후',      short: '노후', bg: '#f3efe6', fg: '#7a6530' },
   insurance: { label: '보험',      short: '보험', bg: '#e6f3f8', fg: '#2a6f8a' },
-  retire:    { label: '은퇴',      short: '은퇴', bg: '#f3efe6', fg: '#7a6530' },
+  debt:      { label: '부채',      short: '부채', bg: '#f1ece4', fg: '#8a5a2b' },
+  saving:    { label: '투자',      short: '투자', bg: '#e4f5ec', fg: '#1f7a52' },
+  wedding:   { label: '결혼',      short: '결혼', bg: '#fbe9f1', fg: '#b04a7a' },
+  income:    { label: '소득·직업', short: '소득', bg: '#fdeae6', fg: '#c25a4a' },
+  family:    { label: '양가 지원', short: '양가', bg: '#eee9fb', fg: '#6b4fc0' },
   tax:       { label: '세금',      short: '세금', bg: '#f0f0f0', fg: '#555' },
 }
-export const CATEGORY_ORDER: Card['category'][] = ['wedding','housing','income','children','family','debt','saving','insurance','retire','tax']
+export const CATEGORY_ORDER: Card['category'][] = ['housing','children','retire','insurance','debt','saving','wedding','income','family','tax']
