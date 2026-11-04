@@ -78,6 +78,10 @@ await dshot('/p/cards', 'p5-extract', async pg => {
 await dshot('/p/queue', 'p3-queue', null, 'main')
 await dshot('/p/cards', 'p4-card-view', async pg => { await pg.locator('.card-row').first().click() }, 'main .cards-layout')
 await dshot('/p/history', 'p7-history', null, 'main')
+await dshot('/p/cards', 'p8-send', async pg => {
+  await pg.click('button:has-text("두 분께 질문 보내기")')
+  for (const i of [0, 2, 4]) await pg.locator('.card-row').nth(i).click()
+}, 'main .cards-layout')
 const invite = await d.evaluate(async () => {
   const m = await import('/src/lib/install.ts')
   return m.inviteMessage({ husband: '에이피', wife: '에피케', code: '482913', url: 'https://afpk-dongunghap.vercel.app/c/join?code=482913' })
@@ -106,7 +110,7 @@ const svg = `<svg viewBox="0 0 1075 395" xmlns="http://www.w3.org/2000/svg" styl
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a8391"/></marker>
 <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8860b"/></marker></defs>
 ${lane(0, '설계사', '#f4f1f6')}${lane(1, '부부 폰', '#eef3fd')}${lane(2, '앱', '#edf7f1')}
-${box(0, 0, '① 등록', ['엑셀 → 질문 카드', '안내문 · QR 보내기'])}
+${box(0, 0, '① 등록 · 질문', ['엑셀 → 질문 카드', '카드 3장 골라 보내기'])}
 ${box(1, 1, '② 입장', ['코드 → 남편 / 아내'])}
 ${box(2, 1, '③ 따로 답하기', ['계획을 보여 주고', '"지금도 맞나요?"'])}
 ${box(3, 2, '④ 3자 비교', ['남편 · 아내 · 계획', '말로 쓴 답만 AI'])}
@@ -291,40 +295,20 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   <div class="foot">지금 상태: 자동 점검 107개 · 처음부터 끝까지 시험 39단계 통과 · AI 판단 새 10건 중 8건(다른 날 7건). 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다.</div>
 </section>
 <section class="page">
-  <div class="eyebrow">다음 단계 — 아직 없는 기능</div>
-  <h2>카드 골라 맞춰보기 열기</h2>
-  <div class="two">
-    <div class="col">
-      <div class="box"><h3>지금은</h3>
-        <p>첫 맞춰보기는 <b>정해 둔 카드 3장</b>(주택 취득 시점 · 승진·이직 계획 · 양가 지원)으로 열린다. 연습용 카드 10장으로 만든 부부에게는 이 3장이 있어서 바로 열린다.</p>
-      </div>
-      <div class="box"><h3>그래서 생기는 일</h3>
-        <p><b>엑셀로 만든 부부</b>(예: 에이피 · 에피케)는 카드가 남편 급여 · 월세 · 적금 같은 엑셀 항목이라 이 3장이 없다. 카드는 있는데 <b>두 분께 물어볼 방법이 없다.</b> "엑셀 등록 → 두 분이 답하기 → 처리 대기"가 한 부부로 이어지지 않는다.</p>
-      </div>
-      <div class="box"><h3>만들면</h3>
-        <ul>
-          <li>설계사가 <b>물어볼 카드를 직접 골라</b> 맞춰보기를 연다</li>
-          <li>바뀌는 건 "무엇을 물을지 설계사가 고른다" 하나. 판정 · 처리 대기 · 부부 화면은 그대로</li>
-          <li>AI는 쓰지 않는다</li>
-          <li>가상고객으로 처음부터 끝까지 시연할 수 있다 — "남편 연 급여 6,700만 원, 지금도 그렇게 생각하시나요?"</li>
-        </ul>
-      </div>
-    </div>
-    <div class="col">
-      <div class="box" style="background:#fff;border:0.4mm dashed #d8cdc6"><h3>만들면 이런 모양 (그림 예시)</h3>
-        <table style="font-size:9.5pt">
-          <tr><td style="width:8mm">☑</td><td>남편 연 급여(세전)</td><td style="text-align:right">6,700만원</td></tr>
-          <tr><td>☐</td><td>아내 연 매출</td><td style="text-align:right">4,000만원</td></tr>
-          <tr><td>☑</td><td>월세 (1년)</td><td style="text-align:right">1,140만원</td></tr>
-          <tr><td>☑</td><td>보증금</td><td style="text-align:right">2,000만원</td></tr>
-          <tr><td>☐</td><td>적금 (1년)</td><td style="text-align:right">500만원</td></tr>
+  <div class="eyebrow">설계사 — 두 분께 질문 보내기 · 폰 알림</div>
+  <h2>물어볼 카드 3장을 골라 보내면, 두 분 폰에 알림이 갑니다</h2>
+  <div class="two" style="grid-template-columns: 1.45fr 1fr">
+    <figure class="dk" style="margin:0"><img src="${img('p8-send')}" style="height:118mm;object-fit:cover;object-position:top left">
+      <figcaption>${step(1, '질문 카드 → 두 분께 질문 보내기')} — 카드 줄을 눌러 체크. <b>정확히 3장</b>일 때만 보내기 버튼이 켜진다</figcaption></figure>
+    <div class="side">
+      <div class="box">${step(2, '무엇을 물을지는 설계사가')}<p style="margin-top:1.5mm">앱은 카드를 추천하지 않는다. 진행 중인 질문이 있으면 다 답한 뒤에 보낸다</p></div>
+      <div class="box">${step(3, '문항 수')}<p style="margin-top:1.5mm">정기 질문은 <b>무조건 3문항</b>. 고객이 먼저 알린 변화를 확인할 때만 그 카드 <b>1문항</b></p></div>
+      <div class="box"><h3>폰 알림</h3>
+        <table style="font-size:8.8pt">
+          <tr><td style="width:26%"><b>부부</b></td><td>설계사님이 질문 3개를 보냈어요 · [내 설계]를 새로 고쳤어요</td></tr>
+          <tr><td><b>설계사</b></td><td>○○ 부부 · 먼저 알린 변화 1건 · 처리 대기 2건</td></tr>
         </table>
-        <p style="margin:3mm 0 0"><span class="chip" style="background:#2b2a33;color:#fff;padding:1mm 3mm">고른 3장으로 맞춰보기 열기</span></p>
-        <p style="margin:3mm 0 0;font-size:9.2pt;color:#5f5866">→ 두 분 폰에 "정기 맞춰보기 · 3문항" → 답하면 지금처럼 판정 → 처리 대기</p>
-        <p style="margin:2mm 0 0;font-size:9.2pt;color:#5f5866">이미 열린 맞춰보기가 있으면 열지 않고 "끝난 뒤 다시"</p>
-      </div>
-      <div class="box"><h3>정할 것</h3>
-        <p>제출 전에 만들지(반나절), 보고서에 "다음 단계"로만 적을지. 만들지 않으면 폰 테스트 · 시연은 연습 부부로, 엑셀은 "카드 만들기"까지만 보여 준다.</p>
+        <p style="margin:1.5mm 0 0;font-size:8.8pt;color:#5f5866">판정 · 상대의 답 · 금액은 알림에 넣지 않는다 (잠금 화면에 보인다). 처음 한 번 "알림 켜기"를 누르고 허용한다. 아이폰은 홈 화면 아이콘으로 열었을 때만. 알림을 안 켠 분에게는 "카톡 알림 문구 복사"</p>
       </div>
     </div>
   </div>
