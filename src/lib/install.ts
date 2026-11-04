@@ -75,3 +75,13 @@ export function inviteMessage(o: { husband: string; wife: string; code: string; 
     '두 분이 각자 휴대폰으로 따로 답해 주세요. 서로의 답은 보이지 않고 설계사만 봅니다.',
   ].join('\n')
 }
+
+/** 두 분께 질문을 보낸 뒤 카톡에 붙여 넣을 짧은 알림 (11.04). 폰 알림을 허용하지 않은 분을 위한 예비 수단 */
+export function questionsMessage(o: { husband: string; wife: string; count: number; url: string }): string {
+  const names = [o.husband, o.wife].map(s => s.trim()).filter(s => s && s !== '남편' && s !== '아내')
+  return [
+    names.length ? `[돈궁합] ${names.join(' · ')} 님, 설계사님이 질문 ${o.count}개를 보냈어요.` : `[돈궁합] 설계사님이 질문 ${o.count}개를 보냈어요.`,
+    `앱에서 두 분 각자 답해 주세요 (약 ${o.count}분).`,
+    o.url,
+  ].join('\n')
+}

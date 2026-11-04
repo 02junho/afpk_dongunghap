@@ -22,6 +22,8 @@
  *                                             부부가 먼저 알린 변화 ("바뀐 게 있어요", 11.04). factcheck = 두 분께 같이 묻기(정기 1문항)
  *   history                                   변경 이력 (card_versions)
  *   rounds / new_round                        라운드 목록 / 0회차 다시 열기 (리허설)
+ *   send_questions { cardIds }                두 분께 질문 보내기 (11.04) — 설계사가 고른 카드 정확히 3장으로 맞춰보기를 연다.
+ *                                             처음이면 baseline(첫 맞춰보기), 그다음부터 regular(정기). 열린 맞춰보기가 있으면 거부
  */
 import { extractCardDrafts, serviceClient, summarizeJudgment } from './judge'
 import { newCardKey, normalizeNewCard } from '../src/lib/card-form'
@@ -64,6 +66,9 @@ async function openVersionIds(sb: SB, coupleId: string): Promise<Set<string>> {
   const { data } = await sb.from('rounds').select('card_version_ids').eq('couple_id', coupleId).eq('status', 'open')
   return new Set((data ?? []).flatMap(r => r.card_version_ids as string[]))
 }
+
+/** 정기 맞춰보기 문항 수 (11.04 팀 결정 — 무조건 3). 먼저 알린 변화 확인(두 분께 같이 묻기)만 1문항 */
+export const QUESTIONS_PER_ROUND = 3
 
 const NOTICE_PATCH = 'DB 에 "바뀐 게 있어요" 표가 아직 없습니다 — supabase/patch-2026-11-04-change-notices.sql 을 SQL Editor 에서 한 번 실행해 주세요'
 const noTable = (m: string) => /change_notices/.test(m) && /does not exist|schema cache|Could not find/.test(m)
@@ -447,6 +452,26 @@ export default async function handler(req: Request): Promise<Response> {
         if (error) return bad(error.message, 500)
         return Response.json({ rounds: data })
       }
+      case 'send_questions': {
+        // 11.04 결정: 정기 맞춰보기는 무조건 3문항. 무엇을 물을지는 설계사가 고른다 (앱은 추천하지 않는다)
+        const ids: unknown = body.cardIds
+        if (!Array.isArray(ids) || ids.length !== QUESTIONS_PER_ROUND || new Set(ids).size !== QUESTIONS_PER_ROUND || !ids.every(x => typeof x === 'string'))
+          return bad(`카드를 정확히 ${QUESTIONS_PER_ROUND}장 골라 주세요`)
+        const { data: open } = await sb.from('rounds').select('id').eq('couple_id', coupleId).eq('status', 'open').limit(1)
+        if (open?.length) return bad('진행 중인 질문이 있습니다. 두 분이 다 답한 뒤 보낼 수 있습니다')
+        const { data: act, error: e0 } = await sb.from('active_cards').select('id, card_id, category').eq('couple_id', coupleId).in('card_id', ids as string[])
+        if (e0) return bad(e0.message, 500)
+        if ((act ?? []).length !== QUESTIONS_PER_ROUND) return bad('이 부부의 카드가 아니거나 지운 카드가 있습니다')
+        // 부부 폰에 나가는 순서 = 주제 순 (내 설계 화면과 같게)
+        const order = ['wedding', 'housing', 'income', 'children', 'family', 'debt', 'saving', 'insurance', 'retire', 'tax']
+        const sorted = [...act!].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category) || (ids as string[]).indexOf(a.card_id) - (ids as string[]).indexOf(b.card_id))
+        const { count } = await sb.from('rounds').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId).in('kind', ['baseline', 'regular'])
+        const kind = count ? 'regular' : 'baseline'
+        const { data: rd, error: e1 } = await sb.from('rounds').insert({ couple_id: coupleId, kind, card_version_ids: sorted.map(c => c.id) }).select('id').single()
+        if (e1) return bad(e1.message, 500)
+        return Response.json({ roundId: rd.id, kind })
+      }
+
       case 'new_round': {
         const { data: open } = await sb.from('rounds').select('id').eq('couple_id', coupleId).eq('status', 'open').limit(1)
         if (open?.length) return Response.json({ roundId: open[0].id, reused: true })

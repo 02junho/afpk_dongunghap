@@ -153,3 +153,6 @@ body {
 
 /* 파일 고르기 버튼(label)을 잠글 때 (11.04) */
 .btn-off { opacity: 0.45; pointer-events: none; }
+
+/* 두 분께 질문 보내기 — 고른 카드 번호 (11.04) */
+.sn-inline { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; }

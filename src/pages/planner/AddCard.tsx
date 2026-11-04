@@ -24,7 +24,7 @@ export default function AddCard({ busy, onSave, onCancel }: {
   const [tol, setTol] = useState('')
   const [allowCondition, setAllowCondition] = useState(false)
   const [stake, setStake] = useState('')
-  const [askNow, setAskNow] = useState(false)
+  // 11.04: "저장하고 바로 묻기"는 없앴다 — 정기 맞춰보기는 "두 분께 질문 보내기"에서 3장을 골라 연다
 
   const k = KIND_OPTIONS.find(o => o.id === kind)!
   const opts = splitOptions(options)
@@ -103,15 +103,10 @@ export default function AddCard({ busy, onSave, onCancel }: {
       <label className="label" htmlFor="ac-stake">이 계획이 바뀌면 생기는 일</label>
       <textarea id="ac-stake" className="field" style={fieldStyle} rows={2} value={stake} onChange={e => setStake(e.target.value)} placeholder="예: 자기자금을 뺀 나머지가 대출 금액이 된다 (근거 숫자가 있으면 함께)" />
 
-      <label className="label" style={{ fontWeight: 400, display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input type="checkbox" checked={askNow} onChange={e => setAskNow(e.target.checked)} />
-        저장하고 이 카드 한 장을 두 분께 바로 묻기 (정기 맞춰보기)
-      </label>
-
       {touched && !result.ok && <p className="note" style={{ color: 'var(--escalate)' }}>{result.error}</p>}
       <div className="actions">
-        <button className="btn btn-small" disabled={busy || !result.ok} onClick={() => result.ok && onSave(result.card, askNow)}>
-          {busy ? '저장 중…' : askNow ? '추가하고 바로 묻기' : '카드 추가'}
+        <button className="btn btn-small" disabled={busy || !result.ok} onClick={() => result.ok && onSave(result.card, false)}>
+          {busy ? '저장 중…' : '카드 추가'}
         </button>
         <button className="btn btn-quiet btn-small" onClick={onCancel}>취소</button>
       </div>

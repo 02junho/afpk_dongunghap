@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Rail from './Rail'
 import { CARDS, CATEGORIES, CATEGORY_ORDER, showValue } from '../../data/demo'
 import { parseWon, parseCount, type Card } from '../../judge/index'
@@ -10,6 +11,8 @@ import { clearPendingImport, peekPendingImport, type ImportFiles } from './pendi
 import type { NewCard } from '../../lib/card-form'
 import type { ExistingCard } from '../../extract/diff'
 import { linkedNames, readLinked } from '../../lib/fileLinks'
+import { copyText } from '../../lib/copy'
+import { questionsMessage } from '../../lib/install'
 
 /**
  * 카테고리별 카드 목록 + 1장 수정. 수정 = 새 버전 (card_versions insert, 동의 대기). 사유 필수.
@@ -40,6 +43,9 @@ function describeValue(card: Card, raw: string) {
  */
 const ALLOW_PREMISE_CHANGE = false
 
+/** 두 분께 질문 보내기 = 정기 맞춰보기. 11.04 팀 결정: 무조건 3문항 (서버 api/planner.ts QUESTIONS_PER_ROUND 와 같게) */
+const QUESTIONS = 3
+
 interface Row { cardId: string; versionId: string; version: number; pending: boolean; awaiting: boolean; inOpenRound?: boolean; card: Card }
 
 const DEMO_ROWS: Row[] = CARDS.map(c => ({ cardId: c.key, versionId: c.key, version: 1, pending: false, awaiting: false, card: c }))
@@ -64,6 +70,12 @@ export default function Cards() {
   const [loaded, setLoaded] = useState(false)
   // 이 컴퓨터에 연결해 둔 엑셀 (크롬 · 엣지). 있으면 맨 위에 "엑셀 다시 읽기"
   const [linked, setLinked] = useState(false)
+  // 두 분께 질문 보내기 (11.04): 카드 목록에 체크 칸이 생기고, 정확히 3장을 고르면 보낼 수 있다. 처리 대기에서 오면 ?send=1
+  const [params] = useSearchParams()
+  const [sending, setSending] = useState(params.get('send') === '1')
+  const [chosen, setChosen] = useState<string[]>([])
+  const [sent, setSent] = useState<number | null>(null)
+  const [copied, setCopied] = useState(false)
   useEffect(() => { void linkedNames(p.couple.id).then(n => setLinked(!!(n.statement || n.cashflow))) }, [p.couple.id, extracting])
 
   async function rereadLinked() {
@@ -143,6 +155,35 @@ export default function Cards() {
     setBusy(false)
   }
 
+  function startSending() {
+    setSending(true); setChosen([]); setSel(null); setAdding(false); setExtracting(false); setMsg(''); setErr(''); setSent(null)
+  }
+  function toggle(r: Row) {
+    setChosen(cs => cs.includes(r.cardId) ? cs.filter(x => x !== r.cardId) : cs.length >= QUESTIONS ? cs : [...cs, r.cardId])
+  }
+  async function sendQuestions() {
+    if (chosen.length !== QUESTIONS) return
+    setErr(''); setMsg('')
+    if (!p.live || !p.pass) {
+      setMsg(`(예시) 두 분께 질문 ${QUESTIONS}개를 보냈습니다.`); setSent(QUESTIONS); setSending(false); setChosen([]); return
+    }
+    setBusy(true)
+    try {
+      const r = await p.call<{ roundId: string; kind: string }>('send_questions', { cardIds: chosen })
+      setMsg(`두 분께 질문 ${QUESTIONS}개를 보냈습니다${r.kind === 'baseline' ? ' (첫 맞춰보기)' : ''}.`)
+      setSent(QUESTIONS); setSending(false); setChosen([])
+      await load()
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
+  async function copyNotice() {
+    const ok = await copyText(questionsMessage({ husband: p.couple.husband, wife: p.couple.wife, count: sent ?? QUESTIONS, url: `${location.origin}/c/join?code=${p.couple.code}` }))
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000) } else setErr('복사하지 못했습니다.')
+  }
+  // 지금 묻는 중인 맞춰보기가 있으면 새로 보낼 수 없다 (부부 폰에 두 개가 겹치지 않게)
+  const hasOpenRound = rows.some(r => r.inOpenRound)
+  const chosenRows = CATEGORY_ORDER.flatMap(k => rows.filter(r => r.card.category === k && chosen.includes(r.cardId)))
+
   const f = sel ? toleranceField(sel.card) : null
   const changed = !!sel && (
     value !== String(sel.card.plannedValue) ||
@@ -157,14 +198,19 @@ export default function Cards() {
       <main className="work">
         <h1 className="work-title">질문 카드 · {p.couple.label}</h1>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
-        {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
+        {msg && (
+          <p className="note" style={{ color: 'var(--agree)' }}>{msg}
+            {sent && <button className="btn btn-quiet btn-small" style={{ marginLeft: 10, padding: '2px 10px', fontSize: 12 }} onClick={() => void copyNotice()}>{copied ? '복사됨 ✓' : '카톡 알림 문구 복사'}</button>}
+          </p>
+        )}
 
         <div className="cards-layout" style={{ marginTop: 20 }}>
           <div>
             {/* 카드가 많아도 내리지 않고 바로 누르게 목록 맨 위에 (10.23 사용자 요청) */}
             <div className="actions" style={{ marginTop: 0, marginBottom: 14 }}>
-              <button className="btn btn-small" onClick={() => { setAdding(true); setExtracting(false); setSel(null); setMsg('') }}>카드 추가</button>
-              <button className="btn btn-quiet btn-small" onClick={() => { setImportFile(null); setExtracting(true); setAdding(false); setSel(null); setMsg('') }}>엑셀로 만들기</button>
+              <button className="btn btn-small" onClick={startSending}>두 분께 질문 보내기</button>
+              <button className="btn btn-quiet btn-small" onClick={() => { setAdding(true); setExtracting(false); setSending(false); setSel(null); setMsg('') }}>카드 추가</button>
+              <button className="btn btn-quiet btn-small" onClick={() => { setImportFile(null); setExtracting(true); setAdding(false); setSending(false); setSel(null); setMsg('') }}>엑셀로 만들기</button>
               {linked && <button className="btn btn-quiet btn-small" disabled={!(p.live && p.pass)} onClick={() => void rereadLinked()}
                 title="연결해 둔 엑셀을 지금 내용으로 다시 읽어, 바뀐 숫자만 보여 줍니다">엑셀 다시 읽기</button>}
             </div>
@@ -173,13 +219,19 @@ export default function Cards() {
                 <p className="cat-head">{CATEGORIES[k].label}</p>
                 {rows.filter(r => r.card.category === k).map(r => {
                   const c = r.card, cat = CATEGORIES[c.category]
+                  const on = sending && chosen.includes(r.cardId)
+                  const locked = sending && !on && (chosen.length >= QUESTIONS || hasOpenRound)
                   return (
-                    <button key={r.cardId} className={`card-row ${sel?.cardId === r.cardId ? 'card-row-on' : ''}`} onClick={() => pick(r)}>
+                    <button key={r.cardId} className={`card-row ${(sending ? on : sel?.cardId === r.cardId) ? 'card-row-on' : ''}`}
+                      style={locked ? { opacity: 0.45 } : undefined} aria-pressed={sending ? on : undefined}
+                      onClick={() => sending ? (!locked && toggle(r)) : pick(r)}>
+                      {sending && <span aria-hidden style={{ fontSize: 18, width: 22, textAlign: 'center' }}>{on ? '☑' : '☐'}</span>}
                       <span className="cat" style={{ background: cat.bg, color: cat.fg, width: 36, height: 36, borderRadius: 11 }}>{cat.short}</span>
                       <div>
                         <div className="card-name">{c.label}</div>
                         <div className="card-val">v{r.version} · {showValue(c)}{r.awaiting ? <> <span className="chip chip-talk" style={{ fontSize: 11, padding: '2px 8px' }}>동의 대기</span></>
-                          : r.pending ? <> <span className="chip chip-escalate" style={{ fontSize: 11, padding: '2px 8px' }}>동의 안 됨</span></> : null}</div>
+                          : r.pending ? <> <span className="chip chip-escalate" style={{ fontSize: 11, padding: '2px 8px' }}>동의 안 됨</span></>
+                          : r.inOpenRound ? <> <span className="chip chip-talk" style={{ fontSize: 11, padding: '2px 8px' }}>묻는 중</span></> : null}</div>
                       </div>
                     </button>
                   )
@@ -189,7 +241,40 @@ export default function Cards() {
           </div>
 
           <div className="editor">
-            {extracting ? (
+            {sending ? (
+              <>
+                <p className="editor-title">두 분께 질문 보내기 <span className="meta" style={{ fontSize: 14 }}>{chosen.length} / {QUESTIONS}장</span></p>
+                {hasOpenRound ? (
+                  <p className="will" style={{ color: 'var(--talk)' }}>진행 중인 질문이 있습니다. 두 분이 다 답한 뒤 보낼 수 있습니다.</p>
+                ) : (
+                  <>
+                    {!chosenRows.length && <p className="meta">왼쪽에서 물어볼 카드 {QUESTIONS}장을 고르세요.</p>}
+                    {chosenRows.map((r, i) => (
+                      <p key={r.cardId} style={{ margin: '8px 0 0' }}><span className="sn-inline">{i + 1}</span> <b>{r.card.label}</b> · {showValue(r.card)}</p>
+                    ))}
+                    {chosen.length === QUESTIONS && <p className="meta" style={{ marginTop: 8 }}>3장을 모두 골랐습니다.</p>}
+                    {chosenRows[0] && (
+                      <>
+                        <p className="label">두 분 폰에는 이렇게 나갑니다 (1번)</p>
+                        <div className="will" style={{ marginTop: 0 }}>
+                          <span className="meta">설계사님과 정한 계획</span><br />
+                          <b>{chosenRows[0].card.label} · {showValue(chosenRows[0].card)}</b><br />
+                          지금도 그렇게 생각하시나요? — 네, 그대로예요 / 아니요, 바뀌었어요
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+                <div className="actions">
+                  {!hasOpenRound && (
+                    <button className="btn btn-small" disabled={busy || chosen.length !== QUESTIONS} onClick={() => void sendQuestions()}>
+                      {busy ? '보내는 중…' : `고른 ${QUESTIONS}장으로 질문 보내기`}
+                    </button>
+                  )}
+                  <button className="btn btn-quiet btn-small" onClick={() => { setSending(false); setChosen([]) }}>취소</button>
+                </div>
+              </>
+            ) : extracting ? (
               <ExtractCards live={!!(p.live && p.pass)} call={p.call} initialFiles={importFile} onCancel={() => setExtracting(false)}
                 coupleId={p.couple.id}
                 existing={loaded ? rows.map((r): ExistingCard => ({ cardId: r.cardId, key: r.card.key, label: r.card.label, type: r.card.type, plannedValue: r.card.plannedValue, inOpenRound: r.inOpenRound })) : null}

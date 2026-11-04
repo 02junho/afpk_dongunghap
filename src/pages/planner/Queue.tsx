@@ -136,12 +136,6 @@ export default function Queue() {
     setBusy(false)
   }
 
-  async function newRound() {
-    setBusy(true)
-    try { await p.call('new_round'); setMsg('새 맞춰보기를 열었습니다.') }
-    catch (e) { setErr((e as Error).message) }
-    setBusy(false)
-  }
 
   // 데모 항목 (live 가 아니거나 코드 전): 한 기기 데모 결과가 있으면 그것, 없으면 고정 데모
   const demoItems: Item[] = (() => {
@@ -271,7 +265,7 @@ export default function Queue() {
 
         {liveMode && (
           <div className="actions" style={{ marginTop: 28 }}>
-            <button className="btn btn-quiet btn-small" disabled={busy} onClick={newRound}>맞춰보기 새로 열기</button>
+            <button className="btn btn-quiet btn-small" disabled={busy} onClick={() => nav('/p/cards?send=1')}>두 분께 질문 보내기</button>
             <button className="btn btn-quiet btn-small" disabled={busy} onClick={load}>새로고침</button>
           </div>
         )}
