@@ -191,7 +191,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   <h2>두 분이 각자 답합니다</h2>
   <div class="row">
     ${phoneFig('c1-join', '<b>입장</b> — 코드와 남편 / 아내')}
-    ${phoneFig('c2-home-match', '<b>홈</b> — 설계사가 열면 시작')}
+    ${phoneFig('c2-home-match', '<b>홈</b> — 설계사가 질문을 보내면 시작. 알림을 켜 두면 폰에 알림')}
     ${phoneFig('c4-round', '<b>답하기</b> — 계획을 보고 "그대로 / 바뀌었어요"')}
     ${phoneFig('c5-wait', '<b>대기</b> — 상대는 몇 개 답했는지만')}
     ${phoneFig('c6-done', '<b>끝</b> — 판정은 보여 주지 않는다')}
@@ -204,7 +204,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   <div class="row" style="max-width:190mm;width:100%;margin:0 auto">
     ${phoneFig('c3-home-plan', '<b>내 설계</b> — 계획마다 "바뀐 게 있어요"')}
     ${phoneFig('c7-change', '<b>바뀐 내용</b> — 답하기와 같은 입력')}
-    ${phoneFig('c8-change-sent', '<b>전달됨</b> — 배우자에게는 안 보인다')}
+    ${phoneFig('c8-change-sent', '<b>전달됨</b> — 배우자에게는 안 보인다. 설계사에게 알림')}
   </div>
 </section>
 
@@ -224,10 +224,10 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   <div class="two" style="grid-template-columns: 1.5fr 1fr">
     <img src="${img('p3-queue')}" style="width:100%;max-height:150mm;object-fit:cover;object-position:top left;border-radius:3mm;border:0.3mm solid #e4dcd6">
     <div class="side">
-      <div class="box">${step(4, '처리 대기 열기')}<p style="margin-top:1.5mm">부부 목록의 "처리 대기 N"이 볼 건의 수다</p></div>
+      <div class="box">${step(4, '처리 대기 열기')}<p style="margin-top:1.5mm">"○○ 부부 · 처리 대기 N건" 알림이 오거나, 부부 목록의 "처리 대기 N"으로 안다</p></div>
       <div class="box">${step(5, '카드 한 장씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히. 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
       <div class="box">${step(6, '버튼 하나로 닫기')}<p style="margin-top:1.5mm"><b>재설계 필요</b> → 다음 쪽<br><b>상담 때 다루기</b> → 다음 상담 안건<br><b>이건 같은 뜻이에요</b> → AI 오판 기록</p></div>
-      <div class="box">${step('+', '먼저 알린 변화')}<p style="margin-top:1.5mm">한 분이 "바뀐 게 있어요"로 알린 것. 맨 위에 따로 보인다. <b>두 분께 같이 묻기</b>를 누르면 그 카드 한 문항이 두 분 폰에 열린다</p></div>
+      <div class="box">${step('+', '먼저 알린 변화')}<p style="margin-top:1.5mm">한 분이 "바뀐 게 있어요"로 알린 것(설계사에게 알림). 맨 위에 따로 보인다. <b>두 분께 같이 묻기</b>를 누르면 그 카드 한 문항이 두 분 폰에 열린다</p></div>
     </div>
   </div>
 </section>
@@ -286,7 +286,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
         <ul>
           <li>제출하거나 알린 뒤에는 고칠 수 없다</li>
           <li>날짜로 말하기 어려우면 조건으로 답한다 → 설계사가 직접 확인</li>
-          <li>맞춰보기는 3개월마다. 열리면 탭에 빨간 점</li>
+          <li>질문이 오면 탭에 빨간 점. 홈에서 "알림 켜기"를 눌러 두면 폰 알림도 온다 (아이폰은 홈 화면 아이콘으로 열었을 때만)</li>
           <li>"바뀐 게 있어요"는 판정하지 않고 AI도 쓰지 않는다. 설계사가 처리하면 다시 알릴 수 있다</li>
         </ul>
       </div>
