@@ -46,7 +46,7 @@ function llmOrFail(): { llm: ReturnType<typeof createLlmClient> } | { error: Res
 }
 
 /**
- * AI 활용 3번 (11.04 새 방향): 재무설계 결과(Word) 글 → 질문 틀 30칸의 계획 값. api/planner(extract_plan)가 호출한다.
+ * AI 활용 3번 (11.04 새 방향): 재무설계 결과(Word · PDF) 글 → 질문 틀 30칸의 계획 값. api/planner(extract_plan)가 호출한다.
  * LLM 호출은 이 파일에만 둔다 (CLAUDE.md). 찾은 값만 돌려준다 — 저장은 설계사가 원문과 대조해 확인한 뒤.
  */
 export async function extractPlanValues(docText: string): Promise<{ finds: ReturnType<typeof parsePlanOutput>; promptVersion: string }> {

@@ -78,7 +78,8 @@ export default defineConfig({
       // ★ 새 서비스워커가 '대기(waiting)'에 머물지 않고 바로 교체되게. 이게 없으면 새 버전을 받아 놓고도
       //   탭을 전부 닫을 때까지 옛 화면을 계속 보여준다 — 10.16부터의 "새로고침 두 번"의 진짜 원인 (10.18 배포 브라우저에서 waiting 확인).
       // importScripts: 폰 알림을 받아 띄우는 코드 (public/push-sw.js, 11.04)
-      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true, importScripts: ['/push-sw.js'] },
+      // globIgnores: PDF 읽기(pdfjs, 약 540KB)는 설계사만 쓴다 — 부부 폰이 미리 받지 않게 (11.05)
+      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true, importScripts: ['/push-sw.js'], globIgnores: ['**/assets/pdf*.js'] },
       manifest: {
         name: '돈궁합',
         short_name: '돈궁합',

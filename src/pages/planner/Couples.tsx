@@ -28,7 +28,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
   const [err, setErr] = useState('')
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
   // 10.25: 새 부부는 빈 카드로 시작할 수 있다 — 연습용 카드와 엑셀로 만든 카드가 두 벌 되지 않게
-  // 재무설계 결과 Word (11.04 새 방향) — 등록하면 그 부부의 질문 틀 화면에서 AI 가 계획 값을 찾는다
+  // 재무설계 결과 파일 — Word · PDF (11.04 새 방향, PDF 11.05) — 등록하면 그 부부의 질문 틀 화면에서 AI 가 계획 값을 찾는다
   const [word, setWord] = useState<File | null>(null)
   const [importNote, setImportNote] = useState('')
   function chooseWord(f: File | undefined) {
@@ -247,7 +247,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
           <p className="label">재무설계 결과 파일 (선택)</p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
             <label className={`btn btn-quiet btn-small${busy ? ' btn-off' : ''}`} htmlFor="imp-word" style={{ cursor: 'pointer' }}>파일 선택</label>
-            <input id="imp-word" type="file" accept=".docx" hidden disabled={busy} onChange={e => chooseWord(e.target.files?.[0])} />
+            <input id="imp-word" type="file" accept=".docx,.pdf" hidden disabled={busy} onChange={e => chooseWord(e.target.files?.[0])} />
             <span className="meta">{word ? word.name : '선택된 파일 없음'}</span>
           </div>
           <p className="was">파일 이름이 "남편이름_아내이름_재무설계"면 이름이 채워집니다.</p>

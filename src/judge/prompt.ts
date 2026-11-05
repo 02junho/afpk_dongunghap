@@ -22,11 +22,12 @@
  * summary v2 (11.05) 판정 이름을 "계획과 다름" 하나로 (부부 불일치 · 전제 폐기를 나누지 않는다). 누가 다른지는 편차로 적는다.
  * extract v3 새 방향(11.04): 엑셀 카드 초안 → 재무설계 Word 에서 고정 틀 30칸의 계획 값 찾기. 문서 표기 그대로 + 근거 문장.
  *           단위 바꾸기 · 상대 시점 계산 금지(앱 규칙이 바꿈), 근거 없으면 null, 값이 서로 다르면 null. 설계사 확인 뒤에만 저장.
+ * extract v4 (11.05) 재무설계 결과를 PDF 로도 받는다 → 문서 설명을 "Word 또는 PDF"로, PDF 글은 줄바꿈 · 띄어쓰기가 다를 수 있다고 한 줄. 규칙은 그대로.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
   summary: 'v2',
-  extract: 'v3',   // 재무설계 결과(Word) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
+  extract: 'v4',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
 /** @deprecated PROMPT_VERSIONS.judge 를 쓸 것. eval 출력 파일명 호환용으로 남겨둔다. */

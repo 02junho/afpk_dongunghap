@@ -87,8 +87,9 @@ export default function Template() {
     }
     setBusy('word')
     try {
-      const { docxToText } = await import('../../lib/docx-text')
-      const { text, truncated } = await docxToText(await f.arrayBuffer())
+      // Word · PDF 둘 다 (11.05). 파일 앞부분으로 가른다
+      const { planFileToText } = await import('../../lib/pdf-text')
+      const { text, truncated } = await planFileToText(await f.arrayBuffer())
       if (!text.trim()) throw new Error('재무설계 결과 파일에서 글을 읽지 못했습니다')
       const r = await p.call<{ finds: PlanFind[]; promptVersion: string; error?: string }>('extract_plan', { docText: text })
       if (r.error) throw new Error(r.error)
@@ -166,7 +167,7 @@ export default function Template() {
 
         <div className="actions" style={{ marginTop: 14 }}>
           <label className={`btn btn-small${busy ? ' btn-off' : ''}`} htmlFor="tpl-word" style={{ cursor: 'pointer' }}>{busy === 'word' ? 'AI가 찾는 중… (30초~1분)' : '재무설계 결과에서 채우기'}</label>
-          <input id="tpl-word" type="file" accept=".docx" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void readWord(f) }} />
+          <input id="tpl-word" type="file" accept=".docx,.pdf" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void readWord(f) }} />
           <button className="btn btn-quiet btn-small" disabled={!!busy} onClick={fillExample}>예시 값으로 채우기 (테스트용)</button>
           <button className="btn btn-small" style={{ marginLeft: 'auto' }} disabled={!!busy || !toSave.length} onClick={() => void save()}>
             {busy === 'save' ? '저장 중…' : `저장 (${toSave.length}칸)`}

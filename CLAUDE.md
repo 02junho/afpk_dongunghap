@@ -16,7 +16,7 @@
 - **프롬프트를 고치면 `PROMPT_VERSIONS`의 해당 축(`judge` / `summary` / `extract`)을 올리고 `src/judge/prompt.ts` CHANGELOG에 한 줄.** 안 올리면 eval 결과 비교가 무의미해진다.
 - **카드 값은 덮어쓰지 않는다.** 항상 `card_versions`에 새 행. 삭제는 `archived_at`. (DB 트리거가 막는다)
 - **LLM 키는 브라우저로 가면 안 된다.** `VITE_` 접두사 금지. 호출은 `api/judge.ts`·`eval/run.ts`·`scripts/`·`vite.config.ts` 의 dev 미들웨어에서만.
-- **AI는 판별·요약·Word에서 계획 값 찾기만.** 찾기는 문서 표기 그대로 옮기고 근거 문장을 붙인다 — 원 단위·날짜로 바꾸는 건 규칙(`src/lib/plan-values.ts`), 저장은 설계사가 원문과 대조해 확인한 칸만. 계산·재무 조언·자동 반영·재설계 금지. 이걸 어기면 기획의 핵심 주장이 무너진다.
+- **AI는 판별·요약·재무설계 결과(Word · PDF)에서 계획 값 찾기만.** 찾기는 문서 표기 그대로 옮기고 근거 문장을 붙인다 — 원 단위·날짜로 바꾸는 건 규칙(`src/lib/plan-values.ts`), 저장은 설계사가 원문과 대조해 확인한 칸만. 계산·재무 조언·자동 반영·재설계 금지. 이걸 어기면 기획의 핵심 주장이 무너진다.
 - **질문 틀은 6테마 × 5문항 고정 (`src/data/template.ts`, `docs/20`).** 매주 1테마, 6주 1사이클(`api/_cycle.ts`, `docs/21`). 고치면 docs/20 도 같이.
 - **판별에서 LLM은 "기타 — 직접 적기" 답(과 옛 text 카드)에만.** 부부 답은 객관식(11.05) — 고른 답은 `src/judge/deterministic.ts`, 기타에 값만 적었어도 규칙. 다른 답 후보는 `src/lib/answer-options.ts` 규칙으로 (AI 금지). (🔴 건 요약은 AI 활용 2번 — 판별이 아니므로 카드 타입 무관, `ENABLE_PLANNER_SUMMARY=1` 일 때만)
 - **판정은 "계획과 다르면 🔴" 하나 (11.05).** 허용 범위 없음, 부부 불일치 · 전제 폐기를 나누지 않는다. 둘 다 그대로면 🟢, 못 읽으면 🟡.
@@ -26,7 +26,7 @@
 
 ## 명령
 ```
-npm test                    # vitest. 바꾸기 전후 항상 (93건)
+npm test                    # vitest. 바꾸기 전후 항상 (98건)
 npm run e2e                 # 실 DB 종단 (질문 틀 → 사이클 → 폰 2대 → 판정 → 확인함 → 상담 요청). 끝나면 테스트 부부를 지운다. -- --deployed-judge
 npm run seed:samples        # (옛 카드 기준 — 11.04 새 방향 전. 쓰지 않는다)
 npm run dev                 # /c/join (폰) · /p/couples (설계사). /api/judge 는 dev 미들웨어가 처리
@@ -45,6 +45,7 @@ api/judge.ts   Vercel edge, LLM 유일 호출점      supabase/   schema.sql · 
 eval/          golden.jsonl · run.ts (테스트 12)  scripts/    e2e-live.mts · flow-pdf.mjs · make-icons.mjs
 src/data/template.ts  질문 틀 30칸          api/_cycle.ts  6주 사이클 · api/cycle.ts 예약 실행 · api/push.ts 폰 알림
 src/lib/answer-options.ts  바뀌었어요 → 다른 답 후보 (계획 값에서 규칙으로, 테스트 13)
+src/lib/pdf-text.ts  재무설계 결과 PDF → 글 (pdfjs-dist 6.4.299 legacy, 한글 CMap 은 public/pdfjs-cmaps, 테스트 5)
 ```
 
 ## 커밋

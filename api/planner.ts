@@ -11,7 +11,7 @@
  *   rename_couple { husband, wife, label? }   이름 고치기
  *   template                                  질문 틀 30칸의 지금 계획 값
  *   template_save { values: {key: 값}, source } 계획 값 저장 — 처음이면 v1, 바뀌면 새 버전(덮어쓰지 않음). 묻는 중인 칸은 건너뜀
- *   extract_plan { docText }                  재무설계 Word 글 → 30칸 계획 값 찾기 (AI · 저장 안 함 — 설계사가 확인 뒤 template_save)
+ *   extract_plan { docText }                  재무설계 결과(Word · PDF) 글 → 30칸 계획 값 찾기 (AI · 저장 안 함 — 설계사가 확인 뒤 template_save)
  *   cycle                                     사이클 상태 (주차 · 진행 · 이번 사이클의 어긋난 것). 볼 때마다 tick
  *   cycle_start { periodMonths }              사이클 시작 (30칸이 다 차야) → 1주차 질문이 열린다
  *   cycle_skip_week                           다음 주로 넘기기 (시연 · 테스트용 — 시작일을 7일 앞당긴다)
@@ -225,8 +225,8 @@ export default async function handler(req: Request): Promise<Response> {
       case 'extract_plan': {
         // AI 활용 3번 (11.04). 찾은 값만 돌려준다 — 저장은 설계사가 원문과 대조해 확인한 뒤 template_save 로 (자동 반영 없음)
         const docText = String(body.docText ?? '')
-        if (!docText.trim()) return bad('Word 내용이 비어 있습니다')
-        if (docText.length > 60_000) return bad('Word 내용이 너무 깁니다 (6만 자까지)')
+        if (!docText.trim()) return bad('재무설계 결과 내용이 비어 있습니다')
+        if (docText.length > 60_000) return bad('재무설계 결과 내용이 너무 깁니다 (6만 자까지)')
         // AI 응답이 30초~1분 걸린다. 연결이 끊기지 않게 공백을 흘려보내다가 끝에 JSON 하나
         const enc = new TextEncoder()
         const stream = new ReadableStream({

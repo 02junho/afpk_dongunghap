@@ -18,7 +18,7 @@ export async function unzipEntry(buf: ArrayBuffer, name: string): Promise<Uint8A
   // 끝에서 중앙 디렉터리 끝 표시(EOCD, 0x06054b50)를 찾는다
   let eocd = -1
   for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65_557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break }
-  if (eocd < 0) throw new Error('Word 파일(.docx)이 아닙니다')
+  if (eocd < 0) throw new Error('Word(.docx) 또는 PDF 파일이 아닙니다')
   const count = dv.getUint16(eocd + 10, true)
   let p = dv.getUint32(eocd + 16, true)
   const dec = new TextDecoder()

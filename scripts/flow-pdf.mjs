@@ -285,7 +285,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
       </div>
     </div>
   </div>
-  <div class="foot">지금 상태: 자동 점검 93개 · 실제 DB 처음부터 끝까지 시험 29단계 통과. 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다. 재무설계 결과 단계 그림은 예시 값으로 찍었다.</div>
+  <div class="foot">지금 상태: 자동 점검 98개 · 실제 DB 처음부터 끝까지 시험 29단계 통과. 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다. 재무설계 결과 단계 그림은 예시 값으로 찍었다.</div>
 </section>
 </body></html>`
 writeFileSync(`${OUT}/flow.html`, html)
