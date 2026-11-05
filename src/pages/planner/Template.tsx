@@ -89,7 +89,7 @@ export default function Template() {
     try {
       const { docxToText } = await import('../../lib/docx-text')
       const { text, truncated } = await docxToText(await f.arrayBuffer())
-      if (!text.trim()) throw new Error('Word 에서 글을 읽지 못했습니다')
+      if (!text.trim()) throw new Error('재무설계 결과 파일에서 글을 읽지 못했습니다')
       const r = await p.call<{ finds: PlanFind[]; promptVersion: string; error?: string }>('extract_plan', { docText: text })
       if (r.error) throw new Error(r.error)
       const byKey: Record<string, PlanFind> = {}
@@ -165,7 +165,7 @@ export default function Template() {
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
 
         <div className="actions" style={{ marginTop: 14 }}>
-          <label className={`btn btn-small${busy ? ' btn-off' : ''}`} htmlFor="tpl-word" style={{ cursor: 'pointer' }}>{busy === 'word' ? 'AI가 찾는 중… (30초~1분)' : 'Word에서 채우기'}</label>
+          <label className={`btn btn-small${busy ? ' btn-off' : ''}`} htmlFor="tpl-word" style={{ cursor: 'pointer' }}>{busy === 'word' ? 'AI가 찾는 중… (30초~1분)' : '재무설계 결과에서 채우기'}</label>
           <input id="tpl-word" type="file" accept=".docx" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void readWord(f) }} />
           <button className="btn btn-quiet btn-small" disabled={!!busy} onClick={fillExample}>예시 값으로 채우기 (테스트용)</button>
           <button className="btn btn-small" style={{ marginLeft: 'auto' }} disabled={!!busy || !toSave.length} onClick={() => void save()}>
@@ -208,7 +208,7 @@ export default function Template() {
                   {r.fromWord && (
                     <div className="will" style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
                       <span style={{ flex: 1, fontSize: 13 }}>
-                        <span className="meta">Word 원문</span> “{finds[r.s.key].quote ?? '—'}”
+                        <span className="meta">원문</span> “{finds[r.s.key].quote ?? '—'}”
                         {finds[r.s.key].problem && <b style={{ color: 'var(--escalate)', marginLeft: 6 }}>{finds[r.s.key].problem}</b>}
                       </span>
                       <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>

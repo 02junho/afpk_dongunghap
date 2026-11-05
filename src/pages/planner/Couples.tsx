@@ -36,7 +36,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
     setWord(f)
     const n = namesFromFilename(f.name)
     if (n) { setForm(x => ({ ...x, husband: n.husband, wife: n.wife })); setImportNote(`파일 이름에서 남편 "${n.husband}", 아내 "${n.wife}"를 채웠습니다.`) }
-    else if (!form.husband && !form.wife) setImportNote('파일 이름이 "남편이름_아내이름_재무설계.docx" 모양이 아니라 이름을 채우지 못했습니다. 아래에 직접 적어 주세요.')
+    else if (!form.husband && !form.wife) setImportNote('파일 이름이 "남편이름_아내이름_재무설계" 모양이 아니라 이름을 채우지 못했습니다. 아래에 직접 적어 주세요.')
   }
   const [issued, setIssued] = useState<{ label: string; code: string; husband: string; wife: string } | null>(null)
   // 이름 고치기: 한 번에 한 부부만 펼친다
@@ -244,13 +244,13 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
 
         <h2 className="work-title" style={{ fontSize: 18, marginTop: 32 }}>새 부부</h2>
         <div className="editor" style={{ maxWidth: 560 }}>
-          <p className="label">재무설계 결과 Word (선택)</p>
+          <p className="label">재무설계 결과 파일 (선택)</p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
             <label className={`btn btn-quiet btn-small${busy ? ' btn-off' : ''}`} htmlFor="imp-word" style={{ cursor: 'pointer' }}>파일 선택</label>
             <input id="imp-word" type="file" accept=".docx" hidden disabled={busy} onChange={e => chooseWord(e.target.files?.[0])} />
             <span className="meta">{word ? word.name : '선택된 파일 없음'}</span>
           </div>
-          <p className="was">파일 이름이 "남편이름_아내이름_재무설계.docx"면 이름이 채워집니다.</p>
+          <p className="was">파일 이름이 "남편이름_아내이름_재무설계"면 이름이 채워집니다.</p>
           {importNote && <p className="note" style={{ color: importNote.startsWith('파일 이름에서') ? 'var(--agree)' : 'var(--talk)' }}>{importNote}</p>}
           <label className="label" htmlFor="h">남편 이름</label>
           <input id="h" className="field" style={{ boxShadow: 'none', border: '2px solid var(--line)' }} value={form.husband} onChange={e => setForm(f => ({ ...f, husband: e.target.value }))} placeholder="예: 현우" />

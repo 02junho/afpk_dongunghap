@@ -5,7 +5,7 @@
  *   VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run dev -- --port 5180 --host 127.0.0.1
  *   node scripts/flow-pdf.mjs                      # 다른 터미널
  *
- * 11.05 새 방향: Word 재무설계 결과 → 질문 틀 30칸 → 6주 사이클(매주 1테마 5문항) → 객관식 답 → 계획과 다르면 🔴 → 확인함 → 상담 요청.
+ * 11.05 새 방향: 재무설계 결과 → 질문 틀 30칸 → 6주 사이클(매주 1테마 5문항) → 객관식 답 → 계획과 다르면 🔴 → 확인함 → 상담 요청.
  * 앱 화면의 부연 설명은 여기로 옮겼다 — 1쪽 큰 그림, 화면 쪽은 한 줄씩, 자세한 설명은 마지막 쪽에만.
  * 캡처는 build/flow/ 에 남는다(커밋 안 함). 크로미움은 playwright 것을 쓴다 (PW_CHROMIUM 으로 바꿀 수 있음).
  */
@@ -22,7 +22,10 @@ mkdirSync(OUT, { recursive: true })
 const br = await chromium.launch({ args: ['--lang=ko-KR'], ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}) })
 const shotOpts = { type: 'jpeg', quality: 86 }
 // 예시 모드에서는 파일 내용을 읽지 않는다 — 이름만 있으면 된다 (이름에서 남편 · 아내를 채운다)
-const WORD = { name: '에이피_에피케_재무설계.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from('demo') }
+// 11.05: 재무설계 결과가 Word 일지 PDF 일지 아직 모른다 → 흐름도에는 파일 형식을 쓰지 않는다
+// 테스트용 버튼(예시 값으로 채우기 · 다음 주로 넘기기)은 캡처에서 뺀다
+const hideTestButtons = pg => pg.evaluate(() => document.querySelectorAll('button').forEach(b => { if (b.textContent?.includes('(테스트용)')) b.remove() }))
+const WORD = { name: '에이피_에피케_재무설계', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from('demo') }
 
 // ── 부부 폰 (아이폰 사파리로 보이게) ─────────────────────────────────────
 const phone = await br.newContext({
@@ -74,11 +77,12 @@ await dshot('/p/template', 'p2-word', async pg => {
   await pg.waitForTimeout(300)
   const boxes = pg.locator('input[type=checkbox]')
   for (const i of [0, 1, 2]) await boxes.nth(i).check()
+  await hideTestButtons(pg)
   await pg.evaluate(() => document.querySelectorAll('.note').forEach(e => { e.textContent = (e.textContent ?? '').replace('(예시) ', '') }))
 }, 'main')
 await dshot('/p/template', 'p3-cycle-start', async pg => { await hideDemoNotes(pg) }, 'main .editor')
 await dshot('/p/queue', 'p4-queue', null, 'main')
-await dshot('/p/cycle', 'p5-cycle', null, 'main')
+await dshot('/p/cycle', 'p5-cycle', hideTestButtons, 'main')
 const invite = await d.evaluate(async () => {
   const m = await import('/src/lib/install.ts')
   return m.inviteMessage({ husband: '에이피', wife: '에피케', code: '482913', url: 'https://afpk-dongunghap.vercel.app/c/join?code=482913' })
@@ -113,7 +117,7 @@ const svg = `<svg viewBox="0 0 1075 395" xmlns="http://www.w3.org/2000/svg" styl
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a8391"/></marker>
 <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8860b"/></marker></defs>
 ${lane(0, '설계사', '#f4f1f6')}${lane(1, '부부 폰', '#eef3fd')}${lane(2, '앱', '#edf7f1')}
-${box(0, 0, '① Word 올리기', ['재무설계 결과', '새 부부 등록'])}
+${box(0, 0, '① 결과 올리기', ['재무설계 결과', '새 부부 등록'])}
 ${box(1, 2, '② 계획 값 찾기', ['AI가 30칸을 찾고', '근거 문장을 붙임'])}
 ${box(2, 0, '③ 원문 대조', ['칸마다 "원문과 맞음"', '→ 사이클 시작'])}
 ${box(3, 1, '④ 매주 5문항', ['테마 1개씩 6주', '그대로 / 다른 답 고르기'])}
@@ -121,7 +125,7 @@ ${box(4, 2, '⑤ 계획과 비교', ['다르면 🔴', '기타 답만 AI'])}
 ${box(5, 0, '⑥ 처리 대기', ['확인함 · 메모', '6주 뒤 상담 요청'])}
 ${box(5, 1, '상담 요청 알림', ['두 분 폰에', '분기 · 반기마다 다시'], { fill: '#fdf6e3', stroke: '#e0c36a', dash: true })}
 ${elbow(0, 0, 1, 2)}${elbow(1, 2, 2, 0)}${elbow(2, 0, 3, 1)}${elbow(3, 1, 4, 2)}${elbow(4, 2, 5, 0)}
-<text x="${X[5] - 16}" y="${Y[1] + 50}" class="al" text-anchor="end">다른 것만</text>
+<text x="${X[5] - 16}" y="${Y[1] + 44}" class="al" text-anchor="end">다르거나</text><text x="${X[5] - 16}" y="${Y[1] + 60}" class="al" text-anchor="end">못 읽은 것만</text>
 <path d="M${cx(5)},${Y[0] + H} V${Y[1]}" fill="none" stroke="#b8860b" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#b)"/>
 </svg>`
 
@@ -182,20 +186,20 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   </div>
   <div class="rules">
     <div class="rule"><b>서로의 답은 안 보인다</b><small>판정도 상대의 답도 부부 폰에서는 볼 수 없다</small></div>
-    <div class="rule"><b>AI는 찾기 · 비교 · 요약만</b><small>Word에서 값 찾기(설계사 확인 필수) · 기타 답 뜻 비교 · 세 줄 요약. 계산 · 조언 · 계획 수정은 안 한다</small></div>
+    <div class="rule"><b>AI는 찾기 · 비교 · 요약만</b><small>재무설계 결과에서 값 찾기(설계사 확인 필수) · 기타 답 뜻 비교 · 세 줄 요약. 계산 · 조언 · 계획 수정은 안 한다</small></div>
     <div class="rule"><b>계획과 다르면 다른 것</b><small>허용 범위 없음. 기록은 지워지지 않고 새 버전으로 쌓인다</small></div>
   </div>
 </section>
 
 <section class="page">
   <div class="eyebrow">① ② ③ 설계사 — 준비</div>
-  <h2>재무설계 결과 Word를 올리면, AI가 30칸의 계획 값을 찾고 설계사가 원문과 대조합니다</h2>
+  <h2>재무설계 결과를 올리면, AI가 30칸의 계획 값을 찾고 설계사가 원문과 대조합니다</h2>
   <div class="two" style="grid-template-columns: 0.8fr 1.6fr">
     <div class="col">
-      ${deskFig('p1-new-couple', `${step(1, '새 부부 등록')} — Word를 고르면 파일 이름에서 두 분 이름이 채워진다`, 72)}
-      <figure class="dk"><pre class="msg" style="height:52mm">${esc(invite)}</pre><figcaption>${step(4, '안내문 보내기')} — "안내문 복사" → 카톡. QR도 있다</figcaption></figure>
+      ${deskFig('p1-new-couple', `${step(1, '새 부부 등록')} — 재무설계 결과 파일을 고르면 파일 이름에서 두 분 이름이 채워진다`, 72)}
+      <figure class="dk"><pre class="msg" style="height:52mm">${esc(invite)}</pre><figcaption>${step(5, '안내문 보내기')} — 부부 목록의 "안내문 복사" → 카톡. QR도 있다</figcaption></figure>
     </div>
-    ${deskFig('p2-word', `${step(2, 'Word에서 채우기')} — AI가 찾은 값 옆에 Word 원문이 붙는다. ${step(3, '원문과 맞음')} 을 누른 칸만 저장된다. 못 찾은 칸은 직접 채운다`, 140)}
+    ${deskFig('p2-word', `${step(2, '재무설계 결과에서 채우기')} — AI가 찾은 값 옆에 원문 문장이 붙는다. ${step(3, '원문과 맞음')} 을 누른 칸만 저장된다. 못 찾은 칸은 직접 채운다. ${step(4, '사이클 시작')} — 30칸이 다 차면 같은 화면 아래에서 누른다(분기 / 반기). 이날이 1주차`, 140)}
   </div>
 </section>
 
@@ -213,13 +217,13 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
 
 <section class="page">
   <div class="eyebrow">⑤ ⑥ 설계사 — 결과 보기</div>
-  <h2>두 분이 다 답하면, 계획과 다른 것만 처리 대기에 올라옵니다</h2>
+  <h2>두 분이 다 답하면, 계획과 다르거나 읽지 못한 답만 처리 대기에 올라옵니다</h2>
   <div class="two" style="grid-template-columns: 1.5fr 1fr">
     <img src="${img('p4-queue')}" style="width:100%;max-height:150mm;object-fit:cover;object-position:top left;border-radius:3mm;border:0.3mm solid #e4dcd6">
     <div class="side">
-      <div class="box">${step(5, '처리 대기 열기')}<p style="margin-top:1.5mm">"○○ 부부 · 처리 대기 N건" 알림이 오거나, 부부 목록에서 본다</p></div>
-      <div class="box">${step(6, '한 건씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히. "그대로예요" / "바뀜 → 고른 답". 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
-      <div class="box">${step(7, '확인함')}<p style="margin-top:1.5mm">봤다는 표시와 메모가 사이클 정리에 남는다. 판정은 바뀌지 않는다</p></div>
+      <div class="box">${step(6, '처리 대기 열기')}<p style="margin-top:1.5mm">"○○ 부부 · 처리 대기 N건" 알림이 오거나, 부부 목록에서 본다</p></div>
+      <div class="box">${step(7, '한 건씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히. "그대로예요" / "바뀜 → 고른 답". 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
+      <div class="box">${step(8, '확인함')}<p style="margin-top:1.5mm">봤다는 표시와 메모가 사이클 정리에 남는다. 판정은 바뀌지 않는다</p></div>
       <div class="box">${step('+', '이건 같은 뜻이에요')}<p style="margin-top:1.5mm">AI가 판정한 건(기타 답)에만. AI 오판으로 기록 → 판단 규칙을 고칠 때 시험 사례</p></div>
     </div>
   </div>
@@ -231,10 +235,8 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   <div class="two" style="grid-template-columns: 1.5fr 1fr">
     <img src="${img('p5-cycle')}" style="width:100%;max-height:150mm;object-fit:cover;object-position:top left;border-radius:3mm;border:0.3mm solid #e4dcd6">
     <div class="side">
-      <div class="box">${step(8, '사이클 시작')}<p style="margin-top:1.5mm">질문 틀 30칸이 다 차면 "사이클 시작" (분기 / 반기). 이날이 1주차, 7일마다 다음 테마</p></div>
-      <div class="box">${step(9, '주차별 진행')}<p style="margin-top:1.5mm">"남편 5/5 · 아내 0/5". 답하지 않은 주는 닫지 않고 다음 주로 넘긴다. 열린 지 4일이면 늦은 분에게만 한 번 더 알림</p></div>
+      <div class="box">${step(9, '주차별 진행')}<p style="margin-top:1.5mm">시작한 날부터 7일마다 다음 테마가 저절로 열린다. "남편 5/5 · 아내 0/5". 답하지 않은 주는 닫지 않고 다음 주로 넘긴다. 열린 지 4일이면 늦은 분에게만 한 번 더 알림</p></div>
       <div class="box">${step(10, '상담 요청 보내기')}<p style="margin-top:1.5mm">두 분 폰에 상담 요청 알림. 남은 질문은 닫히고 상담에서 직접 묻는다. 주기가 지나면 다음 사이클이 1주차부터</p></div>
-      <div class="box">${step('+', '다음 주로 넘기기')}<p style="margin-top:1.5mm">시연 · 테스트용. 일주일을 기다리지 않고 다음 테마를 연다</p></div>
     </div>
   </div>
 </section>
@@ -265,7 +267,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
     <div class="col">
       <div class="box"><h3>AI가 하는 일 세 가지</h3>
         <ul>
-          <li><b>Word에서 계획 값 찾기</b> — 문서 표기 그대로 + 근거 문장. 원 단위 · 날짜로 바꾸는 건 앱 규칙. 설계사가 칸마다 원문과 대조해야 저장</li>
+          <li><b>재무설계 결과에서 계획 값 찾기</b> — 문서 표기 그대로 + 근거 문장. 원 단위 · 날짜로 바꾸는 건 앱 규칙. 설계사가 칸마다 원문과 대조해야 저장</li>
           <li><b>기타 답 뜻 비교</b> — "집 사고 나서요"처럼 말이 섞인 답만. 값만 적었으면("3억 2천") 규칙이 읽는다</li>
           <li><b>🔴 건 세 줄 요약</b> — 무엇이 다른지 · 영향 · 물어볼 것. 판정을 바꾸지 못한다</li>
         </ul>
@@ -279,11 +281,11 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
         <p style="margin:1.5mm 0 0;font-size:8.8pt;color:#5f5866">처음 한 번 "알림 켜기". 아이폰은 홈 화면 아이콘으로 열었을 때만</p>
       </div>
       <div class="box"><h3>계획이 바뀌면</h3>
-        <ul><li>Word를 고쳐 다시 올리거나 칸을 고쳐 저장 → 새 버전. 예전 값은 변경 이력에. 묻는 중인 칸은 끝난 뒤에</li></ul>
+        <ul><li>재무설계 결과를 고쳐 다시 올리거나 칸을 고쳐 저장 → 새 버전. 예전 값은 변경 이력에. 묻는 중인 칸은 끝난 뒤에</li></ul>
       </div>
     </div>
   </div>
-  <div class="foot">지금 상태: 자동 점검 93개 · 실제 DB 처음부터 끝까지 시험 29단계 통과. 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다. Word 단계 그림은 예시 값으로 찍었다.</div>
+  <div class="foot">지금 상태: 자동 점검 93개 · 실제 DB 처음부터 끝까지 시험 29단계 통과. 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다. 재무설계 결과 단계 그림은 예시 값으로 찍었다.</div>
 </section>
 </body></html>`
 writeFileSync(`${OUT}/flow.html`, html)
