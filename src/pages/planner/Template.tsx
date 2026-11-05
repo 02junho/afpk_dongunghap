@@ -23,6 +23,9 @@ function toInput(s: Slot, planned: string): string {
   return planned
 }
 
+/** 예시 모드에서 Word 에 없다고 보여 줄 칸 (docs/20 의 "(Word에서)" 칸 일부) */
+const DEMO_NOT_FOUND = ['t2_edu_monthly', 't4_child_policy', 't6_emergency', 't6_invest_ratio']
+
 export default function Template() {
   const p = usePlanner()
   const liveMode = !!(p.live && p.pass)
@@ -68,7 +71,20 @@ export default function Template() {
 
   async function readWord(f: File) {
     setErr(''); setMsg('')
-    if (!liveMode) { setErr('예시 모드라 AI 로 찾을 수 없습니다. 왼쪽에 설계사 코드를 넣으세요.'); return }
+    if (!liveMode) {
+      // 예시 모드(흐름도 · 시연): AI 를 부르지 않고 가상고객 값으로 "찾은 모양"만 보여 준다. 원문 칸은 예시 문장이다
+      const byKey: Record<string, PlanFind> = {}
+      for (const s of SLOTS) {
+        if (DEMO_NOT_FOUND.includes(s.key)) continue
+        const shown = showPlanned(s.type, s.unit, s.example, s.key)
+        byKey[s.key] = { key: s.key, found: shown, quote: `${s.find}: ${shown}`, note: '', quoteInDoc: true, value: s.example }
+      }
+      setSaved({}); setFinds(byKey); setOk({}); setSource('word')
+      setInput(Object.fromEntries(SLOTS.map(x => [x.key, byKey[x.key] ? toInput(x, x.example) : ''])))
+      setBrief({ cycle: null, filled: 0, total: SLOTS.length })
+      setMsg(`(예시) "${f.name}"에서 ${Object.keys(byKey).length}칸을 찾았습니다. 칸마다 원문을 보고 "원문과 맞음"을 눌러 주세요. 못 찾은 ${DEMO_NOT_FOUND.length}칸은 직접 채웁니다.`)
+      return
+    }
     setBusy('word')
     try {
       const { docxToText } = await import('../../lib/docx-text')

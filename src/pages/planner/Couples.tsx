@@ -246,8 +246,8 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
         <div className="editor" style={{ maxWidth: 560 }}>
           <p className="label">재무설계 결과 Word (선택)</p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-            <label className={`btn btn-quiet btn-small${needPass || busy ? ' btn-off' : ''}`} htmlFor="imp-word" style={{ cursor: 'pointer' }}>파일 선택</label>
-            <input id="imp-word" type="file" accept=".docx" hidden disabled={needPass || busy} onChange={e => chooseWord(e.target.files?.[0])} />
+            <label className={`btn btn-quiet btn-small${busy ? ' btn-off' : ''}`} htmlFor="imp-word" style={{ cursor: 'pointer' }}>파일 선택</label>
+            <input id="imp-word" type="file" accept=".docx" hidden disabled={busy} onChange={e => chooseWord(e.target.files?.[0])} />
             <span className="meta">{word ? word.name : '선택된 파일 없음'}</span>
           </div>
           <p className="was">파일 이름이 "남편이름_아내이름_재무설계.docx"면 이름이 채워집니다.</p>
