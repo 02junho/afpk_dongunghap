@@ -91,23 +91,49 @@ function monthsDiff(a: string, b: string) {
 export const OTHER_PREFIX = '기타: '
 export const isOtherAnswer = (s: string) => s.trim().startsWith(OTHER_PREFIX.trim())
 
+/** 기타 답에서 적은 글만 */
+export const otherText = (s: string) => s.trim().replace(/^기타\s*:\s*/, '')
+
+/**
+ * number · date 답을 값으로 읽는다. 기타("기타: 3억 2천")도 규칙으로 읽히면 값이다.
+ * 틀의 값이 아닌 답 후보("아직 모름", "집을 사지 않기로 했다" — card.options)는 'fixed' — 계획과 다른 답이다.
+ */
+function readAnswer(card: Card, answer: string): { kind: 'value'; v: string | number } | { kind: 'fixed' } | { kind: 'unparsed' } {
+  const t = answer.trim()
+  if (!isOtherAnswer(t) && (card.options ?? []).includes(t)) return { kind: 'fixed' }
+  const other = isOtherAnswer(t)
+  const body = other ? otherText(t) : t
+  // 기타 글은 **값만 적었을 때만** 규칙으로 읽는다. "3억 정도인데 더 주실 수도" 를 3억으로 읽으면 안 된다 → AI 가 본다
+  if (card.type === 'number') {
+    if (other && !/^[\d.,\s]+(억|천만|백만|만|천|원|세|살|명|개월|달|%|\s)*([\d.,\s]+(억|천만|백만|만|천|원|세|살|명|개월|달|%|\s)*)*$/.test(body)) return { kind: 'unparsed' }
+    const n = parseNumeric(card, body.replace(/개월|달/g, ''))
+    return isNaN(n) ? { kind: 'unparsed' } : { kind: 'value', v: n }
+  }
+  if (other && !/^\d{4}\s*(년\s*\d{1,2}\s*월|[-.]\s*\d{1,2})$/.test(body)) return { kind: 'unparsed' }
+  const d = parseYearMonth(body)
+  return d ? { kind: 'value', v: d } : { kind: 'unparsed' }
+}
+
 /** 결정적 비교. text 카드는 여기 오면 안 된다. 해석 불가는 'unparsed'. */
 export function compareToPlan(card: Card, answer: string): DeviationOrUnknown {
   switch (card.type) {
     case 'number': {
-      const a = parseNumeric(card, answer)
+      const r = readAnswer(card, answer)
+      if (r.kind === 'fixed') return 'major'
       const p = parseNumeric(card, card.plannedValue)
-      if (isNaN(a) || isNaN(p)) return 'unparsed'
+      if (r.kind === 'unparsed' || isNaN(p)) return 'unparsed'
+      const a = r.v as number
       if (p === 0) return a === 0 ? 'match' : 'major'
       const ratio = Math.abs(a - p) / Math.abs(p)
       const tol = card.tolerance ?? 0.1
       return ratio <= tol ? 'match' : ratio <= tol * 2 ? 'minor' : 'major'
     }
     case 'date': {
-      const a = parseYearMonth(answer)
+      const r = readAnswer(card, answer)
+      if (r.kind === 'fixed') return 'major'
       const p = parseYearMonth(card.plannedValue)
-      if (!a || !p) return 'unparsed'
-      const d = monthsDiff(a, p)
+      if (r.kind === 'unparsed' || !p) return 'unparsed'
+      const d = monthsDiff(r.v as string, p)
       const tol = card.tolerance ?? 6
       return d <= tol ? 'match' : d <= tol * 2 ? 'minor' : 'major'
     }
@@ -119,22 +145,19 @@ export function compareToPlan(card: Card, answer: string): DeviationOrUnknown {
   }
 }
 
-/** 두 답변이 서로 양립하는가. 해석 불가는 null. */
+/** 두 답변이 서로 양립하는가. 해석 불가는 null. (11.05 부터 판정에는 쓰지 않는다 — 설계사 화면 참고용) */
 export function answersAgree(card: Card, a: string, b: string): boolean | null {
   switch (card.type) {
-    case 'number': {
-      const x = parseNumeric(card, a)
-      const y = parseNumeric(card, b)
-      if (isNaN(x) || isNaN(y)) return null
-      const scale = Math.max(Math.abs(x), Math.abs(y))
-      if (scale === 0) return true // 둘 다 0원 — 일치다. 0/0 = NaN 으로 불일치가 되면 안 된다
-      return Math.abs(x - y) / scale <= (card.tolerance ?? 0.1)
-    }
+    case 'number':
     case 'date': {
-      const x = parseYearMonth(a)
-      const y = parseYearMonth(b)
-      if (!x || !y) return null
-      return monthsDiff(x, y) <= (card.tolerance ?? 6)
+      const x = readAnswer(card, a), y = readAnswer(card, b)
+      if (x.kind === 'unparsed' || y.kind === 'unparsed') return null
+      if (x.kind === 'fixed' || y.kind === 'fixed') return a.trim() === b.trim()
+      if (card.type === 'date') return monthsDiff(x.v as string, y.v as string) <= (card.tolerance ?? 6)
+      const p = x.v as number, q = y.v as number
+      const scale = Math.max(Math.abs(p), Math.abs(q))
+      if (scale === 0) return true // 둘 다 0원 — 일치다. 0/0 = NaN 으로 불일치가 되면 안 된다
+      return Math.abs(p - q) / scale <= (card.tolerance ?? 0.1)
     }
     case 'choice':
       if (isOtherAnswer(a) || isOtherAnswer(b)) return null

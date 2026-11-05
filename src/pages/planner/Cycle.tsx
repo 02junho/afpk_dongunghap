@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Rail from './Rail'
 import { usePlanner } from './planner'
-import { CATEGORIES, KIND_CHIP, showPlanned } from '../../data/demo'
+import { CATEGORIES, chipOf, showPlanned } from '../../data/demo'
 import { THEMES, WEEKS, PER_THEME } from '../../data/template'
-import type { RedKind } from '../../judge/index'
 
 /**
  * 사이클 정리 (11.04 새 방향, docs/21). 6주 동안 주차별 진행과, 이번 사이클에서 계획과 어긋난 것을 한 화면에.
@@ -13,7 +12,7 @@ import type { RedKind } from '../../judge/index'
  *  · "상담 요청 보내기" → 두 분 폰에 알림. 사이클이 닫히고, 정한 주기(3 · 6개월)가 지나면 다음 사이클이 시작된다
  */
 interface Week { week: number; theme: string; opensAt: string; roundId: string | null; status: string | null; total: number; husband: number; wife: number }
-interface ReviewItem { id: string; week: number | null; category: string; label: string; planned: string; type?: string; unit?: string | null; a: string; b: string; verdict: string; redKind?: string | null; needsReview?: boolean; resolution: string | null; note: string | null }
+interface ReviewItem { id: string; key?: string; week: number | null; category: string; label: string; planned: string; type?: string; unit?: string | null; a: string; b: string; verdict: string; redKind?: string | null; needsReview?: boolean; resolution: string | null; note: string | null }
 interface CycleRes {
   cycle: { startedAt: string; periodMonths: number; week: number | null; endsAt: string; nextAt: string; consultRequestedAt: string | null; closedAt: string | null } | null
   weeks: Week[]; review: ReviewItem[]; filled: number; total: number
@@ -32,8 +31,8 @@ const DEMO: CycleRes = (() => {
   return {
     cycle: { startedAt: start, periodMonths: 3, week: 3, endsAt: '', nextAt: '', consultRequestedAt: null, closedAt: null }, weeks, filled: 30, total: 30,
     review: [
-      { id: 'd1', week: 1, category: 'housing', label: '내 집 마련 시점', planned: '2032-06', type: 'date', a: '2032-06', b: '2034-06', verdict: 'red', redKind: 'couple_conflict', resolution: 'consult', note: '아내분 이직 계획 확인' },
-      { id: 'd2', week: 2, category: 'children', label: '첫 아이 시점', planned: '2029-03', type: 'date', a: '2029-03', b: '집 사고 나서요', verdict: 'yellow', needsReview: true, resolution: null, note: null },
+      { id: 'd1', key: 't1_buy_when', week: 1, category: 'housing', label: '내 집 마련 시점', planned: '2032-06', type: 'date', a: '2032-06', b: '2034-06', verdict: 'red', resolution: 'consult', note: '아내분 이직 계획 확인' },
+      { id: 'd2', key: 't2_child_when', week: 2, category: 'children', label: '첫 아이 시점', planned: '2029-03', type: 'date', a: '2029-03', b: '기타: 집 사고 나서요', verdict: 'red', resolution: null, note: null },
     ],
   }
 })()
@@ -63,8 +62,8 @@ export default function Cycle() {
   const c = data?.cycle
   const ended = !!c && !c.closedAt && c.endsAt && Date.now() >= new Date(c.endsAt).getTime()
   const show = (it: ReviewItem, v: string) => {
-    const t = showPlanned(it.type as never, (it.unit ?? null) as never, String(v ?? ''))
-    return String(v) === String(it.planned) ? `그대로예요 (${t})` : t
+    const t = showPlanned(it.type as never, (it.unit ?? null) as never, String(v ?? ''), it.key)
+    return String(v) === String(it.planned) ? `그대로예요 (${t})` : `바뀜 → ${t}`
   }
   return (
     <div className="console">
@@ -124,7 +123,7 @@ export default function Cycle() {
                 <div key={t.week} style={{ marginTop: 14 }}>
                   <p className="cat-head"><span className="chip" style={{ background: cat.bg, color: cat.fg, fontSize: 12, padding: '3px 10px' }}>{t.week}주</span> {t.label}</p>
                   {list.map(it => {
-                    const chip = it.verdict === 'red' ? KIND_CHIP[(it.redKind ?? 'couple_conflict') as RedKind] : KIND_CHIP.needs_review
+                    const chip = chipOf(it)
                     return (
                       <div key={it.id} className="qcard" style={{ padding: '12px 16px', marginBottom: 8 }}>
                         <div className="queue-top">
@@ -133,7 +132,7 @@ export default function Cycle() {
                           <span className="queue-couple">{it.resolution ? '✓ 확인함' : '확인 전'}</span>
                         </div>
                         <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
-                          <dt className="meta">설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{showPlanned(it.type as never, (it.unit ?? null) as never, String(it.planned))}</dd>
+                          <dt className="meta">설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{showPlanned(it.type as never, (it.unit ?? null) as never, String(it.planned), it.key)}</dd>
                           <dt><span className="avatar avatar-him">{p.couple.husband.slice(0, 1)}</span></dt><dd>{show(it, it.a)}</dd>
                           <dt><span className="avatar avatar-her">{p.couple.wife.slice(0, 1)}</span></dt><dd>{show(it, it.b)}</dd>
                           {it.note && <><dt className="meta">메모</dt><dd>{it.note}</dd></>}

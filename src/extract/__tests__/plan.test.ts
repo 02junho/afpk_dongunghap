@@ -89,6 +89,6 @@ describe('허용 범위 없음 (11.05) — 계획과 다르면 다른 것', () =
     const when = slotCard(slotByKey('t1_buy_when')!, '2032-06')
     expect((await judge(when, '2032-06', '2032-07')).verdict).toBe('red')
     const age = slotCard(slotByKey('t3_husband_retire')!, 60)
-    expect(await judge(age, '61', '61')).toMatchObject({ verdict: 'red', redKind: 'plan_stale' })
+    expect(await judge(age, '61', '61')).toMatchObject({ verdict: 'red' })
   })
 })

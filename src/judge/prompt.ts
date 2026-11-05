@@ -19,12 +19,13 @@
  * extract v1 최초 (10.23 팀 결정 Q3). 엑셀 글 → 질문 카드 초안. 값은 엑셀 표기 그대로(앱이 원 단위로 바꿈),
  *           상대 시점·서로 다른 값은 비워 두고 메모. 출처(시트·셀) 없는 카드는 버림. 설계사 확인 뒤에만 저장.
  * extract v2 카드 틀 확정(10.25)으로 주제에 결혼(wedding)·부채·소비(debt) 추가. 다른 규칙은 그대로 (엑셀 양식 미확정이라 손대지 않음).
+ * summary v2 (11.05) 판정 이름을 "계획과 다름" 하나로 (부부 불일치 · 전제 폐기를 나누지 않는다). 누가 다른지는 편차로 적는다.
  * extract v3 새 방향(11.04): 엑셀 카드 초안 → 재무설계 Word 에서 고정 틀 30칸의 계획 값 찾기. 문서 표기 그대로 + 근거 문장.
  *           단위 바꾸기 · 상대 시점 계산 금지(앱 규칙이 바꿈), 근거 없으면 null, 값이 서로 다르면 null. 설계사 확인 뒤에만 저장.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
-  summary: 'v1',
+  summary: 'v2',
   extract: 'v3',   // 재무설계 결과(Word) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
@@ -84,13 +85,15 @@ export function buildSummaryPrompt(
   card: PromptCard,
   a: string,
   b: string,
-  judgment: { verdict: string; redKind?: string; reason?: string },
+  judgment: { verdict: string; redKind?: string; reason?: string; aVsPlan?: string; bVsPlan?: string },
 ) {
-  const kind = judgment.redKind === 'plan_stale'
-    ? '전제 폐기 (부부는 서로 일치하는데 설계 전제가 현실과 어긋남)'
-    : judgment.redKind === 'repeated_yellow'
-      ? '2회 연속 🟡 승격 (작은 차이가 반복됨)'
-      : '부부 불일치 (두 사람의 답이 서로 어긋남)'
+  // 11.05: 재무설계 결과와 다르면 다른 것 — 누가 다른지만 적는다 (부부 불일치 · 전제 폐기를 나누지 않는다)
+  const who = [judgment.aVsPlan && judgment.aVsPlan !== 'match' ? '남편' : '', judgment.bVsPlan && judgment.bVsPlan !== 'match' ? '아내' : ''].filter(Boolean)
+  const kind = judgment.redKind === 'repeated_yellow'
+    ? '2회 연속 확인 필요 (같은 칸에서 확인 필요가 반복됨)'
+    : judgment.verdict === 'red'
+      ? `계획과 다름${who.length ? ` (${who.join(' · ')} 답이 계획과 다름)` : ''}`
+      : '확인 필요 (답을 규칙으로 읽지 못함)'
   return `당신은 재무설계사의 보조 도구입니다. 아래 건을 설계사가 30초 안에 파악할 수 있게 3줄로 요약하세요.
 
 [카드] ${card.label} — ${card.question}

@@ -1,5 +1,6 @@
 import type { Card, DeviationOrUnknown, Judgment, LlmClient, Verdict } from './types'
-import { compareToPlan, answersAgree } from './deterministic'
+import { compareToPlan, answersAgree, isOtherAnswer } from './deterministic'
+import { formatAnswer, formatValue } from '../lib/answer-options'
 import { PROMPT_VERSIONS } from './prompt'
 
 export * from './types'
@@ -7,31 +8,28 @@ export * from './deterministic'
 export { PROMPT_VERSIONS, PROMPT_VERSION, buildPrompt, buildSummaryPrompt } from './prompt'
 
 /**
- * 3자 비교 → 신호등. 분기 전부가 docs/02_AI활용범위.md 의 표와 1:1 이다.
+ * 각 답을 계획과 비교 → 신호등. 분기 전부가 docs/02_AI활용범위.md 의 표와 1:1 이다.
  * 여기 로직을 바꾸면 그 표도 같이 바꾼다.
  *
- * | A | B | A·B | 판정 |
- * |---|---|---|---|
- * | unparsed 포함 | | | 🟡 (needsReview) |
- * | match | match | agree | 🟢 |
- * | match | match | disagree | 🟡 |
- * | minor | match/minor | agree/disagree | 🟡 |
- * | major | 무엇이든 | agree | 🔴 전제 폐기 |
- * | major | 무엇이든 | disagree | 🔴 부부 불일치 |
+ * 11.05 사용자 결정: **재무설계 결과와 다르면 다른 것.** 부부 불일치 · 전제 폐기를 나누지 않는다.
+ *   허용 범위도 없다 — "조금 다름(minor)"도 다름.
+ *
+ * | A | B | 판정 |
+ * |---|---|---|
+ * | unparsed 포함 | | 🟡 확인 필요 (needsReview) |
+ * | match | match | 🟢 |
+ * | 그 밖 (한 분이라도 minor · major) | | 🔴 계획과 다름 |
+ *
+ * abAgree(두 답이 서로 같은가)는 판정에 쓰지 않는다. 설계사 화면 · eval 의 중간 라벨로만 남는다.
  */
 export function resolve(
   aVsPlan: DeviationOrUnknown,
   bVsPlan: DeviationOrUnknown,
-  abAgree: boolean,
+  _abAgree?: boolean,
 ): Pick<Judgment, 'verdict' | 'redKind'> {
   if (aVsPlan === 'unparsed' || bVsPlan === 'unparsed') return { verdict: 'yellow' }
-  const majors = [aVsPlan, bVsPlan].filter(d => d === 'major').length
-  // 한쪽만 major 라도 두 사람이 서로 일치하면 '부부 불일치'가 아니라 '전제 폐기'다.
-  // (설계가 현실을 못 따라온 경우를 부부 싸움으로 보고하면 안 된다)
-  if (majors >= 1) return abAgree ? { verdict: 'red', redKind: 'plan_stale' } : { verdict: 'red', redKind: 'couple_conflict' }
-  if (aVsPlan === 'minor' || bVsPlan === 'minor') return { verdict: 'yellow' }
-  if (!abAgree) return { verdict: 'yellow' } // 둘 다 전제 근처인데 서로 다르다면 보수적으로 🟡
-  return { verdict: 'green' }
+  if (aVsPlan === 'match' && bVsPlan === 'match') return { verdict: 'green' }
+  return { verdict: 'red' }
 }
 
 /**
@@ -49,31 +47,51 @@ export interface JudgeOptions {
   previousVerdict?: Verdict
 }
 
+/**
+ * 기타(직접 적기) 답을 AI 에게 보이는 모양 — 계획 · 답을 사람이 읽는 글로 (11.05 가안).
+ * "300000000" 이 아니라 "3억원", "2032-06" 이 아니라 "2032년 6월".
+ */
+function asTextCard(card: Card): Card {
+  return { ...card, type: 'text', plannedValue: formatValue(card, card.plannedValue) }
+}
+
 export async function judge(card: Card, a: string, b: string, llm?: LlmClient, opts: JudgeOptions = {}): Promise<Judgment> {
   if (card.type !== 'text') {
     const aVsPlan = compareToPlan(card, a)
     const bVsPlan = compareToPlan(card, b)
     const agree = answersAgree(card, a, b)
     if (aVsPlan === 'unparsed' || bVsPlan === 'unparsed' || agree === null) {
-      const reason = card.type === 'choice'
+      // 가안 (11.05): 보기에 없는 답(기타)을 규칙으로 못 읽으면 AI 가 계획과 같은 뜻인지 본다.
+      // 규칙으로 읽힌 쪽은 규칙 결과를 그대로 쓴다 — AI 는 못 읽은 쪽만 바꾼다.
+      const other = isOtherAnswer(a) || isOtherAnswer(b)
+      if (other && llm) {
+        const o = await llm.judgeText({ card: asTextCard(card), a: formatAnswer(card, a).replace(/^기타\s*:\s*/, ''), b: formatAnswer(card, b).replace(/^기타\s*:\s*/, '') })
+        const av = aVsPlan === 'unparsed' ? o.aVsPlan : aVsPlan
+        const bv = bVsPlan === 'unparsed' ? o.bVsPlan : bVsPlan
+        return escalate(
+          { ...resolve(av, bv), aVsPlan: av, bVsPlan: bv, abAgree: agree ?? o.abAgree, reason: o.reason, method: 'llm', promptVersion: PROMPT_VERSIONS.judge },
+          opts.previousVerdict,
+        )
+      }
+      const reason = other
         ? '보기에 없는 답(기타)을 직접 적었습니다 — 설계사 확인 필요'
         : card.type === 'date' && card.allowCondition
           ? '시점 대신 조건으로 답했습니다 — 설계사 확인 필요'
-          : `답변을 ${card.type === 'date' ? '날짜' : '숫자'}로 해석하지 못했습니다`
+          : `답변을 ${card.type === 'date' ? '날짜' : card.type === 'choice' ? '보기' : '숫자'}로 해석하지 못했습니다`
       return escalate(
         { verdict: 'yellow', aVsPlan, bVsPlan, abAgree: agree ?? false, reason, method: 'deterministic', needsReview: true },
         opts.previousVerdict,
       )
     }
     return escalate(
-      { ...resolve(aVsPlan, bVsPlan, agree), aVsPlan, bVsPlan, abAgree: agree, reason: '', method: 'deterministic' },
+      { ...resolve(aVsPlan, bVsPlan), aVsPlan, bVsPlan, abAgree: agree, reason: '', method: 'deterministic' },
       opts.previousVerdict,
     )
   }
   if (!llm) throw new Error('text 카드는 LlmClient가 필요합니다')
   const o = await llm.judgeText({ card, a, b })
   return escalate(
-    { ...resolve(o.aVsPlan, o.bVsPlan, o.abAgree), ...o, method: 'llm', promptVersion: PROMPT_VERSIONS.judge },
+    { ...resolve(o.aVsPlan, o.bVsPlan), ...o, method: 'llm', promptVersion: PROMPT_VERSIONS.judge },
     opts.previousVerdict,
   )
 }

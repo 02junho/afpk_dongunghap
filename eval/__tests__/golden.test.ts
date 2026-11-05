@@ -56,14 +56,14 @@ describe('golden set 자체 검증', () => {
     }
   })
 
-  it('세 신호등이 모두 충분히 들어 있다 (혼동행렬이 의미를 가지려면)', () => {
+  // 11.05: 계획과 다르면 🔴 하나 — AI 라벨(match · minor · major)에서는 🟢 · 🔴 만 나온다. 🟡 는 규칙이 못 읽은 답에서만
+  it('🟢 · 🔴 가 모두 충분히 들어 있다 (혼동행렬이 의미를 가지려면)', () => {
     const count = (v: Verdict) => rows.filter(r => r.expect.verdict === v).length
-    for (const v of ['green', 'yellow', 'red'] as Verdict[]) expect(count(v), v).toBeGreaterThanOrEqual(3)
+    for (const v of ['green', 'red'] as Verdict[]) expect(count(v), v).toBeGreaterThanOrEqual(3)
   })
 
-  it('🔴 두 종류가 모두 들어 있다', () => {
-    const kinds = new Set(rows.map(r => r.expect.redKind).filter(Boolean))
-    expect(kinds).toContain('couple_conflict')
-    expect(kinds).toContain('plan_stale')
+  it('세 편차 라벨이 모두 들어 있다 — "조금 다름"도 다름으로 잡는지 보려면', () => {
+    const labels = new Set(rows.flatMap(r => [r.expect.aVsPlan, r.expect.bVsPlan]))
+    for (const d of ['match', 'minor', 'major']) expect(labels, d).toContain(d)
   })
 })

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { Card, Judgment, LlmClient, TextJudgeInput, TextJudgeOutput } from './types'
 import { buildPrompt, buildSummaryPrompt } from './prompt'
 import { buildPlanPrompt } from '../extract/plan'
+import { formatAnswer, formatValue } from '../lib/answer-options'
 
 /**
  * 서버에서만 사용 (api/judge.ts, eval/run.ts, scripts/, vite dev 미들웨어). 브라우저에서 import 금지.
@@ -56,7 +57,8 @@ export function createLlmClient(env: LlmEnv): LlmClient {
       return parseOutput(await call(buildPrompt(card, a, b), 4000))
     },
     async summarize({ card, a, b, judgment }: { card: Card; a: string; b: string; judgment: Judgment }) {
-      const text = await call(buildSummaryPrompt(card, a, b, judgment), 4000)
+      // 계획 · 답은 사람이 읽는 글로 ('300000000' → '3억원') — AI 가 단위를 바꾸지 않게
+      const text = await call(buildSummaryPrompt({ ...card, plannedValue: formatValue(card, card.plannedValue) }, formatAnswer(card, a), formatAnswer(card, b), judgment), 4000)
       return text.trim().split('\n').filter(l => l.trim()).slice(0, 3).join('\n')
     },
     async extractPlan(docText: string) {

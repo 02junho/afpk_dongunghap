@@ -1,4 +1,5 @@
 import type { Card } from '../judge/index'
+import { slotByKey } from '../data/template'
 
 /**
  * DB 행(card_versions + cards) → Card. 순수 함수 — 브라우저와 edge 양쪽에서 쓴다.
@@ -14,7 +15,8 @@ export function rowToCard(cv: any, c: any): Card {
     question: cv.question,
     plannedValue: c.type === 'number' ? Number(cv.planned_value) : cv.planned_value,
     tolerance: cv.tolerance == null ? undefined : Number(cv.tolerance),
-    options: cv.options ?? undefined,
+    // 질문 틀 칸이면 틀의 보기를 쓴다 — 보기 · 값이 아닌 답 후보("아직 모름")를 늘려도 예전 버전 카드가 같이 따라온다 (11.05)
+    options: slotByKey(c.key)?.options ?? cv.options ?? undefined,
     stake: cv.stake,
     allowCondition: !!cv.allow_condition,
   }

@@ -11,12 +11,12 @@
  *   판정 내용은 설계사 콘솔(/api/planner)만 받는다. 멱등: 이미 판정된 라운드는 다시 안 한다.
  *
  * 규칙
- *   · 판별에서 text 카드가 아니면 LLM 을 호출하지 않는다 (CLAUDE.md).
+ *   · 판별에서 LLM 은 text 카드 · 기타(직접 적기) 답에만 (CLAUDE.md, 11.05 가안). 기타도 값만 적었으면 규칙이 읽는다.
  *   · 키가 없으면 조용히 🟡이 되지 않고 500 으로 터진다.
  */
 import { createClient } from '@supabase/supabase-js'
 import { notify } from './_notify'
-import { judge, type Card, type Judgment } from '../src/judge/index'
+import { compareToPlan, judge, isOtherAnswer, type Card, type Judgment } from '../src/judge/index'
 import { createLlmClient, mockLlm } from '../src/judge/text-llm'
 import { PROMPT_VERSIONS } from '../src/judge/prompt'
 import { parsePlanOutput } from '../src/extract/plan'
@@ -114,7 +114,12 @@ async function judgeRound(roundId: string, reqUrl = ''): Promise<Response> {
   const { data: cvs, error: e2 } = await sb.from('card_versions').select('*, cards!inner(key, type, category, unit)').in('id', ids)
   if (e2) return bad(e2.message, 500)
 
-  const needsLlm = (cvs ?? []).some(cv => cv.cards.type === 'text')
+  // 기타 답이라도 값만 적었으면 규칙이 읽는다 — 규칙이 못 읽는 기타 답이 있을 때만 LLM 이 필요하다
+  const otherNeedsLlm = (cv: any) => {
+    const card = rowToCard(cv, cv.cards)
+    return [byCv.get(cv.id)?.husband, byCv.get(cv.id)?.wife].some(t => t != null && isOtherAnswer(t) && compareToPlan(card, t) === 'unparsed')
+  }
+  const needsLlm = (cvs ?? []).some(cv => cv.cards.type === 'text' || otherNeedsLlm(cv))
   let llm: ReturnType<typeof createLlmClient> | undefined
   if (needsLlm) {
     const r = llmOrFail()
@@ -166,7 +171,7 @@ async function judgeClaimedRound(
     const card: Card = rowToCard(cv, cv.cards)
     const ans = byCv.get(cv.id)!
     const a = ans.husband!, b = ans.wife!
-    const j = await judge(card, a, b, card.type === 'text' ? llm : undefined, { previousVerdict: prevByCard.get(cv.card_id) })
+    const j = await judge(card, a, b, card.type === 'text' || isOtherAnswer(a) || isOtherAnswer(b) ? llm : undefined, { previousVerdict: prevByCard.get(cv.card_id) })
     if (j.verdict === 'red' || j.needsReview) toSummarize.push({ card, a, b, j, cvId: cv.id })
     const { error: e3 } = await sb.from('judgments').upsert({
       round_id: roundId,
@@ -263,7 +268,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // ── 1주차 데모: 카드 1장 판정 ────────────────────────────────────────
   let llm
-  if (card.type === 'text') {
+  if (card.type === 'text' || isOtherAnswer(a) || isOtherAnswer(b)) {
     const r = llmOrFail()
     if ('error' in r) return r.error
     llm = r.llm

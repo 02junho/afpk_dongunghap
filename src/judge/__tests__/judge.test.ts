@@ -49,17 +49,15 @@ describe('파서 — 나이·시점', () => {
   })
 })
 
-describe('3자 비교 → 신호등', () => {
-  it('둘 다 전제와 같음 → 🟢', () => expect(resolve('match', 'match', true).verdict).toBe('green'))
-  it('한쪽 minor → 🟡', () => expect(resolve('minor', 'match', true).verdict).toBe('yellow'))
-  it('한쪽 major + 서로 다름 → 🔴 부부 불일치', () =>
-    expect(resolve('major', 'match', false)).toEqual({ verdict: 'red', redKind: 'couple_conflict' }))
-  it('한쪽 major 인데 서로 일치 → 🔴 전제 폐기 (부부 싸움으로 보고하면 안 된다)', () =>
-    expect(resolve('major', 'minor', true)).toEqual({ verdict: 'red', redKind: 'plan_stale' }))
-  it('둘 다 major인데 서로 일치 → 🔴 전제 폐기', () =>
-    expect(resolve('major', 'major', true)).toEqual({ verdict: 'red', redKind: 'plan_stale' }))
-  it('둘 다 major, 서로도 다름 → 🔴 부부 불일치', () =>
-    expect(resolve('major', 'major', false)).toEqual({ verdict: 'red', redKind: 'couple_conflict' }))
+describe('계획과 비교 → 신호등 (11.05: 다르면 다른 것, 부부 불일치를 나누지 않는다)', () => {
+  it('둘 다 계획과 같음 → 🟢', () => expect(resolve('match', 'match', true).verdict).toBe('green'))
+  it('한 분이라도 조금 다름(minor) → 🔴 — 허용 범위 없음', () => expect(resolve('minor', 'match', true)).toEqual({ verdict: 'red' }))
+  it('한 분만 다름 → 🔴 계획과 다름 (부부 불일치라고 따로 부르지 않는다)', () =>
+    expect(resolve('major', 'match', false)).toEqual({ verdict: 'red' }))
+  it('둘 다 다름 → 🔴 계획과 다름 (두 답이 같은지는 판정에 쓰지 않는다)', () => {
+    expect(resolve('major', 'major', true)).toEqual({ verdict: 'red' })
+    expect(resolve('major', 'major', false)).toEqual({ verdict: 'red' })
+  })
   it('해석 불가가 섞이면 🟡 — major 로도 match 로도 가지 않는다', () => {
     expect(resolve('unparsed', 'match', true).verdict).toBe('yellow')
     expect(resolve('major', 'unparsed', false).verdict).toBe('yellow')
@@ -78,7 +76,7 @@ describe('2연속 🟡 → 🔴 승격', () => {
   it('🟢은 승격 대상이 아니다', () =>
     expect(escalate({ ...y, verdict: 'green' }, 'yellow').verdict).toBe('green'))
   it('judge() 가 previousVerdict 를 받아 승격한다', async () => {
-    const j = await judge(when, '2029년', '2030년', undefined, { previousVerdict: 'yellow' })
+    const j = await judge(when, '2029년', '애 낳고 나서', undefined, { previousVerdict: 'yellow' })
     expect(j.verdict).toBe('red')
     expect(j.redKind).toBe('repeated_yellow')
   })
@@ -93,10 +91,10 @@ describe('결정적 카드', () => {
   it('number: 6억 vs 7억 → 🔴', async () => {
     expect((await judge(price, '6억', '7억')).verdict).toBe('red')
   })
-  it('number: 둘 다 7억 → 🔴 전제 폐기', async () => {
+  it('number: 둘 다 7억 → 🔴 계획과 다름', async () => {
     const j = await judge(price, '7억', '7억 정도')
     expect(j.verdict).toBe('red')
-    expect(j.redKind).toBe('plan_stale')
+    expect(j.redKind).toBeUndefined()
   })
   it('number: 모호한 금액은 🟡 + 사람이 봐야 함 (🔴으로 가지 않는다)', async () => {
     const j = await judge(price, '6억', '6천')
@@ -104,10 +102,9 @@ describe('결정적 카드', () => {
     expect(j.needsReview).toBe(true)
     expect(j.bVsPlan).toBe('unparsed')
   })
-  it('number: 둘 다 "0원" 저축 → 🔴 전제 폐기 (부부 불일치가 아니다)', async () => {
+  it('number: 둘 다 "0원" 저축 → 🔴 (두 답은 서로 같다 — 참고로만 남는다)', async () => {
     const j = await judge(saving, '0', '0원')
     expect(j.verdict).toBe('red')
-    expect(j.redKind).toBe('plan_stale')
     expect(j.abAgree).toBe(true)
   })
   it('number(age): 60세 vs 62 → 🟢 (나이를 금액 규칙으로 파싱하지 않는다)', async () => {
@@ -119,8 +116,8 @@ describe('결정적 카드', () => {
   it('number(age): 60 vs 67 → 🔴 (허용 범위의 2배 초과)', async () => {
     expect((await judge(retire, '60', '67')).verdict).toBe('red')
   })
-  it('date: 2029 vs 2030 → 🟡 (12개월 = 허용 6개월의 2배 이내)', async () => {
-    expect((await judge(when, '2029년', '2030년')).verdict).toBe('yellow')
+  it('date: 2029 vs 2030 → 🔴 (허용 범위 안이 아니면 조금 달라도 다름)', async () => {
+    expect((await judge(when, '2029년', '2030년')).verdict).toBe('red')
   })
   it('date: 조건부 답변 → 🟡 + 조건부라고 사유에 남는다', async () => {
     const j = await judge(when, '2029년', '애 낳고 나서')

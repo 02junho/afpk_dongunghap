@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import Rail from './Rail'
 import {
-  byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, KIND_CHIP, loadLiveRound, showAnswer, showPlanned,
+  byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, chipOf, loadLiveRound, showAnswer, showPlanned,
 } from '../../data/demo'
 import type { Card, Judgment, RedKind } from '../../judge/index'
+
+const asSaid = (c: Card, raw: string) => raw === String(c.plannedValue) ? `그대로예요 (${showAnswer(c, raw)})` : `바뀜 → ${showAnswer(c, raw)}`
 import { usePlanner } from './planner'
 import { THEMES } from '../../data/template'
 
@@ -60,11 +62,11 @@ export default function Queue() {
       // "네, 그대로예요"는 전제 값이 답으로 저장된다 (10.23) — 설계사에겐 "그대로예요"로 보여준다
       const show = (r: any, ans: string) => {
         const raw = String(ans ?? '')
-        const v = showPlanned(r.type, r.unit, raw)
-        return raw === String(r.planned ?? '') ? `그대로예요 (${v})` : v
+        const v = showPlanned(r.type, r.unit, raw, r.key)
+        return raw === String(r.planned ?? '') ? `그대로예요 (${v})` : `바뀜 → ${v}`
       }
       setItems(items.map(r => ({
-        ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? '')),
+        ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? ''), r.key),
         roundLabel: '맞춰보기',
       })))
     } catch (e) { setErr((e as Error).message) }
@@ -103,7 +105,7 @@ export default function Queue() {
       return {
         id: k, key: k, category: c.category, label: c.label, planned: showAnswer(c, String(c.plannedValue)), type: c.type,
         verdict: j.verdict, redKind: j.redKind, needsReview: j.needsReview, method: j.method, promptVersion: j.promptVersion,
-        a: showAnswer(c, a.husband), b: showAnswer(c, a.wife), reason: j.reason, summary: DEMO_SUMMARY[k], roundLabel: `${THEMES.find(t => t.category === c.category)?.week ?? 1}주차`,
+        a: asSaid(c, a.husband), b: asSaid(c, a.wife), reason: j.reason, summary: DEMO_SUMMARY[k], roundLabel: `${THEMES.find(t => t.category === c.category)?.week ?? 1}주차`,
       }
     })
   })()
@@ -125,7 +127,7 @@ export default function Queue() {
           {showing.map(it => {
             const cat = CATEGORIES[it.category]
             const res = done[it.id]
-            const chip = res ? RESOLVED[res] : it.verdict === 'red' ? KIND_CHIP[(it.redKind ?? 'couple_conflict') as RedKind] : KIND_CHIP.needs_review
+            const chip = res ? RESOLVED[res] : chipOf(it)
             const summary = it.summary ?? (it.reason || '요약 없음 — 설계사가 두 답변을 직접 봅니다')
             return (
               <div className="qcard" key={it.id} style={res ? { opacity: 0.6 } : undefined}>
@@ -161,9 +163,12 @@ export default function Queue() {
                     <div className="actions">
                       <button className="btn btn-small" disabled={busy} title="봤다는 표시와 메모가 사이클 정리에 남습니다. 상담 때 함께 봅니다"
                         onClick={() => resolve(it, 'consult')}>확인함</button>
-                      <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy}
-                        title="AI가 잘못 판단한 건으로 기록합니다"
-                        onClick={() => resolve(it, 'false_positive')}>이건 같은 뜻이에요</button>
+                      {/* AI 오판 기록 — 고른 보기를 규칙이 비교한 건에는 오판이 없다 (11.05 객관식) */}
+                      {it.method === 'llm' && (
+                        <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }} disabled={busy}
+                          title="AI가 잘못 판단한 건으로 기록합니다"
+                          onClick={() => resolve(it, 'false_positive')}>이건 같은 뜻이에요</button>
+                      )}
                     </div>
                   </>
                 )}

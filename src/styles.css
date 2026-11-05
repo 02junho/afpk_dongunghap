@@ -111,6 +111,11 @@ body {
 .role { font: inherit; font-size: 15px; font-weight: 600; padding: 18px 14px; cursor: pointer; border: 2px solid transparent; border-radius: 18px; background: var(--surface); color: var(--muted); box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .role .avatar { width: 36px; height: 36px; }
 .role-on { border-color: var(--ink); color: var(--ink); }
+/* "바뀌었어요" 다음 다른 답 후보 (11.05 객관식) */
+.pick-list { display: flex; flex-direction: column; gap: 8px; }
+.pick { font: inherit; font-size: 15px; font-weight: 600; text-align: left; padding: 14px 16px; cursor: pointer; border: 2px solid transparent; border-radius: 14px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.pick-on { border-color: var(--ink); }
+.pick-other { color: var(--muted); }
 
 .done-mark { display: flex; justify-content: center; margin: 48px 0 28px; }
 
