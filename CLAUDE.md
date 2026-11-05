@@ -26,7 +26,7 @@
 
 ## 명령
 ```
-npm test                    # vitest. 바꾸기 전후 항상 (98건)
+npm test                    # vitest. 바꾸기 전후 항상 (99건)
 npm run e2e                 # 실 DB 종단 (질문 틀 → 사이클 → 폰 2대 → 판정 → 확인함 → 상담 요청). 끝나면 테스트 부부를 지운다. -- --deployed-judge
 npm run seed:samples        # (옛 카드 기준 — 11.04 새 방향 전. 쓰지 않는다)
 npm run dev                 # /c/join (폰) · /p/couples (설계사). /api/judge 는 dev 미들웨어가 처리

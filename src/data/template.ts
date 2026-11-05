@@ -42,6 +42,8 @@ export interface Slot {
   picks?: number[]
   /** 개수 뒤에 붙는 말 ("명", "개월") */
   suffix?: string
+  /** 금액이 매달(month) · 매년(year) 금액인지. 없으면 한 번에 드는 금액 — 문서의 "원/월납" · "연 …" 표기와 맞는지 규칙이 본다 (11.05) */
+  per?: 'month' | 'year'
   allowCondition?: boolean
   stake: string
   /** 재무설계 결과(Word)에서 무엇을 찾아 넣나 — AI 와 설계사가 함께 보는 설명 */
@@ -81,7 +83,7 @@ export const SLOTS: Slot[] = [
     stake: '그 기간이 외벌이. 프리랜서는 육아휴직 급여가 없음', find: '육아 휴직 · 휴업 기간 (개월)', example: '24' },
   { key: 't2_work_after', week: 2, type: 'choice', label: '쉰 뒤 일', question: '쉰 뒤에 그 사람은 일을 어떻게 이어가나요?', options: ['예전처럼', '줄여서', '그만둠', KNOW],
     stake: '생활비 분담 · 대출 상환 능력이 바뀜', find: '출산 뒤 소득(일) 계획', example: '예전처럼' },
-  { key: 't2_edu_monthly', week: 2, type: 'number', unit: 'krw', label: '교육비 월 준비액', question: '아이 교육비는 한 달 얼마씩 준비할 생각인가요?',
+  { key: 't2_edu_monthly', week: 2, type: 'number', unit: 'krw', per: 'month', label: '교육비 월 준비액', question: '아이 교육비는 한 달 얼마씩 준비할 생각인가요?',
     zero: '따로 준비하지 않는다', options: [KNOW],
     stake: '노후 저축과 같은 돈을 나눠 씀', find: '교육자금 월 적립액', example: '300000' },
 
@@ -95,15 +97,15 @@ export const SLOTS: Slot[] = [
   { key: 't3_husband_job', week: 3, type: 'choice', label: '남편 직장 · 연봉 전망', question: '남편분 직장과 연봉은 앞으로 어떻게 될 것 같나요?',
     options: ['지금 직장 · 연봉은 물가만큼 오름', '지금 직장 · 연봉이 크게 오름', '이직 · 창업할 예정', '일을 줄이거나 쉴 예정', KNOW],
     stake: '대출 한도와 저축액이 이 소득에서 나옴', find: '남편 소득 전망 (직장 유지 · 이직 · 연봉)', example: '지금 직장 · 연봉은 물가만큼 오름' },
-  { key: 't3_wife_income', week: 3, type: 'number', unit: 'krw', label: '아내 내년 소득', question: '아내분 내년 소득은 얼마로 보나요?',
+  { key: 't3_wife_income', week: 3, type: 'number', unit: 'krw', per: 'year', label: '아내 내년 소득', question: '아내분 내년 소득은 얼마로 보나요?',
     zero: '소득 없음', options: [KNOW],
     stake: '생활비 분담 · 대출 심사 · 지역 건보료 · 국민연금', find: '아내 연소득(매출) 예상', example: '40000000' },
-  { key: 't3_pension_monthly', week: 3, type: 'number', unit: 'krw', label: '연금 월 납입액', question: '연금(IRP · 연금저축)에는 한 달 얼마씩 넣기로 했나요?',
+  { key: 't3_pension_monthly', week: 3, type: 'number', unit: 'krw', per: 'month', label: '연금 월 납입액', question: '연금(IRP · 연금저축)에는 한 달 얼마씩 넣기로 했나요?',
     zero: '넣지 않는다', options: [KNOW],
     stake: '소득이 줄면 가장 먼저 끊김. 세액공제도 함께 줄어듦', find: '개인연금(IRP · 연금저축) 월 납입액', example: '500000' },
 
   // ── 4주 · 보험 ──
-  { key: 't4_premium_limit', week: 4, type: 'number', unit: 'krw', label: '월 보험료 한도', question: '보험료는 한 달 최대 얼마까지로 정했나요?',
+  { key: 't4_premium_limit', week: 4, type: 'number', unit: 'krw', per: 'month', label: '월 보험료 한도', question: '보험료는 한 달 최대 얼마까지로 정했나요?',
     options: [KNOW],
     stake: '재설계 범위가 이 안에서 정해짐', find: '월 보험료 한도', example: '185000' },
   { key: 't4_policy_plan', week: 4, type: 'choice', label: '지금 보험 처리', question: '지금 든 보험은 어떻게 하기로 했나요?', options: ['그대로 둔다', '설계안대로 바꾼다', KNOW],
@@ -130,7 +132,7 @@ export const SLOTS: Slot[] = [
     stake: '저축 목표를 누가 실행하는지 흐려짐', find: '자금 관리(통장) 방식', example: '공동 + 개인' },
 
   // ── 6주 · 투자 (저축 포함) ──
-  { key: 't6_saving_monthly', week: 6, type: 'number', unit: 'krw', label: '월 저축액', question: '매달 함께 저축하는 금액은 얼마인가요?',
+  { key: 't6_saving_monthly', week: 6, type: 'number', unit: 'krw', per: 'month', label: '월 저축액', question: '매달 함께 저축하는 금액은 얼마인가요?',
     zero: '지금은 저축 못 한다', options: [KNOW],
     stake: '모든 목표의 원천', find: '월 저축 · 투자액', example: '1260000' },
   { key: 't6_emergency', week: 6, type: 'number', unit: 'krw', label: '비상금', question: '비상금은 얼마를 늘 남겨 두기로 했나요?',

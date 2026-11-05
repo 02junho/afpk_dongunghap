@@ -25,6 +25,20 @@ describe('계획 값 규칙 — 숫자는 AI 가 아니라 규칙이 바꾼다',
     expect(planValue(won, '3억 원')).toEqual({ ok: true, value: '300000000' })
     expect(planValue(won, '6,700만원')).toEqual({ ok: true, value: '67000000' })
   })
+  it('금액의 기간 표시 (11.05 예시 PDF) — 칸의 기간과 같으면 떼고 읽고, 다르면 설계사에게', () => {
+    const monthly = slotByKey('t3_pension_monthly')!, yearly = slotByKey('t3_wife_income')!
+    expect(planValue(monthly, '200,000원/월납')).toEqual({ ok: true, value: '200000' })
+    expect(planValue(monthly, '10,419원/월납/갱신형')).toEqual({ ok: true, value: '10419' })
+    expect(planValue(monthly, '약 9,000원/월')).toEqual({ ok: true, value: '9000' })
+    expect(planValue(monthly, '월 50만원')).toEqual({ ok: true, value: '500000' })
+    expect(planValue(yearly, '연 3,600만원')).toEqual({ ok: true, value: '36000000' })
+    // 연 → 월 나누기도 계산이라 하지 않는다
+    expect(planValue(monthly, '연 240만원')).toMatchObject({ ok: false })
+    expect(planValue(yearly, '월 300만원')).toMatchObject({ ok: false })
+    expect(planValue(won, '월 30만원')).toMatchObject({ ok: false })
+    // 단위 없는 작은 수는 여전히 거부 (표의 '단위: 만원'일 수 있다)
+    expect(planValue(monthly, '700')).toMatchObject({ ok: false })
+  })
   it('시점 — 연 · 월만 받는다. 상대 시점은 설계사가 정한다', () => {
     expect(parsePlanDate('2032년 6월')).toBe('2032-06')
     expect(parsePlanDate('2032-6')).toBe('2032-06')
