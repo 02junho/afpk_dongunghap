@@ -114,8 +114,17 @@ function readAnswer(card: Card, answer: string): { kind: 'value'; v: string | nu
   return d ? { kind: 'value', v: d } : { kind: 'unparsed' }
 }
 
+/** 정답지가 값이 아닌 답("해당 없음" · "아직 모름" — card.options)인가 (11.05 해당 없음) */
+export const planIsNonValue = (card: Card) =>
+  card.type !== 'choice' && card.type !== 'text' && typeof card.plannedValue === 'string' && (card.options ?? []).includes(card.plannedValue.trim())
+
 /** 결정적 비교. text 카드는 여기 오면 안 된다. 해석 불가는 'unparsed'. */
 export function compareToPlan(card: Card, answer: string): DeviationOrUnknown {
+  // 정답지가 "해당 없음"이면 "해당 없음"만 같다. 숫자를 적었으면 새 계획이 생긴 것 → 다름. 말로 적은 답은 규칙으로 못 읽는다
+  if (planIsNonValue(card)) {
+    if (isOtherAnswer(answer)) return 'unparsed'
+    return answer.trim() === String(card.plannedValue).trim() ? 'match' : 'major'
+  }
   switch (card.type) {
     case 'number': {
       const r = readAnswer(card, answer)

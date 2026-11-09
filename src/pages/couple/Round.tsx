@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BASELINE, byKey, CATEGORIES, answerKey, judgmentKey, showValue, type RoundAnswers } from '../../data/demo'
+import { BASELINE, byKey, CATEGORIES, answerKey, judgmentKey, type RoundAnswers } from '../../data/demo'
 import type { Card, Judgment } from '../../judge/index'
 import { requestJudgment, triggerJudge } from '../../lib/api'
 import { loadMyNextRound, myAnswered, submitAnswer } from '../../lib/db'
 import { loadMe, nameOf, partnerRole } from '../../lib/session'
-import AnswerPick, { EMPTY_PICK, pickValue, type PickState } from './AnswerPick'
+import AnswerInput, { EMPTY_ANSWER, answerValue, type AnswerState } from './AnswerInput'
 
 /**
- * 10.23 팀 결정(Q4·Q6·Q9): 빈 질문 대신 **기존 설계를 보여주고 "지금도 그렇게 생각하시나요?"** 로 묻는다.
- *   · "네, 그대로예요" → 답은 설계 전제 값 그대로 저장 (판정은 기존 규칙 그대로 🟢)
- *   · "아니요, 바뀌었어요" → 다른 답 후보에서 고른다 (11.05 객관식, AnswerPick). 맞는 게 없으면 기타 — 직접 적기
- *   한 분이라도 계획과 다르면 🔴 → 설계사 처리 대기 (11.05: 부부 불일치를 따로 나누지 않는다).
- *   (전제를 보여주면 "그대로"로 답하기 쉬워진다 — 팀이 고른 방식이다. 바뀐 경우를 놓치지 않게 버튼을 같은 크기로 둔다)
- * 기타 답은 값만 적었으면 규칙이, 아니면 AI 가 계획과 같은 뜻인지 본다 (가안). 추측하지 않는다 — 애매하면 설계사 확인.
+ * 11.05 밤 사용자 결정 (팀원 제안 · docs/23): 계획 값을 **보여 주지 않고** 목표를 묻는다.
+ *   "은퇴 후 한 달 생활비는 얼마를 원하나요?" → 숫자를 적거나 보기를 고른다 (AnswerInput). 아직 모름 · 해당 없음 · 말로 적기도 있다.
+ *   (예전 10.23 방식 — 계획을 보여 주고 "지금도 그렇게?" — 은 "그대로예요"를 누르기 쉬워서 바꿨다)
+ *   한 분이라도 계획과 다르면 🔴 → 설계사 처리 대기. 부부 화면에는 판정이 나오지 않는다.
+ * 말로 적은 답은 값만 적었으면 규칙이, 아니면 AI 가 계획과 같은 뜻인지 본다. 추측하지 않는다 — 애매하면 설계사 확인.
  *
  * live: 라운드와 카드를 DB 에서 읽고, 답은 answers 에 한 장씩 넣는다. 제출 뒤엔 상대 진행만 본다.
  * 데모: sessionStorage. 한 폰에서 남편→아내 순서로.
@@ -33,9 +32,8 @@ export default function Round() {
   const [loading, setLoading] = useState(me.live)
   const [err, setErr] = useState('')
   const [i, setI] = useState(0)
-  const [pick, setPick] = useState<PickState>(EMPTY_PICK)
+  const [ans, setAns] = useState<AnswerState>(EMPTY_ANSWER)
   const [busy, setBusy] = useState(false)
-  const [stance, setStance] = useState<'same' | 'changed' | null>(null)
 
   useEffect(() => {
     if (!me.live || !me.coupleId || !me.memberId) return
@@ -64,13 +62,12 @@ export default function Round() {
   const total = me.live ? cards.length : BASELINE.length
   const step = me.live ? i + 1 : i + 1
 
-  // "그대로예요"면 설계 전제 값을 그대로 답으로 남긴다 — 판정 규칙이 그대로 🟢 로 읽는다
-  const value = stance === 'same' ? String(card.plannedValue) : stance === 'changed' ? pickValue(pick) : ''
+  const value = answerValue(card, ans)
   const isCondition = false
   const ready = value.trim().length > 0 && !busy
 
   function reset() {
-    setPick(EMPTY_PICK); setStance(null)
+    setAns(EMPTY_ANSWER)
   }
 
   async function submit() {
@@ -111,19 +108,9 @@ export default function Round() {
       </div>
       <div className="phone-body">
         <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
-        <div className="bubble" style={{ marginTop: 14 }}>
-          <p className="meta">설계사님과 정한 계획</p>
-          <p style={{ margin: '4px 0 0', fontWeight: 700 }}>{card.label}</p>
-          <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 700, lineHeight: 1.4 }}>{showValue(card)}</p>
-        </div>
-        <h2 className="q" style={{ marginTop: 22 }}>지금도 그렇게<br />생각하시나요?</h2>
+        <h2 className="q" style={{ marginTop: 18 }}>{card.question}</h2>
 
-        <div className="role-row" style={{ marginTop: 18 }}>
-          <button className={`role ${stance === 'same' ? 'role-on' : ''}`} onClick={() => setStance('same')}>네, 그대로예요</button>
-          <button className={`role ${stance === 'changed' ? 'role-on' : ''}`} onClick={() => setStance('changed')}>아니요, 바뀌었어요</button>
-        </div>
-
-        {stance === 'changed' && <AnswerPick card={card} state={pick} onChange={setPick} />}
+        <AnswerInput key={card.key} card={card} state={ans} onChange={setAns} />
 
         <p className="note">제출하면 고칠 수 없어요. {nameOf(me, partnerRole(me.role))}님에게는 보이지 않아요.</p>
       </div>

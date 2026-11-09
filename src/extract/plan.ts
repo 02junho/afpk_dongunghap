@@ -8,14 +8,16 @@
  *   · 없거나 애매하면 null. 짐작하지 않는다
  *   · found 를 저장 값(원 · YYYY-MM)으로 바꾸는 건 앱의 규칙(src/lib/plan-values.ts)이 한다
  *   · 설계사가 값마다 원문과 대조해 확인한 것만 저장된다 (자동 반영 없음)
+ *   · "해당 없음"은 AI 가 정하지 않는다 — 문서에 없으면 null, 판단은 설계사 (11.05)
  */
-import { SLOTS, themeOfWeek, type Slot } from '../data/template'
+import { NON_VALUE, SLOTS, themeOfWeek, type Slot } from '../data/template'
 import { planValue } from '../lib/plan-values'
 
 export function buildPlanPrompt(docText: string, slots: Slot[] = SLOTS): string {
   const list = slots.map(s => {
-    const form = s.type === 'choice' ? `보기 중 하나: ${s.options!.join(' / ')}`
-      : s.type === 'date' ? '연 · 월' : s.type === 'text' ? '짧은 한 문장' : s.unit === 'krw' ? '금액' : s.unit === 'age' ? '나이' : s.unit === 'percent' ? '비율(%)' : '개수'
+    const form = s.type === 'choice' ? `보기 중 하나: ${s.options!.filter(o => !NON_VALUE.includes(o)).join(' / ')}`
+      : s.type === 'date' ? '연 · 월' : s.type === 'text' ? '짧은 한 문장'
+      : s.unit === 'krw' ? (s.per === 'month' ? '매달 금액' : s.per === 'year' ? '매년 금액' : '금액') : s.unit === 'age' ? '나이' : s.unit === 'percent' ? '비율(%)' : `숫자${s.suffix ? `(${s.suffix})` : ''}`
     return `- ${s.key} [${themeOfWeek(s.week).label}] ${s.find} (${form})`
   }).join('\n')
   return `당신은 재무설계사를 돕는 보조 도구입니다. 재무 조언과 계산은 하지 않습니다.
@@ -30,12 +32,13 @@ export function buildPlanPrompt(docText: string, slots: Slot[] = SLOTS): string 
 4. 항목마다 근거 문장(quote)을 문서에서 한 글자도 바꾸지 말고 따옵니다 (40자 안팎). 근거가 없으면 found 와 quote 모두 null.
 5. 문서 안에서 같은 항목의 값이 서로 다르면 found 는 null, note 에 두 값을 적습니다. 짐작하지 않습니다.
 6. 지금의 사실(예금 잔액, 지난해 지출)과 앞으로의 계획을 헷갈리지 않습니다. 계획 값만 찾습니다.
+7. 문서에 없는 항목은 null 입니다. "해당 없음" · "아직 모름"이라고 적지 않습니다 (그 판단은 설계사가 합니다).
 
 항목
 ${list}
 
 출력은 JSON 배열 하나만. 항목마다 한 줄, 다른 말은 쓰지 않습니다.
-[{"key":"t1_buy_when","found":"2032년 6월","quote":"내 집 마련은 2032년 6월을 목표로","note":""}]
+[{"key":"t1_buy_year","found":"2032년","quote":"입주 시점(2032년) 4억 8천만 원","note":""}]
 
 <재무설계>
 ${docText}
@@ -68,7 +71,8 @@ export function parsePlanOutput(text: string, docText: string, slots: Slot[] = S
   const out: PlanFind[] = []
   for (const s of slots) {
     const o = (arr as any[]).find(x => x && x.key === s.key) ?? {}
-    const found = typeof o.found === 'string' && o.found.trim() ? o.found.trim().slice(0, 200) : null
+    // "해당 없음" · "아직 모름"은 AI 가 낼 수 있는 값이 아니다 → 못 찾음으로 본다
+    const found = typeof o.found === 'string' && o.found.trim() && !NON_VALUE.includes(o.found.trim()) ? o.found.trim().slice(0, 200) : null
     const quote = typeof o.quote === 'string' && o.quote.trim() ? o.quote.trim().slice(0, 300) : null
     const quoteInDoc = !!quote && doc.includes(squash(quote))
     const f: PlanFind = { key: s.key, found, quote, note: typeof o.note === 'string' ? o.note.slice(0, 200) : '', quoteInDoc }

@@ -23,11 +23,13 @@
  * extract v3 새 방향(11.04): 엑셀 카드 초안 → 재무설계 Word 에서 고정 틀 30칸의 계획 값 찾기. 문서 표기 그대로 + 근거 문장.
  *           단위 바꾸기 · 상대 시점 계산 금지(앱 규칙이 바꿈), 근거 없으면 null, 값이 서로 다르면 null. 설계사 확인 뒤에만 저장.
  * extract v4 (11.05) 재무설계 결과를 PDF 로도 받는다 → 문서 설명을 "Word 또는 PDF"로, PDF 글은 줄바꿈 · 띄어쓰기가 다를 수 있다고 한 줄. 규칙은 그대로.
+ * extract v5 (11.09) 목표 질문 30문항으로 항목(find) 전면 교체. 규칙 7 "문서에 없으면 null — '해당 없음'이라 적지 않는다" 추가.
+ *           보기 목록에서 아직 모름 · 해당 없음을 뺐고, 금액 항목에 매달 · 매년을 적고, 숫자 항목에 단위(년 · 명 · 개월)를 적는다. 예시 출력도 새 key 로.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
   summary: 'v2',
-  extract: 'v4',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
+  extract: 'v5',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
 /** @deprecated PROMPT_VERSIONS.judge 를 쓸 것. eval 출력 파일명 호환용으로 남겨둔다. */

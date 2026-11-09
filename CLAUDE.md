@@ -18,7 +18,7 @@
 - **LLM 키는 브라우저로 가면 안 된다.** `VITE_` 접두사 금지. 호출은 `api/judge.ts`·`eval/run.ts`·`scripts/`·`vite.config.ts` 의 dev 미들웨어에서만.
 - **AI는 판별·요약·재무설계 결과(Word · PDF)에서 계획 값 찾기만.** 찾기는 문서 표기 그대로 옮기고 근거 문장을 붙인다 — 원 단위·날짜로 바꾸는 건 규칙(`src/lib/plan-values.ts`), 저장은 설계사가 원문과 대조해 확인한 칸만. 계산·재무 조언·자동 반영·재설계 금지. 이걸 어기면 기획의 핵심 주장이 무너진다.
 - **질문 틀은 6테마 × 5문항 고정 (`src/data/template.ts`, `docs/20`).** 매주 1테마, 6주 1사이클(`api/_cycle.ts`, `docs/21`). 고치면 docs/20 도 같이.
-- **판별에서 LLM은 "기타 — 직접 적기" 답(과 옛 text 카드)에만.** 부부 답은 객관식(11.05) — 고른 답은 `src/judge/deterministic.ts`, 기타에 값만 적었어도 규칙. 다른 답 후보는 `src/lib/answer-options.ts` 규칙으로 (AI 금지). (🔴 건 요약은 AI 활용 2번 — 판별이 아니므로 카드 타입 무관, `ENABLE_PLANNER_SUMMARY=1` 일 때만)
+- **판별에서 LLM은 "말로 적기" 답(저장은 "기타: …", 과 옛 text 카드)에만.** 부부 답은 목표 질문(11.09 반영, `docs/23`) — 계획 값을 **보여 주지 않고** 숫자 칸 · 같은 보기로 답한다. 고른 답 · 숫자는 `src/judge/deterministic.ts`, 말로 적기에 값만 적었어도 규칙. 다른 답 후보(계획 값으로 만든 보기)는 쓰지 않는다 — 답을 알려 주게 된다. 모든 칸에 아직 모름 · 해당 없음(설계사만 정답지에 넣음, AI 금지). (🔴 건 요약은 AI 활용 2번 — 판별이 아니므로 카드 타입 무관, `ENABLE_PLANNER_SUMMARY=1` 일 때만)
 - **판정은 "계획과 다르면 🔴" 하나 (11.05).** 허용 범위 없음, 부부 불일치 · 전제 폐기를 나누지 않는다. 둘 다 그대로면 🟢, 못 읽으면 🟡.
 - **모호한 답변은 추측하지 않는다.** `unparsed` → 🟡 + `needsReview` → 설계사 큐. minor로 위조 금지.
 - 용어: 코드의 `planner` = UI의 **"설계사"**. "관리자"라고 쓰지 않는다 (심사위원이 재무설계사다).
@@ -26,8 +26,9 @@
 
 ## 명령
 ```
-npm test                    # vitest. 바꾸기 전후 항상 (99건)
+npm test                    # vitest. 바꾸기 전후 항상 (101건)
 npm run e2e                 # 실 DB 종단 (질문 틀 → 사이클 → 폰 2대 → 판정 → 확인함 → 상담 요청). 끝나면 테스트 부부를 지운다. -- --deployed-judge
+node --env-file=.env --import tsx scripts/refill-practice.mts   # 질문 틀을 바꾼 뒤 팀원 연습 부부를 새 예시 값으로
 npm run seed:samples        # (옛 카드 기준 — 11.04 새 방향 전. 쓰지 않는다)
 npm run dev                 # /c/join (폰) · /p/couples (설계사). /api/judge 는 dev 미들웨어가 처리
 npm run ping                # LLM 연결 확인. eval 전에 먼저
@@ -44,7 +45,7 @@ src/data       seed-cards.json · demo.ts         src/pages   couple /c/* · pla
 api/judge.ts   Vercel edge, LLM 유일 호출점      supabase/   schema.sql · rls.sql · seed.sql
 eval/          golden.jsonl · run.ts (테스트 12)  scripts/    e2e-live.mts · flow-pdf.mjs · make-icons.mjs
 src/data/template.ts  질문 틀 30칸          api/_cycle.ts  6주 사이클 · api/cycle.ts 예약 실행 · api/push.ts 폰 알림
-src/lib/answer-options.ts  바뀌었어요 → 다른 답 후보 (계획 값에서 규칙으로, 테스트 13)
+src/lib/answer-input.ts  부부 답 칸 → 저장 값 (금액은 만 원) · answer-options.ts 값 → 글 (테스트 15)
 src/lib/pdf-text.ts  재무설계 결과 PDF → 글 (pdfjs-dist 6.4.299 legacy, 한글 CMap 은 public/pdfjs-cmaps, 테스트 5)
 ```
 

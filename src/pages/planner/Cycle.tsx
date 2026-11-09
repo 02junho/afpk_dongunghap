@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Rail from './Rail'
 import { usePlanner } from './planner'
-import { CATEGORIES, chipOf, showPlanned } from '../../data/demo'
+import { answerLine, CATEGORIES, chipOf, showPlanned } from '../../data/demo'
 import { THEMES, WEEKS, PER_THEME } from '../../data/template'
 
 /**
@@ -63,7 +63,7 @@ export default function Cycle() {
   const ended = !!c && !c.closedAt && c.endsAt && Date.now() >= new Date(c.endsAt).getTime()
   const show = (it: ReviewItem, v: string) => {
     const t = showPlanned(it.type as never, (it.unit ?? null) as never, String(v ?? ''), it.key)
-    return String(v) === String(it.planned) ? `그대로예요 (${t})` : `바뀜 → ${t}`
+    return answerLine(t, String(v ?? ''), String(it.planned))
   }
   return (
     <div className="console">
@@ -132,7 +132,7 @@ export default function Cycle() {
                           <span className="queue-couple">{it.resolution ? '✓ 확인함' : '확인 전'}</span>
                         </div>
                         <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
-                          <dt className="meta">설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{showPlanned(it.type as never, (it.unit ?? null) as never, String(it.planned), it.key)}</dd>
+                          <dt className="meta">계획</dt><dd style={{ color: 'var(--muted)' }}>{showPlanned(it.type as never, (it.unit ?? null) as never, String(it.planned), it.key)}</dd>
                           <dt><span className="avatar avatar-him">{p.couple.husband.slice(0, 1)}</span></dt><dd>{show(it, it.a)}</dd>
                           <dt><span className="avatar avatar-her">{p.couple.wife.slice(0, 1)}</span></dt><dd>{show(it, it.b)}</dd>
                           {it.note && <><dt className="meta">메모</dt><dd>{it.note}</dd></>}

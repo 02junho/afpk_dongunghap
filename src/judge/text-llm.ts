@@ -94,8 +94,8 @@ export const mockLlm: LlmClient = {
     return `mock 요약 (${card.label})\n품질 기대 금지\n실제 측정은 LLM_API_KEY 필요`
   },
   async extractPlan(docText: string) {
-    // 화면 흐름 확인용 — 문서 첫 줄의 "YYYY년 M월"만 첫 칸(이사 시점)에 넣는다. 나머지는 못 찾음
-    const m = docText.match(/\d{4}년\s*\d{1,2}월/)
-    return JSON.stringify(m ? [{ key: 't1_move_when', found: m[0], quote: m[0], note: 'mock — 실제 추출은 LLM_API_KEY 필요' }] : [])
+    // 화면 흐름 확인용 — 문서에 처음 나오는 "YYYY년"만 내 집 마련 시기 칸에 넣는다. 나머지는 못 찾음
+    const m = docText.match(/20\d{2}년/)
+    return JSON.stringify(m ? [{ key: 't1_buy_year', found: m[0], quote: m[0], note: 'mock — 실제 추출은 LLM_API_KEY 필요' }] : [])
   },
 }

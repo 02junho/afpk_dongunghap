@@ -5,7 +5,8 @@
  *   VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run dev -- --port 5180 --host 127.0.0.1
  *   node scripts/flow-pdf.mjs                      # 다른 터미널
  *
- * 11.05 새 방향: 재무설계 결과 → 질문 틀 30칸 → 6주 사이클(매주 1테마 5문항) → 객관식 답 → 계획과 다르면 🔴 → 확인함 → 상담 요청.
+ * 11.05 새 방향: 재무설계 결과 → 질문 틀 30칸 → 6주 사이클(매주 1테마 5문항) → 목표 질문(계획 값 안 보임) → 계획과 다르면 🔴 → 확인함 → 상담 요청.
+ * 11.09: 목표 질문 · 해당 없음 화면으로 다시 찍음 (docs/23).
  * 앱 화면의 부연 설명은 여기로 옮겼다 — 1쪽 큰 그림, 화면 쪽은 한 줄씩, 자세한 설명은 마지막 쪽에만.
  * 캡처는 build/flow/ 에 남는다(커밋 안 함). 크로미움은 playwright 것을 쓴다 (PW_CHROMIUM 으로 바꿀 수 있음).
  */
@@ -16,7 +17,7 @@ import { resolve } from 'node:path'
 const B = process.env.SHOTS_BASE ?? 'http://127.0.0.1:5180'
 const OUT = resolve('build/flow')
 const PDF = resolve('docs/11_화면흐름도.pdf')
-const TODAY = '2026-11-05'
+const TODAY = '2026-11-09'
 mkdirSync(OUT, { recursive: true })
 
 const br = await chromium.launch({ args: ['--lang=ko-KR'], ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}) })
@@ -45,10 +46,14 @@ await shot('/c/join', 'c1-join', async pg => {
   await pg.click('button.role:has-text("남편")')
 }, true)
 await shot('/c/home', 'c2-home')
+// 보기 질문 (1-1) → 하나 고르고 제출 → 숫자 질문 (1-2) 에 금액을 적은 모습. 계획 값은 어디에도 안 보인다
 await shot('/c/round/baseline', 'c3-round', async pg => {
-  await pg.click('button:has-text("아니요, 바뀌었어요")')
-  await pg.locator('.pick').nth(2).click()
-  await pg.evaluate(() => window.scrollTo(0, 260))
+  await pg.locator('.pick').first().click()
+})
+await shot(null, 'c3b-number', async pg => {
+  await pg.click('button:has-text("제출")')
+  await pg.waitForTimeout(300)
+  await pg.fill('input.field', '4억 8천')
 })
 await shot('/c/done/baseline', 'c4-done')
 await shot('/c/home', 'c5-plan', async pg => {
@@ -120,8 +125,8 @@ ${lane(0, '설계사', '#f4f1f6')}${lane(1, '부부 폰', '#eef3fd')}${lane(2, '
 ${box(0, 0, '① 결과 올리기', ['재무설계 결과', '새 부부 등록'])}
 ${box(1, 2, '② 계획 값 찾기', ['AI가 30칸을 찾고', '근거 문장을 붙임'])}
 ${box(2, 0, '③ 원문 대조', ['칸마다 "원문과 맞음"', '→ 사이클 시작'])}
-${box(3, 1, '④ 매주 5문항', ['테마 1개씩 6주', '그대로 / 다른 답 고르기'])}
-${box(4, 2, '⑤ 계획과 비교', ['다르면 🔴', '기타 답만 AI'])}
+${box(3, 1, '④ 매주 5문항', ['목표를 묻는다', '계획 값은 안 보임'])}
+${box(4, 2, '⑤ 계획과 비교', ['다르면 🔴', '말로 적은 답만 AI'])}
 ${box(5, 0, '⑥ 처리 대기', ['확인함 · 메모', '6주 뒤 상담 요청'])}
 ${box(5, 1, '상담 요청 알림', ['두 분 폰에', '분기 · 반기마다 다시'], { fill: '#fdf6e3', stroke: '#e0c36a', dash: true })}
 ${elbow(0, 0, 1, 2)}${elbow(1, 2, 2, 0)}${elbow(2, 0, 3, 1)}${elbow(3, 1, 4, 2)}${elbow(4, 2, 5, 0)}
@@ -174,19 +179,19 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
 <section class="page">
   <div class="eyebrow">돈궁합 · 부부 재무설계 점검 · AFPK 영 플래너 챌린지 2026 · ${TODAY} 기준</div>
   <h1>화면 흐름도</h1>
-  <p class="lead">재무설계 결과를 바탕으로, 6주 동안 매주 한 테마씩 두 분께 따로 묻습니다. <b>계획과 다른 답만</b> 설계사에게 올라가고, 6주가 끝나면 설계사가 상담을 요청합니다. <b>앱은 듣고, 설계사가 말합니다.</b></p>
+  <p class="lead">6주 동안 매주 한 테마씩 두 분께 따로 목표를 묻습니다. 재무설계 결과에 적힌 계획 값은 보여 주지 않고, 답이 그 값과 다를 때만 설계사에게 올라갑니다. 6주가 끝나면 설계사가 상담을 요청합니다. <b>앱은 듣고, 설계사가 말합니다.</b></p>
   ${svg}
   <div class="weeks">
-    <div class="wk"><b>1주 · 주택</b>이사 · 보증금 · 내 집 마련 · 부모님 지원</div>
-    <div class="wk"><b>2주 · 출산/육아</b>첫 아이 · 자녀 수 · 쉬는 기간 · 교육비</div>
-    <div class="wk"><b>3주 · 노후</b>은퇴 나이 · 소득 전망 · 연금</div>
-    <div class="wk"><b>4주 · 보험</b>보험료 한도 · 재설계 · 대비할 위험</div>
-    <div class="wk"><b>5주 · 부채</b>대출 금액 · 명의 · 지원금 성격 · 통장</div>
-    <div class="wk"><b>6주 · 투자</b>저축 · 비상금 · 굴리는 방식 · 비율</div>
+    <div class="wk"><b>1주 · 주택</b>마련 방법 · 집값 · 시기 · 대출 · 월 적립</div>
+    <div class="wk"><b>2주 · 출산/육아</b>첫 아이 · 자녀 수 · 쉬는 기간 · 복직 · 준비 적립</div>
+    <div class="wk"><b>3주 · 노후</b>은퇴 나이 · 은퇴 후 생활비 · 부부 각자 연금</div>
+    <div class="wk"><b>4주 · 보험</b>보험료 방향 · 암 진단비 · 임신 보험 · 위험 · 기존 보험</div>
+    <div class="wk"><b>5주 · 부채</b>할부 갚기 · 금리 · 대출 기간 · 상환 한도 · 통장</div>
+    <div class="wk"><b>6주 · 투자</b>비상자금 · 주택자금 · 노후자금 두는 곳 · 복직 뒤 · 안전자산</div>
   </div>
   <div class="rules">
     <div class="rule"><b>서로의 답은 안 보인다</b><small>판정도 상대의 답도 부부 폰에서는 볼 수 없다</small></div>
-    <div class="rule"><b>AI는 찾기 · 비교 · 요약만</b><small>재무설계 결과에서 값 찾기(설계사 확인 필수) · 기타 답 뜻 비교 · 세 줄 요약. 계산 · 조언 · 계획 수정은 안 한다</small></div>
+    <div class="rule"><b>AI는 찾기 · 비교 · 요약만</b><small>재무설계 결과에서 값 찾기(설계사 확인 필수) · 말로 적은 답 뜻 비교 · 세 줄 요약. 계산 · 조언 · 계획 수정은 안 한다</small></div>
     <div class="rule"><b>계획과 다르면 다른 것</b><small>허용 범위 없음. 기록은 지워지지 않고 새 버전으로 쌓인다</small></div>
   </div>
 </section>
@@ -199,7 +204,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
       ${deskFig('p1-new-couple', `${step(1, '새 부부 등록')} — 재무설계 결과 파일을 고르면 파일 이름에서 두 분 이름이 채워진다`, 72)}
       <figure class="dk"><pre class="msg" style="height:52mm">${esc(invite)}</pre><figcaption>${step(5, '안내문 보내기')} — 부부 목록의 "안내문 복사" → 카톡. QR도 있다</figcaption></figure>
     </div>
-    ${deskFig('p2-word', `${step(2, '재무설계 결과에서 채우기')} — AI가 찾은 값 옆에 원문 문장이 붙는다. ${step(3, '원문과 맞음')} 을 누른 칸만 저장된다. 못 찾은 칸은 직접 채운다. ${step(4, '사이클 시작')} — 30칸이 다 차면 같은 화면 아래에서 누른다(분기 / 반기). 이날이 1주차`, 140)}
+    ${deskFig('p2-word', `${step(2, '재무설계 결과에서 채우기')} — AI가 찾은 값 옆에 원문 문장이 붙는다. ${step(3, '원문과 맞음')} 을 누른 칸만 저장된다. 못 찾은 칸은 직접 채우고, 이 고객에게 맞지 않는 질문은 <b>해당 없음</b>을 넣는다(건너뛰지 않는다). ${step(4, '사이클 시작')} — 30칸이 다 차면 같은 화면 아래에서 누른다(분기 / 반기). 이날이 1주차`, 140)}
   </div>
 </section>
 
@@ -209,7 +214,8 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
   <div class="row">
     ${phoneFig('c1-join', '<b>입장</b> — 코드와 남편 / 아내')}
     ${phoneFig('c2-home', '<b>홈</b> — "이번 주 질문이 열렸어요". 폰 알림도 온다')}
-    ${phoneFig('c3-round', '<b>답하기</b> — 계획을 보고 "그대로예요" 또는 <b>다른 답 고르기</b>')}
+    ${phoneFig('c3-round', '<b>보기 질문</b> — 모든 고객에게 같은 보기. 계획 값은 보이지 않는다')}
+    ${phoneFig('c3b-number', '<b>숫자 질문</b> — 금액은 만 원으로. "4억 8천"처럼 적어도 읽는다')}
     ${phoneFig('c4-done', '<b>끝</b> — 판정은 보여 주지 않는다. 다음 주 테마 안내')}
     ${phoneFig('c5-plan', '<b>내 설계</b> — 재무설계 결과를 테마별로')}
   </div>
@@ -222,9 +228,9 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
     <img src="${img('p4-queue')}" style="width:100%;max-height:150mm;object-fit:cover;object-position:top left;border-radius:3mm;border:0.3mm solid #e4dcd6">
     <div class="side">
       <div class="box">${step(6, '처리 대기 열기')}<p style="margin-top:1.5mm">"○○ 부부 · 처리 대기 N건" 알림이 오거나, 부부 목록에서 본다</p></div>
-      <div class="box">${step(7, '한 건씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히. "그대로예요" / "바뀜 → 고른 답". 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
+      <div class="box">${step(7, '한 건씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히 보이고, 답마다 계획과 같은지 붙는다. 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
       <div class="box">${step(8, '확인함')}<p style="margin-top:1.5mm">봤다는 표시와 메모가 사이클 정리에 남는다. 판정은 바뀌지 않는다</p></div>
-      <div class="box">${step('+', '이건 같은 뜻이에요')}<p style="margin-top:1.5mm">AI가 판정한 건(기타 답)에만. AI 오판으로 기록 → 판단 규칙을 고칠 때 시험 사례</p></div>
+      <div class="box">${step('+', '이건 같은 뜻이에요')}<p style="margin-top:1.5mm">AI가 판정한 건(말로 적은 답)에만. AI 오판으로 기록해 판단 규칙을 고칠 때 시험 사례로 쓴다</p></div>
     </div>
   </div>
 </section>
@@ -243,24 +249,24 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
 
 <section class="page">
   <div class="eyebrow">자세한 설명</div>
-  <h2>판정 · 다른 답 후보 · AI · 알림</h2>
+  <h2>판정 · 답하는 방법 · AI · 알림</h2>
   <div class="two">
     <div class="col">
       <div class="box"><h3>판정 — 계획과 다르면 다른 것 (허용 범위 없음)</h3>
         <table>
           <tr><th>상황</th><th>판정</th><th>설계사에게</th></tr>
-          <tr><td>두 분 다 "그대로예요"</td><td><span class="chip g">🟢</span></td><td>올라오지 않음</td></tr>
-          <tr><td>한 분이라도 다른 답 (금액 1원 · 시점 1개월 · "아직 모름"도)</td><td><span class="chip r">🔴 계획과 다름</span></td><td>처리 대기 · 누가 무엇을 골랐는지 그대로</td></tr>
-          <tr><td>기타 답을 읽지 못함</td><td><span class="chip y">🟡 확인 필요</span></td><td>추측하지 않고 설계사에게</td></tr>
+          <tr><td>두 분 다 계획과 같은 답</td><td><span class="chip g">🟢</span></td><td>올라오지 않음</td></tr>
+          <tr><td>한 분이라도 다른 답 (금액 1만 원 · 나이 1살 · "아직 모름"도)</td><td><span class="chip r">🔴 계획과 다름</span></td><td>처리 대기 · 계획과 두 답이 나란히</td></tr>
+          <tr><td>정답지가 "해당 없음"인데 다른 답 (새 계획이 생김)</td><td><span class="chip r">🔴 계획과 다름</span></td><td>처리 대기</td></tr>
+          <tr><td>말로 적은 답을 읽지 못함</td><td><span class="chip y">🟡 확인 필요</span></td><td>추측하지 않고 설계사에게</td></tr>
         </table>
       </div>
-      <div class="box"><h3>다른 답 후보 — 계획 값에서 규칙으로 (AI 아님)</h3>
+      <div class="box"><h3>답하는 방법 — 계획 값은 보이지 않는다</h3>
         <table>
-          <tr><td style="width:18%"><b>금액</b></td><td>계획의 0.5 · 0.8 · 1.2 · 1.5배 (3억 → 1억 5,000만 · 2억 5,000만 · 3억 5,000만 · 4억 5,000만)</td></tr>
-          <tr><td><b>시점</b></td><td>1년 전 · 6개월 전 · 6개월 뒤 · 1년 뒤 · 2년 뒤 (지난 달은 뺀다)</td></tr>
-          <tr><td><b>나이 · 개수</b></td><td>나이 −5 · −2 · +2 · +5살 / 자녀 0~4명 · 쉬는 기간 0~36개월</td></tr>
-          <tr><td><b>선택</b></td><td>나머지 보기</td></tr>
-          <tr><td><b>모든 칸</b></td><td>"아직 모름" 등 + 맨 끝 <b>기타 — 직접 적기</b></td></tr>
+          <tr><td style="width:18%"><b>보기 질문</b></td><td>모든 고객에게 같은 보기에서 고른다. 고객의 계획 값으로 보기를 만들면 답을 알려 주는 셈이라 그렇게 하지 않는다</td></tr>
+          <tr><td><b>숫자 질문</b></td><td>금액은 만 원 단위(4억 8천처럼 적어도 됨) · 나이 · 개월 · 명 · 년 · %</td></tr>
+          <tr><td><b>모든 질문</b></td><td>아직 모름 · 해당 없음 · 말로 적기</td></tr>
+          <tr><td><b>해당 없음</b></td><td>맞지 않는 질문(아이 계획이 없는 부부의 출산 질문 등)은 건너뛰지 않고 설계사가 정답지에 넣는다. 나중에 계획이 생기면 그것도 잡힌다</td></tr>
         </table>
       </div>
     </div>
@@ -268,7 +274,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
       <div class="box"><h3>AI가 하는 일 세 가지</h3>
         <ul>
           <li><b>재무설계 결과에서 계획 값 찾기</b> — 문서 표기 그대로 + 근거 문장. 원 단위 · 날짜로 바꾸는 건 앱 규칙. 설계사가 칸마다 원문과 대조해야 저장</li>
-          <li><b>기타 답 뜻 비교</b> — "집 사고 나서요"처럼 말이 섞인 답만. 값만 적었으면("3억 2천") 규칙이 읽는다</li>
+          <li><b>말로 적은 답 뜻 비교</b> — "집 사고 나서요"처럼 말이 섞인 답만. 값만 적었으면("4억 8천") 규칙이 읽는다</li>
           <li><b>🔴 건 세 줄 요약</b> — 무엇이 다른지 · 영향 · 물어볼 것. 판정을 바꾸지 못한다</li>
         </ul>
         <p style="margin:1.5mm 0 0;font-size:9pt;color:#5f5866">계산 · 재무 조언 · 자동 반영 · 재설계는 하지 않는다. 부부에게는 AI가 쓴 문장이 가지 않는다.</p>
@@ -285,7 +291,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
       </div>
     </div>
   </div>
-  <div class="foot">지금 상태: 자동 점검 98개 · 실제 DB 처음부터 끝까지 시험 29단계 통과. 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다. 재무설계 결과 단계 그림은 예시 값으로 찍었다.</div>
+  <div class="foot">지금 상태: 자동 점검 101개 · 실제 DB 처음부터 끝까지 시험 30단계 통과. 화면 그림은 예시 데이터라 이름이 "김현우 · 박지우"로 보인다. 재무설계 결과 단계 그림은 예시 값으로 찍었다.</div>
 </section>
 </body></html>`
 writeFileSync(`${OUT}/flow.html`, html)

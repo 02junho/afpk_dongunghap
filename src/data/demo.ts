@@ -1,5 +1,6 @@
 import type { Card, Judgment } from '../judge/index'
 import { formatAnswer, formatValue } from '../lib/answer-options'
+import { isOtherAnswer, otherText } from '../judge/deterministic'
 import { SLOTS, slotCard, slotsOfWeek } from './template'
 
 /** 예시 화면(설계사 코드 전 · 데모 서버)의 카드 = 질문 틀 30칸 + 가상고객 예시 값 (11.04 새 방향) */
@@ -21,40 +22,41 @@ export type RoundAnswers = Record<string, Partial<Record<'husband' | 'wife', Dra
  * 실제 플로우는 lib/api.ts → /api/judge 를 탄다. DEMO는 거기서만 분기한다.
  */
 export const DEMO_ANSWERS: Record<string, { husband: string; wife: string }> = {
-  t1_buy_when: { husband: '2032-06', wife: '2032-06' },
-  t3_husband_job: { husband: '이직 · 창업할 예정', wife: '이직 · 창업할 예정' },
-  t5_support_kind: { husband: '받는 돈', wife: '빌리는 돈' },
-  // 보기에 없는 답(기타) — 값으로 읽히지 않아 AI 가 계획과 같은 뜻인지 본다 (11.05 가안)
-  t2_child_when: { husband: '2029-03', wife: '기타: 집 사고 나서요' },
+  t1_buy_year: { husband: '2032', wife: '2032' },
+  // 팀원 예시 (11.05): 계획 월 300만 — 아내는 350만으로 늘리고 싶다
+  t3_life_monthly: { husband: '3000000', wife: '3500000' },
+  t6_house_fund_where: { husband: '투자 위주', wife: '예 · 적금' },
+  // 말로 적은 답 — 값으로 읽히지 않아 AI 가 계획과 같은 뜻인지 본다
+  t2_child_when: { husband: '1~2년 안', wife: '기타: 집 사고 나서요' },
 }
 
 export const DEMO_JUDGMENTS: Record<string, Judgment> = {
-  t1_buy_when: {
+  t1_buy_year: {
     verdict: 'green', aVsPlan: 'match', bVsPlan: 'match', abAgree: true,
     reason: '', method: 'deterministic',
   },
-  t3_husband_job: {
-    verdict: 'red', aVsPlan: 'major', bVsPlan: 'major', abAgree: true,
+  t3_life_monthly: {
+    verdict: 'red', aVsPlan: 'match', bVsPlan: 'major', abAgree: false,
     reason: '',
     method: 'deterministic',
   },
-  t5_support_kind: {
-    verdict: 'red', aVsPlan: 'match', bVsPlan: 'major', abAgree: false,
+  t6_house_fund_where: {
+    verdict: 'red', aVsPlan: 'major', bVsPlan: 'major', abAgree: false,
     reason: '',
     method: 'deterministic',
   },
   t2_child_when: {
     verdict: 'red', aVsPlan: 'match', bVsPlan: 'major', abAgree: false,
-    reason: '아내분은 시점 대신 "집 사고 나서"라고 적음 — 계획(2029년 3월)과 다른 시점',
+    reason: '아내분은 시기 대신 "집 사고 나서"라고 적음 — 계획(1~2년 안)보다 늦은 시점',
     method: 'llm', promptVersion: 'v3',
   },
 }
 
 /** 설계사 큐의 AI 3줄 요약 (AI 활용 2번). 실제로는 judgments.planner_summary. */
 export const DEMO_SUMMARY: Record<string, string> = {
-  t3_husband_job: '두 분 모두 남편 이직 · 창업 예정으로 답함. 설계는 지금 직장 유지 · 물가만큼 인상을 전제함. 대출 한도와 월 저축액이 이 소득에서 나옴 — 이직 시기와 예상 소득 확인이 먼저.',
-  t5_support_kind: '지원금 1억의 성격이 갈림. 남편은 받는 돈, 아내는 빌리는 돈으로 답함. 받는 돈이면 혼인 증여공제 기한, 빌리는 돈이면 이자 · 상환 계획이 필요 — 어느 쪽인지 확인이 먼저.',
-  t2_child_when: '아내분이 첫 아이 시점을 "집 사고 나서"로 답함. 계획은 2029년 3월로 내 집 마련(2032년 6월)보다 앞섬. 출산 · 집 마련 순서를 다시 정할지 확인.',
+  t3_life_monthly: '은퇴 후 월 생활비를 아내분은 350만 원으로 답함. 계획은 300만 원. 노후에 필요한 돈 전체가 이 금액에서 계산됨 — 늘린 이유와 아내분 노후 준비액을 함께 확인.',
+  t6_house_fund_where: '주택자금 두는 곳이 갈림. 계획은 절반씩(계약금은 안전하게, 잔금은 일부 ETF)인데 남편은 투자 위주, 아내는 예 · 적금으로 답함. 두 분 투자 성향 차이가 다시 드러남 — 계약금 · 잔금 나누는 방식을 다시 설명.',
+  t2_child_when: '아내분이 첫 아이 시기를 "집 사고 나서"로 답함. 계획은 1~2년 안으로 내 집 마련(2032년)보다 앞섬. 출산 · 집 마련 순서를 다시 정할지 확인.',
 }
 
 /** 큐에 올라오는 것: 🔴 전부 + 확인 필요 🟡 (planner_queue 뷰와 같은 조건) */
@@ -114,12 +116,20 @@ export function showValue(c: Card): string {
  */
 export function showPlanned(type: Card['type'] | undefined, unit: Card['unit'] | null | undefined, raw: string, key = ''): string {
   if (!type || raw === '—') return raw
+  if (isOtherAnswer(raw)) return `“${otherText(raw)}” (말로 적음)`
   return formatAnswer({ key, type, unit: unit ?? undefined }, raw)
 }
 
 /** 답변 문자열을 사람이 읽는 형태로 ('YYYY-MM' → 'YYYY년 M월', 원 → 억/만, 기타는 적은 글) */
 export function showAnswer(c: Card, s: string): string {
+  if (isOtherAnswer(s)) return `“${otherText(s)}” (말로 적음)`
   return formatAnswer(c, s)
+}
+
+/** 설계사 화면의 답 한 줄 — 값 옆에 계획과 같은지. 말로 적은 답은 판정(AI · 확인 필요)을 따로 보이므로 표시를 붙이지 않는다 */
+export function answerLine(shown: string, raw: string, planned: string): string {
+  if (isOtherAnswer(raw)) return shown
+  return `${shown} · ${raw.trim() === planned.trim() ? '계획과 같음' : '다름'}`
 }
 
 /**

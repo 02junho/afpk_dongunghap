@@ -1,79 +1,104 @@
 import { describe, expect, it } from 'vitest'
-import { SLOTS, slotByKey, slotCard } from '../../data/template'
-import { answerChoices, formatValue, niceWon } from '../answer-options'
+import { NA, KNOW, NON_VALUE, SLOTS, slotByKey, slotCard } from '../../data/template'
+import { formatValue } from '../answer-options'
+import { answerValue, EMPTY_ANSWER, numValue } from '../answer-input'
 import { judge, OTHER_PREFIX } from '../../judge/index'
 import { mockLlm } from '../../judge/text-llm'
 
-const NOW = new Date('2026-11-05')
 const card = (key: string, v?: string) => { const s = slotByKey(key)!; return slotCard(s, v ?? s.example) }
 
-describe('다른 답 후보 (11.05 객관식) — 계획 값에서 규칙으로', () => {
-  it('금액: 3억 → 1.5억 · 2.5억 · 3.5억 · 4.5억 + 아직 모름', () => {
-    expect(answerChoices(card('t1_next_deposit'), NOW).map(c => c.label)).toEqual(['1억 5,000만원', '2억 5,000만원', '3억 5,000만원', '4억 5,000만원', '아직 모름'])
+describe('목표 질문 답 칸 (11.05 밤) — 계획을 보여 주지 않고 숫자 · 보기로', () => {
+  it('금액은 숫자만 적으면 만 원 단위, 단위를 붙여도 읽는다', () => {
+    const life = card('t3_life_monthly')
+    expect(numValue(life, '300')).toBe('3000000')
+    expect(numValue(life, '1,200')).toBe('12000000')
+    expect(numValue(card('t1_home_price'), '4억 8천')).toBe('480000000')
+    expect(numValue(card('t1_home_price'), '48000')).toBe('480000000')
+    expect(numValue(life, '많이')).toBe('')
   })
-  it('금액 0 이 말이 되는 칸은 이름을 붙여 맨 앞에', () => {
-    expect(answerChoices(card('t1_family_support'), NOW)[0]).toEqual({ value: '0', label: '지원 없음' })
+  it('나이 · 개수 · 연도 · 비율은 숫자 그대로', () => {
+    expect(numValue(card('t3_husband_retire'), '60')).toBe('60')
+    expect(numValue(card('t1_buy_year'), '2032')).toBe('2032')
+    expect(numValue(card('t2_leave_months'), '6개월')).toBe('6')
+    expect(numValue(card('t5_repay_ratio'), '120')).toBe('')
   })
-  it('시점: 1년 전 · 6개월 전 · 6개월 뒤 · 1년 뒤 · 2년 뒤 — 지난 달은 뺀다', () => {
-    expect(answerChoices(card('t1_buy_when'), NOW).map(c => c.value)).toEqual(['2031-06', '2031-12', '2032-12', '2033-06', '2034-06', '집을 사지 않기로 했다', '아직 모름'])
-    expect(answerChoices(card('t5_debt_clear'), NOW).map(c => c.value).slice(0, 2)).toEqual(['2027-06', '2027-12'])
+  it('보기 · 말로 적기 · 아무것도 안 고름', () => {
+    const c = card('t6_house_fund_where')
+    expect(answerValue(c, { ...EMPTY_ANSWER, mode: 'opt', opt: '절반씩' })).toBe('절반씩')
+    expect(answerValue(c, { ...EMPTY_ANSWER, mode: 'other', other: ' 반반쯤 ' })).toBe(OTHER_PREFIX + '반반쯤')
+    expect(answerValue(c, { ...EMPTY_ANSWER, mode: 'other', other: '  ' })).toBe('')
+    expect(answerValue(c, EMPTY_ANSWER)).toBe('')
   })
-  it('개수: 틀의 후보에서 계획 값을 뺀다', () => {
-    expect(answerChoices(card('t2_child_count'), NOW).map(c => c.label)).toEqual(['아이 계획 없음', '1명', '3명', '4명', '아직 모름'])
-  })
-  it('나이 · 선택', () => {
-    expect(answerChoices(card('t3_husband_retire'), NOW).map(c => c.label)).toEqual(['만 55세', '만 58세', '만 62세', '만 65세', '아직 모름'])
-    expect(answerChoices(card('t5_support_kind'), NOW).map(c => c.value)).toEqual(['빌리는 돈', '아직 모름'])
-  })
-  it('30칸 모두: 후보가 2개 이상, 계획 값과 같은 후보는 없다, 고르면 🔴', async () => {
+  it('30칸 모두 아직 모름 · 해당 없음이 붙고, 보기 칸은 아직 모름 · 해당 없음 말고도 보기가 2개 이상', () => {
     for (const s of SLOTS) {
-      const c = slotCard(s, s.example)
-      const list = answerChoices(c, NOW)
-      expect(list.length, s.key).toBeGreaterThanOrEqual(2)
-      expect(new Set(list.map(x => x.value)).size, s.key).toBe(list.length)
-      for (const x of list) {
-        expect(x.value, s.key).not.toBe(String(c.plannedValue))
-        expect((await judge(c, String(c.plannedValue), x.value)).verdict, `${s.key} · ${x.label}`).toBe('red')
-      }
-      expect((await judge(c, String(c.plannedValue), String(c.plannedValue))).verdict, s.key).toBe('green')
+      for (const x of NON_VALUE) expect(s.options, s.key).toContain(x)
+      if (s.type === 'choice') expect(s.options!.filter(o => !NON_VALUE.includes(o)).length, s.key).toBeGreaterThanOrEqual(2)
     }
   })
-  it('보기 좋은 금액 단위', () => {
-    expect(niceWon(92_500, 185_000)).toBe(90_000)
-    expect(niceWon(240_000_000, 300_000_000)).toBe(250_000_000)
-    expect(niceWon(360_000_000, 300_000_000)).toBe(350_000_000)
+  it('계획 값 글 (설계사 화면)', () => {
+    expect(formatValue(card('t1_buy_year'), '2032')).toBe('2032년')
     expect(formatValue(card('t2_leave_months'), '12')).toBe('12개월')
-    expect(formatValue(card('t4_premium_limit'), '185000')).toBe('18만 5,000원')   // 19만원으로 반올림하면 안 된다
+    expect(formatValue(card('t3_life_monthly'), '3000000')).toBe('300만원')
+    expect(formatValue(card('t1_loan_max'), '0')).toBe('대출 받지 않는다')
+    expect(formatValue(card('t4_cancer_cover'), NA)).toBe(NA)
   })
 })
 
-describe('기타 — 직접 적기 (가안: 값만 적었으면 규칙, 아니면 AI)', () => {
-  const won = card('t1_next_deposit')
+describe('판정 — 계획과 같으면 🟢, 다르면 🔴 (허용 범위 없음)', () => {
+  it('팀원 예시: 계획 월 300만 — 아내 350만이면 🔴, 둘 다 300만이면 🟢', async () => {
+    const life = card('t3_life_monthly')
+    expect((await judge(life, '3000000', '3500000')).verdict).toBe('red')
+    expect((await judge(life, '3000000', '3000000')).verdict).toBe('green')
+    expect((await judge(life, '3500000', '3500000')).verdict).toBe('red')   // 둘 다 바뀌어도 계획과 다르다
+  })
+  it('30칸 모두: 예시 값을 둘 다 답하면 🟢, 한 분이 아직 모름이면 🔴', async () => {
+    for (const s of SLOTS) {
+      const c = slotCard(s, s.example)
+      expect((await judge(c, s.example, s.example)).verdict, s.key).toBe('green')
+      expect((await judge(c, s.example, KNOW)).verdict, s.key).toBe('red')
+    }
+  })
+})
+
+describe('해당 없음 (11.05 A) — 건너뛰지 않고 정답지에 해당 없음', () => {
+  it('정답지가 해당 없음이면 둘 다 해당 없음일 때만 🟢 — 숫자 칸도', async () => {
+    const months = card('t2_leave_months', NA)
+    expect(months.plannedValue).toBe(NA)   // 숫자로 바꾸지 않는다
+    expect((await judge(months, NA, NA)).verdict).toBe('green')
+    expect((await judge(months, NA, '6')).verdict).toBe('red')   // 새 계획이 생겼다
+    expect((await judge(months, NA, KNOW)).verdict).toBe('red')
+    const when = card('t2_child_when', NA)
+    expect((await judge(when, NA, NA)).verdict).toBe('green')
+    expect((await judge(when, NA, '1~2년 안')).verdict).toBe('red')
+  })
+  it('정답지에 값이 있는데 해당 없음이라고 답하면 🔴', async () => {
+    expect((await judge(card('t3_life_monthly'), '3000000', NA)).verdict).toBe('red')
+  })
+  it('정답지가 해당 없음인데 말로 적었으면 규칙으로 못 읽는다 → AI 가 없으면 🟡', async () => {
+    const j = await judge(card('t2_leave_months', NA), NA, OTHER_PREFIX + '아직 아이 생각은 없어요')
+    expect(j).toMatchObject({ verdict: 'yellow', needsReview: true })
+  })
+})
+
+describe('말로 적기 (값만 적었으면 규칙, 아니면 AI)', () => {
+  const won = card('t1_home_price')
   it('값만 적었으면 규칙이 읽는다 — 계획과 같으면 🟢', async () => {
-    const j = await judge(won, '300000000', OTHER_PREFIX + '3억')
+    const j = await judge(won, '480000000', OTHER_PREFIX + '4억 8천')
     expect(j).toMatchObject({ verdict: 'green', method: 'deterministic' })
-    expect((await judge(won, '300000000', OTHER_PREFIX + '3억 2천')).verdict).toBe('red')
+    expect((await judge(won, '480000000', OTHER_PREFIX + '5억')).verdict).toBe('red')
   })
   it('값 말고 다른 말이 섞이면 숫자만 뽑지 않는다 → AI 가 없으면 🟡 확인 필요', async () => {
-    const j = await judge(won, '300000000', OTHER_PREFIX + '3억 정도인데 더 주실 수도')
+    const j = await judge(won, '480000000', OTHER_PREFIX + '5억 정도인데 더 오를 수도')
     expect(j).toMatchObject({ verdict: 'yellow', needsReview: true, bVsPlan: 'unparsed' })
   })
-  it('AI 가 있으면 기타 답만 AI 가 본다 — 규칙으로 읽은 쪽은 그대로', async () => {
-    const j = await judge(won, '300000000', OTHER_PREFIX + '3억 정도인데 더 주실 수도', mockLlm)
+  it('AI 가 있으면 말로 적은 답만 AI 가 본다 — 규칙으로 읽은 쪽은 그대로', async () => {
+    const j = await judge(won, '480000000', OTHER_PREFIX + '5억 정도인데 더 오를 수도', mockLlm)
     expect(j.method).toBe('llm')
     expect(j.aVsPlan).toBe('match')
     expect(j.bVsPlan).not.toBe('unparsed')
   })
-  it('기타가 아닌 답에는 AI 를 쓰지 않는다', async () => {
-    expect((await judge(won, '300000000', '450000000', mockLlm)).method).toBe('deterministic')
-  })
-  it('"아직 모름"은 계획과 다른 답 → 🔴', async () => {
-    expect((await judge(won, '300000000', '아직 모름')).verdict).toBe('red')
-    expect((await judge(card('t1_buy_when'), '2032-06', '집을 사지 않기로 했다')).verdict).toBe('red')
-  })
-  it('시점 기타는 연 · 월만 적었을 때만 규칙이 읽는다', async () => {
-    const when = card('t1_buy_when')
-    expect((await judge(when, '2032-06', OTHER_PREFIX + '2032년 6월')).verdict).toBe('green')
-    expect((await judge(when, '2032-06', OTHER_PREFIX + '2032년쯤')).verdict).toBe('yellow')
+  it('숫자 · 보기 답에는 AI 를 쓰지 않는다', async () => {
+    expect((await judge(won, '480000000', '450000000', mockLlm)).method).toBe('deterministic')
+    expect((await judge(card('t5_rate_type'), '고정금리', '변동금리', mockLlm)).method).toBe('deterministic')
   })
 })

@@ -5,7 +5,7 @@
  * 저장 모양: 금액 = 원 단위 정수 문자열 · 나이 · 개수 · 비율 = 숫자 문자열 · 시점 = 'YYYY-MM' · 선택 = 보기 하나 · 서술 = 한 문장
  */
 import { parseCount, parseWon } from '../judge/deterministic'
-import type { Slot } from '../data/template'
+import { NA, type Slot } from '../data/template'
 
 export type PlanValue = { ok: true; value: string } | { ok: false; error: string }
 
@@ -37,6 +37,8 @@ export function parsePlanDate(raw: string): string | null {
 export function planValue(slot: Pick<Slot, 'type' | 'unit' | 'options' | 'label' | 'per'>, raw: string | number | null | undefined): PlanValue {
   const t = String(raw ?? '').trim()
   if (!t) return { ok: false, error: '비어 있음' }
+  // 이 고객에게 맞지 않는 질문 — 어느 칸이든 설계사가 넣을 수 있다 (11.05 A). AI 가 찾은 값으로는 받지 않는다(src/extract/plan.ts)
+  if (t === NA) return { ok: true, value: NA }
   switch (slot.type) {
     case 'number': {
       if ((slot.unit ?? 'krw') === 'krw') {

@@ -33,11 +33,11 @@ describe('재무설계 결과 PDF → 글 (11.05)', () => {
   it('planFileToText 는 PDF 를 PDF 로 읽고, 원문 대조(근거 문장 확인)도 Word 와 똑같이 된다', async () => {
     const { text } = await planFileToText(buf())
     const out = parsePlanOutput(JSON.stringify([
-      { key: 't1_buy_when', found: '2032년 6월', quote: '내 집 마련 시점: 2032년 6월' },
-      { key: 't1_family_support', found: '1억 원', quote: '부모님 지원금은 3억 원으로 합니다.' },
+      { key: 't1_buy_year', found: '2032년', quote: '내 집 마련 시점: 2032년 6월' },
+      { key: 't1_home_price', found: '1억 원', quote: '부모님 지원금은 3억 원으로 합니다.' },
     ]), text)
-    expect(out.find(f => f.key === 't1_buy_when')).toMatchObject({ value: '2032-06', quoteInDoc: true })
-    expect(out.find(f => f.key === 't1_family_support')).toMatchObject({ quoteInDoc: false })
+    expect(out.find(f => f.key === 't1_buy_year')).toMatchObject({ value: '2032', quoteInDoc: true })
+    expect(out.find(f => f.key === 't1_home_price')).toMatchObject({ quoteInDoc: false })
   })
 
   it('파일 이름 규칙은 .pdf 도 받는다', () => {

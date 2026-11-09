@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import Rail from './Rail'
 import {
-  byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, chipOf, loadLiveRound, showAnswer, showPlanned,
+  answerLine, byKey, CATEGORIES, DEMO_ANSWERS, DEMO_JUDGMENTS, DEMO_QUEUE, DEMO_SUMMARY, chipOf, loadLiveRound, showAnswer, showPlanned,
 } from '../../data/demo'
 import type { Card, Judgment, RedKind } from '../../judge/index'
 
-const asSaid = (c: Card, raw: string) => raw === String(c.plannedValue) ? `그대로예요 (${showAnswer(c, raw)})` : `바뀜 → ${showAnswer(c, raw)}`
+/** 부부는 계획을 보지 않고 답한다 (11.05 목표 질문) — 설계사에겐 답과 "계획과 같음 / 다름"을 나란히 */
+const asSaid = (c: Card, raw: string) => answerLine(showAnswer(c, raw), raw, String(c.plannedValue))
 import { usePlanner } from './planner'
 import { THEMES } from '../../data/template'
 
@@ -59,15 +60,15 @@ export default function Queue() {
     setErr('')
     try {
       const { items } = await p.call<{ items: any[] }>('queue')
-      // "네, 그대로예요"는 전제 값이 답으로 저장된다 (10.23) — 설계사에겐 "그대로예요"로 보여준다
+      // 부부는 계획을 보지 않고 답한다 (11.05) — 답 옆에 계획과 같은지만 붙인다
       const show = (r: any, ans: string) => {
         const raw = String(ans ?? '')
         const v = showPlanned(r.type, r.unit, raw, r.key)
-        return raw === String(r.planned ?? '') ? `그대로예요 (${v})` : `바뀜 → ${v}`
+        return answerLine(v, raw, String(r.planned ?? ''))
       }
       setItems(items.map(r => ({
         ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? ''), r.key),
-        roundLabel: '맞춰보기',
+        roundLabel: '주간 질문',
       })))
     } catch (e) { setErr((e as Error).message) }
   }
@@ -139,7 +140,7 @@ export default function Queue() {
                   <span className="queue-couple">{p.couple.label} · {it.roundLabel}</span>
                 </div>
                 <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
-                  <dt className="meta" style={{ paddingTop: 3 }}>설계 전제</dt><dd style={{ color: 'var(--muted)' }}>{it.planned}</dd>
+                  <dt className="meta" style={{ paddingTop: 3 }}>계획</dt><dd style={{ color: 'var(--muted)' }}>{it.planned}</dd>
                   <dt><span className="avatar avatar-him">{p.couple.husband.slice(0, 1)}</span></dt><dd>{it.a}</dd>
                   <dt><span className="avatar avatar-her">{p.couple.wife.slice(0, 1)}</span></dt><dd>{it.b}</dd>
                 </dl>

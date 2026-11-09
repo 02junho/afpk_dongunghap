@@ -11,9 +11,9 @@ import { namesFromFilename } from '../../extract/names'
 
 const DEMO_ROWS: CoupleRow[] = [
   DEMO_COUPLE,
-  { id: 'demo-2', label: '정도윤 · 한서현', code: '730254', husband: '도윤', wife: '서현', state: '정기 3회차', lastAt: null, pending: 0 },
-  { id: 'demo-3', label: '오재민 · 류하경', code: '619478', husband: '재민', wife: '하경', state: '첫 맞춰보기 대기', lastAt: null, pending: 0 },
-  { id: 'demo-4', label: '배준서 · 문예린', code: '305126', husband: '준서', wife: '예린', state: '정기 7회차', lastAt: null, pending: 1 },
+  { id: 'demo-2', label: '정도윤 · 한서현', code: '730254', husband: '도윤', wife: '서현', state: '3주차 · 노후', lastAt: null, pending: 0 },
+  { id: 'demo-3', label: '오재민 · 류하경', code: '619478', husband: '재민', wife: '하경', state: '질문 틀 30 / 30 · 사이클 시작 전', lastAt: null, pending: 0 },
+  { id: 'demo-4', label: '배준서 · 문예린', code: '305126', husband: '준서', wife: '예린', state: '6주차 · 투자', lastAt: null, pending: 1 },
 ]
 
 /**

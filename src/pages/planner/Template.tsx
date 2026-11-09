@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import Rail from './Rail'
 import { usePlanner } from './planner'
 import { CATEGORIES, showPlanned } from '../../data/demo'
-import { SLOTS, THEMES, type Slot } from '../../data/template'
+import { NA, SLOTS, THEMES, type Slot } from '../../data/template'
 import { planValue } from '../../lib/plan-values'
 import type { PlanFind } from '../../extract/plan'
 import { clearPendingWord, peekPendingWord } from './pendingImport'
@@ -13,6 +13,7 @@ import { clearPendingWord, peekPendingWord } from './pendingImport'
  *  · Word 에서 채우기: AI 가 재무설계 결과에서 값을 찾아 원문과 함께 보여 준다 → 설계사가 칸마다 "원문과 맞음"을 눌러야 저장된다
  *  · 숫자 · 날짜는 AI 가 아니라 규칙(plan-values)이 바꾼다. 저장은 덮어쓰지 않고 새 버전
  *  · 30칸이 다 차면 여기서 사이클을 시작한다
+ *  · 이 고객에게 맞지 않는 칸은 "해당 없음" (11.05 A) — 보기 칸은 목록에서, 숫자 칸은 옆 버튼으로. AI 는 넣지 않는다
  */
 interface Saved { planned: string; version: number; inOpenRound: boolean }
 interface CycleBrief { cycle: { week: number | null; closedAt: string | null; nextAt: string } | null; filled: number; total: number }
@@ -23,8 +24,8 @@ function toInput(s: Slot, planned: string): string {
   return planned
 }
 
-/** 예시 모드에서 Word 에 없다고 보여 줄 칸 (docs/20 의 "(Word에서)" 칸 일부) */
-const DEMO_NOT_FOUND = ['t2_edu_monthly', 't4_child_policy', 't6_emergency', 't6_invest_ratio']
+/** 예시 모드에서 문서에 없다고 보여 줄 칸 — 지금 4단계 초안에 값이 없는 칸 (docs/22 · 23) */
+const DEMO_NOT_FOUND = ['t2_child_count', 't6_retire_fund_where', 't6_after_return']
 
 export default function Template() {
   const p = usePlanner()
@@ -194,9 +195,15 @@ export default function Template() {
                         {r.s.options!.map(o => <option key={o}>{o}</option>)}
                       </select>
                     ) : (
-                      <input className="field" style={{ padding: '8px 10px', fontSize: 14, boxShadow: 'none', border: '2px solid var(--line)' }} disabled={r.locked || !!busy}
-                        value={r.raw} placeholder={r.s.find}
-                        onChange={e => { setInput(x => ({ ...x, [r.s.key]: e.target.value })); setFinds(f => { const n = { ...f }; delete n[r.s.key]; return n }) }} />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input className="field" style={{ flex: 1, minWidth: 0, padding: '8px 10px', fontSize: 14, boxShadow: 'none', border: '2px solid var(--line)' }} disabled={r.locked || !!busy}
+                          value={r.raw} placeholder={r.s.find}
+                          onChange={e => { setInput(x => ({ ...x, [r.s.key]: e.target.value })); setFinds(f => { const n = { ...f }; delete n[r.s.key]; return n }) }} />
+                        {/* 이 고객에게 맞지 않는 질문 — 건너뛰지 않고 정답지에 "해당 없음" (11.05 A) */}
+                        <button type="button" className="btn btn-quiet btn-small" style={{ padding: '4px 8px', fontSize: 11, whiteSpace: 'nowrap' }} disabled={r.locked || !!busy}
+                          title="이 고객에게 맞지 않는 질문 — 건너뛰지 않고 정답지에 해당 없음을 넣습니다"
+                          onClick={() => { setInput(x => ({ ...x, [r.s.key]: NA })); setFinds(f => { const n = { ...f }; delete n[r.s.key]; return n }) }}>{NA}</button>
+                      </div>
                     )}
                     <span className="meta" style={{ fontSize: 12 }}>
                       {r.locked ? '묻는 중 🔒'
