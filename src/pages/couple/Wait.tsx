@@ -34,7 +34,8 @@ export default function Wait() {
         if (r) { setTotal(n); setKind(r.kind); setWeek(r.week) }
         setDone(p)
         if (p.husband >= n && p.wife >= n) {
-          await triggerJudge(id) // 이미 판정됐으면 already, 아니면 지금 판정. 결과는 이 폰에 안 온다
+          // 판정(AI 요약 포함)은 몇 초 걸린다 — 기다리지 않고 바로 끝 화면으로. 이미 판정됐으면 서버가 already 로 끝낸다 (11.11 직접 시험)
+          void triggerJudge(id)
           if (alive) nav(`/c/done/${id}`)
           return
         }
@@ -68,7 +69,9 @@ export default function Wait() {
               : <><span className="p p-empty" /><span className="p p-her" style={{ marginLeft: -14 }} /></>}
           </span>
         </div>
-        <h2 className="q" style={{ textAlign: 'center' }}>{nameOf(me, partner)}님이 아직<br />답하는 중이에요</h2>
+        <h2 className="q" style={{ textAlign: 'center' }}>
+          {mine >= total && theirs >= total ? <>두 분 모두<br />답했어요</> : <>{nameOf(me, partner)}님이 아직<br />답하는 중이에요</>}
+        </h2>
         <div style={{ marginTop: 32 }}>
           <div className="who-line"><span className="avatar avatar-him">{nameOf(me, 'husband').slice(0, 1)}</span>{nameOf(me, 'husband')}<span className="who-state">{stateOf(me.role === 'husband' ? mine : theirs)}</span></div>
           <div className="who-line"><span className="avatar avatar-her">{nameOf(me, 'wife').slice(0, 1)}</span>{nameOf(me, 'wife')}<span className="who-state">{stateOf(me.role === 'wife' ? mine : theirs)}</span></div>
