@@ -17,7 +17,7 @@ import { resolve } from 'node:path'
 const B = process.env.SHOTS_BASE ?? 'http://127.0.0.1:5180'
 const OUT = resolve('build/flow')
 const PDF = resolve('docs/11_화면흐름도.pdf')
-const TODAY = '2026-11-09'
+const TODAY = '2026-11-11'
 mkdirSync(OUT, { recursive: true })
 
 const br = await chromium.launch({ args: ['--lang=ko-KR'], ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}) })
