@@ -36,6 +36,7 @@ export function buildPlanPrompt(docText: string, slots: Slot[] = SLOTS): string 
 
 항목
 ${list}
+- _profile [부부] 남편 · 아내 각자의 직업 · 소득 형태 (예: 대기업 직장인 · 프리랜서 디자이너). 문서 표기 그대로 짧은 한 문장. 금액은 문서에 적힌 그대로만
 
 출력은 JSON 배열 하나만. 항목마다 한 줄, 다른 말은 쓰지 않습니다.
 [{"key":"t1_buy_year","found":"2032년","quote":"입주 시점(2032년) 4억 8천만 원","note":""}]
@@ -59,6 +60,18 @@ export interface PlanFind {
 }
 
 const squash = (s: string) => s.replace(/\s+/g, '')
+
+/** 부부 기본 정보 (_profile, 11.14). 요약이 재무설계 결과에 이미 있는 사실을 되묻지 않게. 설계사가 확인해 저장한다 */
+export function parseProfile(text: string, docText: string): { found: string; quote: string | null; quoteInDoc: boolean } | null {
+  const m = text.match(/\[[\s\S]*\]/)
+  if (!m) return null
+  let arr: unknown
+  try { arr = JSON.parse(m[0]) } catch { return null }
+  const o = Array.isArray(arr) ? (arr as any[]).find(x => x && x.key === '_profile') : null
+  if (!o || typeof o.found !== 'string' || !o.found.trim()) return null
+  const quote = typeof o.quote === 'string' && o.quote.trim() ? o.quote.trim().slice(0, 300) : null
+  return { found: o.found.trim().slice(0, 200), quote, quoteInDoc: !!quote && squash(docText).includes(squash(quote)) }
+}
 
 /** AI 출력 → 칸마다 찾은 값. 틀에 없는 key 는 버린다. 값은 plan-values 규칙으로만 바꾼다 */
 export function parsePlanOutput(text: string, docText: string, slots: Slot[] = SLOTS): PlanFind[] {

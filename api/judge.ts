@@ -19,7 +19,8 @@ import { notify } from './_notify'
 import { compareToPlan, judge, isOtherAnswer, type Card, type Judgment } from '../src/judge/index'
 import { createLlmClient, mockLlm } from '../src/judge/text-llm'
 import { PROMPT_VERSIONS } from '../src/judge/prompt'
-import { parsePlanOutput } from '../src/extract/plan'
+import { parsePlanOutput, parseProfile } from '../src/extract/plan'
+import { getProfile } from './_profile'
 import { rowToCard } from '../src/lib/cards'
 
 export const config = { runtime: 'edge' }
@@ -49,10 +50,11 @@ function llmOrFail(): { llm: ReturnType<typeof createLlmClient> } | { error: Res
  * AI 활용 3번 (11.04 새 방향): 재무설계 결과(Word · PDF) 글 → 질문 틀 30칸의 계획 값. api/planner(extract_plan)가 호출한다.
  * LLM 호출은 이 파일에만 둔다 (CLAUDE.md). 찾은 값만 돌려준다 — 저장은 설계사가 원문과 대조해 확인한 뒤.
  */
-export async function extractPlanValues(docText: string): Promise<{ finds: ReturnType<typeof parsePlanOutput>; promptVersion: string }> {
+export async function extractPlanValues(docText: string): Promise<{ finds: ReturnType<typeof parsePlanOutput>; profile: ReturnType<typeof parseProfile>; promptVersion: string }> {
   const r = llmOrFail()
   if ('error' in r) throw new Error('LLM_API_KEY / LLM_MODEL 이 설정되지 않았습니다')
-  return { finds: parsePlanOutput(await r.llm.extractPlan!(docText), docText), promptVersion: PROMPT_VERSIONS.extract }
+  const out = await r.llm.extractPlan!(docText)
+  return { finds: parsePlanOutput(out, docText), profile: parseProfile(out, docText), promptVersion: PROMPT_VERSIONS.extract }
 }
 
 /** 설계사 콘솔에서 요청하는 요약 (이미 판정된 건 1개). api/planner 가 호출한다. */
@@ -60,7 +62,7 @@ export async function summarizeJudgment(judgmentId: string): Promise<{ summary?:
   if (process.env.ENABLE_PLANNER_SUMMARY !== '1') return { error: '요약 기능이 꺼져 있습니다 (ENABLE_PLANNER_SUMMARY=1)' }
   const sb = serviceClient()
   if (!sb) return { error: 'Supabase 서버 키 없음' }
-  const { data: j } = await sb.from('judgments').select('*, card_versions!inner(*, cards!inner(key, type, category, unit))').eq('id', judgmentId).maybeSingle()
+  const { data: j } = await sb.from('judgments').select('*, card_versions!inner(*, cards!inner(key, type, category, unit, couple_id))').eq('id', judgmentId).maybeSingle()
   if (!j) return { error: '판정 없음' }
   const r = llmOrFail()
   if ('error' in r) return { error: 'LLM 키 없음' }
@@ -70,7 +72,8 @@ export async function summarizeJudgment(judgmentId: string): Promise<{ summary?:
     reason: j.reason ?? '', method: j.method, promptVersion: j.prompt_version ?? undefined, needsReview: j.needs_review,
   }
   try {
-    const summary = await r.llm.summarize!({ card, a: j.a_text ?? '', b: j.b_text ?? '', judgment })
+    const profile = await getProfile(sb, j.card_versions.cards.couple_id)
+    const summary = await r.llm.summarize!({ card, a: j.a_text ?? '', b: j.b_text ?? '', judgment, profile })
     await sb.from('judgments').update({ planner_summary: summary, summary_prompt_version: PROMPT_VERSIONS.summary }).eq('id', judgmentId)
     return { summary }
   } catch (e) {
@@ -200,9 +203,10 @@ async function judgeClaimedRound(
   if (process.env.ENABLE_PLANNER_SUMMARY === '1' && toSummarize.length) {
     const r = llmOrFail()
     if (!('error' in r)) {
+      const profile = await getProfile(sb, round.couple_id)
       for (const t of toSummarize) {
         try {
-          const summary = await r.llm.summarize!({ card: t.card, a: t.a, b: t.b, judgment: t.j })
+          const summary = await r.llm.summarize!({ card: t.card, a: t.a, b: t.b, judgment: t.j, profile })
           await sb.from('judgments').update({ planner_summary: summary, summary_prompt_version: PROMPT_VERSIONS.summary })
             .eq('round_id', roundId).eq('card_version_id', t.cvId)
           summarized++

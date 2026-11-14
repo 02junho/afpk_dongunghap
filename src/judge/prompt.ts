@@ -29,13 +29,15 @@ import { slotByKey } from '../data/template'
  * summary v4 (11.14) 팀(예슬) 요청: 3줄째 질문("~인가요?")을 없앤다 — 재무설계 결과에 이미 있는 사실(프리랜서 등)을 되묻게 됨.
  *           AI 는 2줄(차이 · 함께 흔들리는 계획)만 쓰고, 3줄째는 팀이 정한 검토 기준(src/data/review.ts)을 화면이 붙인다. 함께 볼 질문 이름을 근거로 준다.
  *           (같은 날 시험 뒤) 영어 판정 용어 금지 · 말끝 '~함/~음' 통일 두 줄 추가 — 첫 시험에서 '(minor)'가 섞이고 말끝이 섞여서.
+ * summary v5 (11.14) 부부 기본 정보 한 줄(재무설계 결과에서 찾고 설계사가 확인, api/_profile.ts)을 함께 준다. 누구 이야기인지 밝히는 근거로만 — 지어내기 금지.
+ * extract v6 (11.14) 항목에 _profile(남편 · 아내 직업 · 소득 형태 한 문장)을 더했다. 30칸 값 찾기 규칙은 그대로.
  * extract v5 (11.09) 목표 질문 30문항으로 항목(find) 전면 교체. 규칙 7 "문서에 없으면 null — '해당 없음'이라 적지 않는다" 추가.
  *           보기 목록에서 아직 모름 · 해당 없음을 뺐고, 금액 항목에 매달 · 매년을 적고, 숫자 항목에 단위(년 · 명 · 개월)를 적는다. 예시 출력도 새 key 로.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
-  summary: 'v4',
-  extract: 'v5',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
+  summary: 'v5',
+  extract: 'v6',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
 /** @deprecated PROMPT_VERSIONS.judge 를 쓸 것. eval 출력 파일명 호환용으로 남겨둔다. */
@@ -95,6 +97,7 @@ export function buildSummaryPrompt(
   a: string,
   b: string,
   judgment: { verdict: string; redKind?: string; reason?: string; aVsPlan?: string; bVsPlan?: string },
+  profile = '',
 ) {
   // 11.05: 재무설계 결과와 다르면 다른 것 — 누가 다른지만 적는다 (부부 불일치 · 전제 폐기를 나누지 않는다)
   const who = [judgment.aVsPlan && judgment.aVsPlan !== 'match' ? '남편' : '', judgment.bVsPlan && judgment.bVsPlan !== 'match' ? '아내' : ''].filter(Boolean)
@@ -110,6 +113,7 @@ export function buildSummaryPrompt(
 [계획 (재무설계 결과)] ${card.plannedValue}
 [이 계획이 바뀌면] ${card.stake}
 [함께 다시 볼 질문] ${related || '없음'}
+[부부 기본 정보 (재무설계 결과 · 설계사 확인)] ${profile.trim() || '없음'}
 [남편 답변] ${a}
 [아내 답변] ${b}
 [판정] ${kind}${judgment.reason ? ` · ${judgment.reason}` : ''}
@@ -118,6 +122,7 @@ export function buildSummaryPrompt(
 - 1줄: 계획과 두 분 답의 차이 — 누가 계획과 같고 누가 어떻게 다른지 (사실만)
 - 2줄: 이 차이로 함께 흔들리는 계획 (위 '이 계획이 바뀌면'과 '함께 다시 볼 질문'만 근거로)
 - 질문하지 않습니다. 물음표를 쓰지 않습니다. 재무설계 결과에 이미 있는 사실을 되묻지 않습니다.
+- '부부 기본 정보'는 누구 이야기인지 밝히는 근거로만 씁니다 (예: "아내는 프리랜서라 쉬는 동안 소득이 없음"). 거기 없는 사실은 지어내지 않습니다.
 - 금액·기한을 새로 계산하지 않습니다. 주어진 값만 인용합니다.
 - 조언하지 않습니다 ("~하세요" 금지). 판정을 바꾸지 않습니다.
 - 재무설계 결과의 값은 "계획"이라고 씁니다 ("전제"라고 쓰지 않습니다).

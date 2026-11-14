@@ -56,9 +56,9 @@ export function createLlmClient(env: LlmEnv): LlmClient {
     async judgeText({ card, a, b }: TextJudgeInput): Promise<TextJudgeOutput> {
       return parseOutput(await call(buildPrompt(card, a, b), 4000))
     },
-    async summarize({ card, a, b, judgment }: { card: Card; a: string; b: string; judgment: Judgment }) {
+    async summarize({ card, a, b, judgment, profile }: { card: Card; a: string; b: string; judgment: Judgment; profile?: string }) {
       // 계획 · 답은 사람이 읽는 글로 ('300000000' → '3억원') — AI 가 단위를 바꾸지 않게
-      const text = await call(buildSummaryPrompt({ ...card, plannedValue: formatValue(card, card.plannedValue) }, formatAnswer(card, a), formatAnswer(card, b), judgment), 4000)
+      const text = await call(buildSummaryPrompt({ ...card, plannedValue: formatValue(card, card.plannedValue) }, formatAnswer(card, a), formatAnswer(card, b), judgment, profile), 4000)
       return text.trim().split('\n').map(l => l.trim()).filter(l => l && !/[?？]$/.test(l)).slice(0, 2).join('\n')
     },
     async extractPlan(docText: string) {

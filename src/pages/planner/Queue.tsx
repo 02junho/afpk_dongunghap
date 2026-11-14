@@ -133,7 +133,7 @@ export default function Queue() {
             const chip = res ? RESOLVED[res] : chipOf(it)
             // 한 칸 3줄 (11.14 팀 요청): AI 2줄(차이 · 함께 흔들리는 계획) + 팀이 정한 검토 기준 1줄. 질문 줄은 보이지 않는다
             const ai = it.summary
-              ? it.summary.split('\n').map(l => l.trim()).filter(l => l && !/[?？]$/.test(l)).slice(0, 2).join('\n')
+              ? it.summary.split('\n').map(l => l.trim().replace(/[.。]$/, '')).filter(l => l && !/[?？]$/.test(l)).slice(0, 2).join('\n')
               : (it.reason || '요약 없음 — 설계사가 두 답변을 직접 봅니다')
             const check = REVIEW[it.key]?.check
             const summary = check ? `${ai}\n검토 기준 — ${check}` : ai
