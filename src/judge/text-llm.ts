@@ -59,7 +59,7 @@ export function createLlmClient(env: LlmEnv): LlmClient {
     async summarize({ card, a, b, judgment }: { card: Card; a: string; b: string; judgment: Judgment }) {
       // 계획 · 답은 사람이 읽는 글로 ('300000000' → '3억원') — AI 가 단위를 바꾸지 않게
       const text = await call(buildSummaryPrompt({ ...card, plannedValue: formatValue(card, card.plannedValue) }, formatAnswer(card, a), formatAnswer(card, b), judgment), 4000)
-      return text.trim().split('\n').filter(l => l.trim()).slice(0, 3).join('\n')
+      return text.trim().split('\n').map(l => l.trim()).filter(l => l && !/[?？]$/.test(l)).slice(0, 2).join('\n')
     },
     async extractPlan(docText: string) {
       // 30칸 JSON — 출력이 길어 max_tokens 를 넉넉히 (thinking 몫 포함)
@@ -91,7 +91,7 @@ export const mockLlm: LlmClient = {
     return { aVsPlan: dev(jac(ta, p)), bVsPlan: dev(jac(tb, p)), abAgree: jac(ta, tb) >= 0.3, reason: 'mock' }
   },
   async summarize({ card }) {
-    return `mock 요약 (${card.label})\n품질 기대 금지\n실제 측정은 LLM_API_KEY 필요`
+    return `mock 요약 (${card.label})\n품질 기대 금지 — 실제 측정은 LLM_API_KEY 필요`
   },
   async extractPlan(docText: string) {
     // 화면 흐름 확인용 — 문서에 처음 나오는 "YYYY년"만 내 집 마련 시기 칸에 넣는다. 나머지는 못 찾음

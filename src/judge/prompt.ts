@@ -1,3 +1,5 @@
+import { REVIEW } from '../data/review'
+import { slotByKey } from '../data/template'
 /**
  * 프롬프트는 버전을 가진다. 고치면 해당 버전을 올리고 아래 CHANGELOG에 한 줄 남긴다.
  * judgments.prompt_version 에 저장되므로, 어떤 판정이 어느 프롬프트에서 나왔는지 추적된다.
@@ -24,19 +26,21 @@
  *           단위 바꾸기 · 상대 시점 계산 금지(앱 규칙이 바꿈), 근거 없으면 null, 값이 서로 다르면 null. 설계사 확인 뒤에만 저장.
  * extract v4 (11.05) 재무설계 결과를 PDF 로도 받는다 → 문서 설명을 "Word 또는 PDF"로, PDF 글은 줄바꿈 · 띄어쓰기가 다를 수 있다고 한 줄. 규칙은 그대로.
  * summary v3 (11.11) 설계사 화면 말과 맞춤: "설계 전제" → "계획"(입력 칸 이름 · 규칙 한 줄). 직접 시험에서 요약이 "설계 전제"라고 써서.
+ * summary v4 (11.14) 팀(예슬) 요청: 3줄째 질문("~인가요?")을 없앤다 — 재무설계 결과에 이미 있는 사실(프리랜서 등)을 되묻게 됨.
+ *           AI 는 2줄(차이 · 함께 흔들리는 계획)만 쓰고, 3줄째는 팀이 정한 검토 기준(src/data/review.ts)을 화면이 붙인다. 함께 볼 질문 이름을 근거로 준다.
  * extract v5 (11.09) 목표 질문 30문항으로 항목(find) 전면 교체. 규칙 7 "문서에 없으면 null — '해당 없음'이라 적지 않는다" 추가.
  *           보기 목록에서 아직 모름 · 해당 없음을 뺐고, 금액 항목에 매달 · 매년을 적고, 숫자 항목에 단위(년 · 명 · 개월)를 적는다. 예시 출력도 새 key 로.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
-  summary: 'v3',
+  summary: 'v4',
   extract: 'v5',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
 /** @deprecated PROMPT_VERSIONS.judge 를 쓸 것. eval 출력 파일명 호환용으로 남겨둔다. */
 export const PROMPT_VERSION = PROMPT_VERSIONS.judge
 
-type PromptCard = { label: string; question: string; plannedValue: string | number; stake: string }
+type PromptCard = { key?: string; label: string; question: string; plannedValue: string | number; stake: string }
 
 export function buildPrompt(card: PromptCard, a: string, b: string) {
   return `당신은 부부 재무설계 보조 도구입니다. 재무 조언은 하지 않습니다. 오직 세 가지만 판단합니다.
@@ -83,7 +87,7 @@ export function buildPrompt(card: PromptCard, a: string, b: string) {
 
 /**
  * 🔴 건의 설계사용 요약 (AI 활용 2번). 입력에 판정이 이미 들어 있다 — AI는 판정하지 않는다.
- * 조언·계산 금지. "무엇이 어긋났는지"만 3줄.
+ * 조언·계산·질문 금지. 2줄(차이 · 함께 흔들리는 계획). 3줄째 검토 기준은 화면이 붙인다 (v4).
  */
 export function buildSummaryPrompt(
   card: PromptCard,
@@ -98,21 +102,23 @@ export function buildSummaryPrompt(
     : judgment.verdict === 'red'
       ? `계획과 다름${who.length ? ` (${who.join(' · ')} 답이 계획과 다름)` : ''}`
       : '확인 필요 (답을 규칙으로 읽지 못함)'
-  return `당신은 재무설계사의 보조 도구입니다. 아래 건을 설계사가 30초 안에 파악할 수 있게 3줄로 요약하세요.
+  const related = (card.key ? REVIEW[card.key]?.related ?? [] : []).map(k => slotByKey(k)?.label).filter(Boolean).join(' · ')
+  return `당신은 재무설계사의 보조 도구입니다. 아래 건을 설계사가 30초 안에 파악할 수 있게 2줄로 요약하세요.
 
 [카드] ${card.label} — ${card.question}
 [계획 (재무설계 결과)] ${card.plannedValue}
 [이 계획이 바뀌면] ${card.stake}
+[함께 다시 볼 질문] ${related || '없음'}
 [남편 답변] ${a}
 [아내 답변] ${b}
 [판정] ${kind}${judgment.reason ? ` · ${judgment.reason}` : ''}
 
 [규칙]
-- 1줄: 무엇이 어긋났는지 (사실만)
-- 2줄: 그래서 설계의 무엇이 영향을 받는지 (위 '이 계획이 바뀌면' 내용을 근거로)
-- 3줄: 설계사가 확인해야 할 것 한 가지 (질문 형태)
+- 1줄: 계획과 두 분 답의 차이 — 누가 계획과 같고 누가 어떻게 다른지 (사실만)
+- 2줄: 이 차이로 함께 흔들리는 계획 (위 '이 계획이 바뀌면'과 '함께 다시 볼 질문'만 근거로)
+- 질문하지 않습니다. 물음표를 쓰지 않습니다. 재무설계 결과에 이미 있는 사실을 되묻지 않습니다.
 - 금액·기한을 새로 계산하지 않습니다. 주어진 값만 인용합니다.
 - 조언하지 않습니다 ("~하세요" 금지). 판정을 바꾸지 않습니다.
 - 재무설계 결과의 값은 "계획"이라고 씁니다 ("전제"라고 쓰지 않습니다).
-- 각 줄 40자 이내. 줄바꿈으로 구분. 다른 텍스트 없이 3줄만 출력하세요.`
+- 각 줄 50자 이내. 줄바꿈으로 구분. 다른 텍스트 없이 2줄만 출력하세요.`
 }

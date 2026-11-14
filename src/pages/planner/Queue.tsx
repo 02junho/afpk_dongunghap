@@ -8,15 +8,9 @@ import type { Card, Judgment, RedKind } from '../../judge/index'
 /** 부부는 계획을 보지 않고 답한다 (11.05 목표 질문) — 설계사에겐 답과 "계획과 같음 / 다름"을 나란히 */
 const asSaid = (c: Card, raw: string) => answerLine(showAnswer(c, raw), raw, String(c.plannedValue))
 import { usePlanner } from './planner'
-import { SLOTS, THEMES } from '../../data/template'
+import { THEMES } from '../../data/template'
 import { REVIEW } from '../../data/review'
 
-/** "1-5 집 마련 월 적립액" — 질문 번호는 주차-순서 */
-const slotNo = (key: string) => {
-  const s = SLOTS.find(x => x.key === key)
-  if (!s) return key
-  return `${s.week}-${SLOTS.filter(x => x.week === s.week).indexOf(s) + 1} ${s.label}`
-}
 
 /**
  * 큐를 닫는 버튼 = judgments.resolution 값 그대로.
@@ -137,7 +131,12 @@ export default function Queue() {
             const cat = CATEGORIES[it.category]
             const res = done[it.id]
             const chip = res ? RESOLVED[res] : chipOf(it)
-            const summary = it.summary ?? (it.reason || '요약 없음 — 설계사가 두 답변을 직접 봅니다')
+            // 한 칸 3줄 (11.14 팀 요청): AI 2줄(차이 · 함께 흔들리는 계획) + 팀이 정한 검토 기준 1줄. 질문 줄은 보이지 않는다
+            const ai = it.summary
+              ? it.summary.split('\n').map(l => l.trim()).filter(l => l && !/[?？]$/.test(l)).slice(0, 2).join('\n')
+              : (it.reason || '요약 없음 — 설계사가 두 답변을 직접 봅니다')
+            const check = REVIEW[it.key]?.check
+            const summary = check ? `${ai}\n검토 기준 — ${check}` : ai
             return (
               <div className="qcard" key={it.id} style={res ? { opacity: 0.6 } : undefined}>
                 <div className="queue-top">
@@ -163,12 +162,6 @@ export default function Queue() {
                   </span>
                   {summary}
                 </p>
-                {REVIEW[it.key] && (
-                  <p className="summary" style={{ whiteSpace: 'pre-line' }}>
-                    <span className="summary-by">수정 방향 검토 기준</span>
-                    {`함께 다시 볼 질문: ${REVIEW[it.key].related.map(slotNo).join(' · ')}\n${REVIEW[it.key].check}`}
-                  </p>
-                )}
                 {!res && (
                   <>
                     {liveMode && (
