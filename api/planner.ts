@@ -10,7 +10,7 @@
  *   archive_couple / restore_couple           지우기(보관) · 되돌리기. 기록은 지우지 않는다
  *   rename_couple { husband, wife, label? }   이름 고치기
  *   template                                  질문 틀 30칸의 지금 계획 값
- *   template_save { values: {key: 값}, source, profile? } 계획 값 저장 (profile: 부부 기본 정보 한 줄 — AI 요약에만 씀) — 처음이면 v1, 바뀌면 새 버전(덮어쓰지 않음). 묻는 중인 칸은 건너뜀
+ *   template_save { values: {key: 값}, source } 계획 값 저장 — 처음이면 v1, 바뀌면 새 버전(덮어쓰지 않음). 묻는 중인 칸은 건너뜀
  *   extract_plan { docText }                  재무설계 결과(Word · PDF) 글 → 30칸 계획 값 찾기 (AI · 저장 안 함 — 설계사가 확인 뒤 template_save)
  *   cycle                                     사이클 상태 (주차 · 진행 · 이번 사이클의 어긋난 것). 볼 때마다 tick
  *   cycle_start { periodMonths }              사이클 시작 (30칸이 다 차야) → 1주차 질문이 열린다
@@ -23,7 +23,7 @@ import { extractPlanValues, serviceClient, summarizeJudgment } from './judge'
 import { EXACT, SLOTS, WEEKS, PER_THEME, themeOfWeek } from '../src/data/template'
 import { planValue } from '../src/lib/plan-values'
 import { notify } from './_notify'
-import { getProfile, setProfile } from './_profile'
+import { setProfile } from './_profile'
 import { CYCLE_PATCH, cycleEndsAt, latestCycle, nextCycleAt, noCycleTable, tickCouple, weekOf } from './_cycle'
 
 export const config = { runtime: 'edge' }
@@ -180,7 +180,7 @@ export default async function handler(req: Request): Promise<Response> {
         const open = await openVersionIds(sb, coupleId)
         const values: Record<string, { cardId: string; versionId: string; version: number; planned: string; inOpenRound: boolean }> = {}
         for (const c of data ?? []) values[c.key] = { cardId: c.card_id, versionId: c.id, version: c.version, planned: c.planned_value, inOpenRound: open.has(c.id) }
-        return Response.json({ values, profile: await getProfile(sb, coupleId) })
+        return Response.json({ values })
       }
       case 'template_save': {
         // 카드 값은 덮어쓰지 않는다 — 처음이면 v1, 바뀌면 새 버전 (DB 트리거가 막는다, CLAUDE.md)
@@ -220,7 +220,6 @@ export default async function handler(req: Request): Promise<Response> {
           saved.push(s.key)
           if (cur) changed.push(s.label)
         }
-        if (typeof body.profile === 'string') await setProfile(sb, coupleId, body.profile)
         if (changed.length) await notify(req.url, { coupleId }, { title: '돈궁합', body: '설계사님이 [내 설계]를 새로 고쳤어요.', url: '/c/home', tag: 'plan' })
         return Response.json({ saved: saved.length, changed, skipped, errors })
       }
@@ -234,7 +233,14 @@ export default async function handler(req: Request): Promise<Response> {
         const stream = new ReadableStream({
           async start(ctrl) {
             const tick = setInterval(() => ctrl.enqueue(enc.encode(' ')), 5000)
-            try { ctrl.enqueue(enc.encode(JSON.stringify(await extractPlanValues(docText)))) }
+            try {
+              const r = await extractPlanValues(docText)
+              // 재무설계 결과 속 부부의 직업 · 소득 형태를 기억해 둔다 — AI 요약이 이미 있는 사실을 되묻지 않게 (11.14).
+              // 화면에는 보이지 않고 요약에만 쓴다. 근거 문장이 문서에 실제로 있을 때만 (지어낸 정보는 남기지 않는다)
+              if (typeof body.coupleId === 'string' && body.coupleId && r.profile?.found && r.profile.quoteInDoc)
+                await setProfile(sb, body.coupleId, r.profile.found).catch(() => {})   // 기억 실패는 값 찾기를 막지 않는다
+              ctrl.enqueue(enc.encode(JSON.stringify({ finds: r.finds, promptVersion: r.promptVersion })))
+            }
             catch (e) { ctrl.enqueue(enc.encode(JSON.stringify({ error: `계획 값을 찾지 못했습니다: ${(e as Error).message}` }))) }
             finally { clearInterval(tick); ctrl.close() }
           },

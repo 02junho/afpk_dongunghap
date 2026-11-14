@@ -31,12 +31,13 @@ import { slotByKey } from '../data/template'
  *           (같은 날 시험 뒤) 영어 판정 용어 금지 · 말끝 '~함/~음' 통일 두 줄 추가 — 첫 시험에서 '(minor)'가 섞이고 말끝이 섞여서.
  * summary v5 (11.14) 부부 기본 정보 한 줄(재무설계 결과에서 찾고 설계사가 확인, api/_profile.ts)을 함께 준다. 누구 이야기인지 밝히는 근거로만 — 지어내기 금지.
  * extract v6 (11.14) 항목에 _profile(남편 · 아내 직업 · 소득 형태 한 문장)을 더했다. 30칸 값 찾기 규칙은 그대로.
+ * summary v6 (11.14) 부부 기본 정보는 설계사가 화면에서 확인하지 않고, 재무설계 결과를 넣을 때 앱이 기억한다(근거 문장이 문서에 있을 때만). 이름표만 '재무설계 결과에서 찾음'으로.
  * extract v5 (11.09) 목표 질문 30문항으로 항목(find) 전면 교체. 규칙 7 "문서에 없으면 null — '해당 없음'이라 적지 않는다" 추가.
  *           보기 목록에서 아직 모름 · 해당 없음을 뺐고, 금액 항목에 매달 · 매년을 적고, 숫자 항목에 단위(년 · 명 · 개월)를 적는다. 예시 출력도 새 key 로.
  */
 export const PROMPT_VERSIONS = {
   judge: 'v3',
-  summary: 'v5',
+  summary: 'v6',
   extract: 'v6',   // 재무설계 결과(Word · PDF) → 질문 틀 30칸의 계획 값 (src/extract/plan.ts)
 } as const
 
@@ -113,7 +114,7 @@ export function buildSummaryPrompt(
 [계획 (재무설계 결과)] ${card.plannedValue}
 [이 계획이 바뀌면] ${card.stake}
 [함께 다시 볼 질문] ${related || '없음'}
-[부부 기본 정보 (재무설계 결과 · 설계사 확인)] ${profile.trim() || '없음'}
+[부부 기본 정보 (재무설계 결과에서 찾음)] ${profile.trim() || '없음'}
 [남편 답변] ${a}
 [아내 답변] ${b}
 [판정] ${kind}${judgment.reason ? ` · ${judgment.reason}` : ''}

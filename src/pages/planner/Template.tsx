@@ -27,23 +27,19 @@ function toInput(s: Slot, planned: string): string {
 /** 예시 모드에서 문서에 없다고 보여 줄 칸 — 지금 4단계 초안에 값이 없는 칸 (docs/22 · 23) */
 const DEMO_NOT_FOUND = ['t2_child_count', 't6_retire_fund_where', 't6_after_return']
 
-const DEMO_PROFILE = '남편: 대기업 직장인(연 급여 6,700만 원) · 아내: 프리랜서(순사업소득 3,200만 원)'
 
 export default function Template() {
   const p = usePlanner()
   const liveMode = !!(p.live && p.pass)
   // 화면을 옮겨 다시 열 때 빈 칸이 잠깐 보이지 않게, 마지막으로 받은 값을 먼저 그린다 (planner.ts remembered)
   const tkey = apiKey('template', p.couple.id)
-  const tRaw = liveMode ? remembered<{ values: Record<string, Saved>; profile?: string }>(tkey) : undefined
-  const tc = tRaw ? { values: tRaw.values, profile: tRaw.profile ?? '', brief: remembered<CycleBrief>(apiKey('cycle', p.couple.id)) ?? null } : undefined
+  const tRaw = liveMode ? remembered<{ values: Record<string, Saved> }>(tkey) : undefined
+  const tc = tRaw ? { values: tRaw.values, brief: remembered<CycleBrief>(apiKey('cycle', p.couple.id)) ?? null } : undefined
   const [saved, setSaved] = useState<Record<string, Saved>>(tc?.values ?? {})
   const [input, setInput] = useState<Record<string, string>>(() => (tc ? Object.fromEntries(SLOTS.map(x => [x.key, tc.values[x.key] ? toInput(x, tc.values[x.key].planned) : ''])) : {}))
   const [finds, setFinds] = useState<Record<string, PlanFind>>({})
   const [ok, setOk] = useState<Record<string, boolean>>({})
-  // 부부 기본 정보 한 줄 (11.14) — AI 요약이 재무설계 결과에 있는 사실을 되묻지 않게. 부부 화면에는 안 나온다
-  const [profile, setProfileText] = useState(tc?.profile ?? '')
-  const [profileSaved, setProfileSaved] = useState(tc?.profile ?? '')
-  const [profileQuote, setProfileQuote] = useState<string | null>(null)        // Word 에서 온 값: 설계사가 원문과 맞다고 확인
+        // Word 에서 온 값: 설계사가 원문과 맞다고 확인
   const [source, setSource] = useState<'manual' | 'word' | 'example'>('manual')
   const [brief, setBrief] = useState<CycleBrief | null>(tc?.brief ?? null)
   const [period, setPeriod] = useState<3 | 6>(3)
@@ -57,19 +53,17 @@ export default function Template() {
       for (const x of SLOTS) s[x.key] = { planned: x.example, version: 1, inOpenRound: x.week === 3 }
       setSaved(s); setInput(Object.fromEntries(SLOTS.map(x => [x.key, toInput(x, x.example)])))
       setBrief({ cycle: { week: 3, closedAt: null, nextAt: '' }, filled: 30, total: 30 })
-      setProfileText(DEMO_PROFILE); setProfileSaved(DEMO_PROFILE)
       return
     }
     setBusy('load')
     try {
       const [t, c] = await Promise.all([
-        p.call<{ values: Record<string, Saved>; profile?: string }>('template'),
+        p.call<{ values: Record<string, Saved> }>('template'),
         p.call<CycleBrief>('cycle').catch(e => { setErr((e as Error).message); return null }),
       ])
       setSaved(t.values)
       setInput(Object.fromEntries(SLOTS.map(x => [x.key, t.values[x.key] ? toInput(x, t.values[x.key].planned) : ''])))
       setFinds({}); setOk({}); setSource('manual')
-      setProfileText(t.profile ?? ''); setProfileSaved(t.profile ?? ''); setProfileQuote(null)
       setBrief(c)
       remember(tkey, t); if (c) remember(apiKey('cycle', p.couple.id), c)
     } catch (e) { setErr((e as Error).message) }
@@ -105,7 +99,8 @@ export default function Template() {
       const { planFileToText } = await import('../../lib/pdf-text')
       const { text, truncated } = await planFileToText(await f.arrayBuffer())
       if (!text.trim()) throw new Error('재무설계 결과 파일에서 글을 읽지 못했습니다')
-      const r = await p.call<{ finds: PlanFind[]; profile?: { found: string; quote: string | null } | null; promptVersion: string; error?: string }>('extract_plan', { docText: text })
+      // 재무설계 결과 속 부부의 직업 · 소득 형태는 서버가 조용히 기억해 AI 요약에만 쓴다 (화면에는 안 나온다, 11.14)
+      const r = await p.call<{ finds: PlanFind[]; promptVersion: string; error?: string }>('extract_plan', { docText: text })
       if (r.error) throw new Error(r.error)
       const byKey: Record<string, PlanFind> = {}
       const next = { ...input }
@@ -116,7 +111,6 @@ export default function Template() {
         next[fd.key] = fd.value ? toInput(s, fd.value) : fd.found
       }
       setFinds(byKey); setOk({}); setInput(next); setSource('word')
-      if (r.profile?.found) { setProfileText(r.profile.found); setProfileQuote(r.profile.quote) }
       const n = Object.keys(byKey).length
       setMsg(`"${f.name}"에서 ${n}칸을 찾았습니다${truncated ? ' (글이 길어 앞부분만 읽음)' : ''}. 칸마다 원문을 보고 "원문과 맞음"을 눌러 주세요. 못 찾은 ${SLOTS.length - n}칸은 직접 채웁니다.`)
     } catch (e) { setErr((e as Error).message) }
@@ -139,19 +133,17 @@ export default function Template() {
     return { s, raw, v, cur, fromWord, waiting, changed, locked: !!cur?.inOpenRound }
   }), [input, saved, finds, ok])
   const toSave = rows.filter(r => r.changed && !r.waiting && !r.locked)
-  const profileChanged = profile.trim() !== profileSaved.trim()
   const waitingCount = rows.filter(r => r.changed && r.waiting).length
   const savedCount = SLOTS.filter(s => saved[s.key]).length
 
   async function save() {
     setErr(''); setMsg('')
     const values = Object.fromEntries(toSave.map(r => [r.s.key, (r.v as { value: string }).value]))
-    if (!liveMode) { setProfileSaved(profile); setSaved(x => ({ ...x, ...Object.fromEntries(toSave.map(r => [r.s.key, { planned: (r.v as { value: string }).value, version: (x[r.s.key]?.version ?? 0) + 1, inOpenRound: false }])) })); setMsg(`(예시) ${toSave.length}칸 저장`); return }
+    if (!liveMode) { setSaved(x => ({ ...x, ...Object.fromEntries(toSave.map(r => [r.s.key, { planned: (r.v as { value: string }).value, version: (x[r.s.key]?.version ?? 0) + 1, inOpenRound: false }])) })); setMsg(`(예시) ${toSave.length}칸 저장`); return }
     setBusy('save')
     try {
-      const r = await p.call<{ saved: number; changed: string[]; skipped: string[]; errors: { key: string; error: string }[] }>('template_save', { values, source, ...(profileChanged ? { profile } : {}) })
+      const r = await p.call<{ saved: number; changed: string[]; skipped: string[]; errors: { key: string; error: string }[] }>('template_save', { values, source })
       const parts = [`${r.saved}칸 저장했습니다`]
-      if (profileChanged) parts.push('부부 기본 정보 저장')
       if (r.skipped.length) parts.push(`지금 묻는 중이라 건너뜀: ${r.skipped.join(', ')}`)
       if (r.errors.length) parts.push(`저장 못 함 ${r.errors.length}칸`)
       if (waitingCount) parts.push(`원문 확인 안 한 ${waitingCount}칸은 저장하지 않음`)
@@ -189,26 +181,11 @@ export default function Template() {
           <label className={`btn btn-small${busy ? ' btn-off' : ''}`} htmlFor="tpl-word" style={{ cursor: 'pointer' }}>{busy === 'word' ? 'AI가 찾는 중… (30초~1분)' : '재무설계 결과에서 채우기'}</label>
           <input id="tpl-word" type="file" accept=".docx,.pdf" hidden disabled={!!busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void readWord(f) }} />
           <button className="btn btn-quiet btn-small" disabled={!!busy} onClick={fillExample}>예시 값으로 채우기 (테스트용)</button>
-          <button className="btn btn-small" style={{ marginLeft: 'auto' }} disabled={!!busy || (!toSave.length && !profileChanged)} onClick={() => void save()}>
+          <button className="btn btn-small" style={{ marginLeft: 'auto' }} disabled={!!busy || !toSave.length} onClick={() => void save()}>
             {busy === 'save' ? '저장 중…' : `저장 (${toSave.length}칸)`}
           </button>
         </div>
 
-        {!firstLoad && (<>
-        <div className="qcard" style={{ padding: '12px 16px', marginTop: 18 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, alignItems: 'center' }}>
-            <div>
-              <b>부부 기본 정보</b>
-              <p className="meta" style={{ margin: '2px 0 0' }}>두 분의 직업 · 소득 형태. AI 요약이 누구 이야기인지 밝힐 때만 씁니다</p>
-            </div>
-            <input className="field" style={{ padding: '8px 10px', fontSize: 14, boxShadow: 'none', border: '2px solid var(--line)' }} disabled={!!busy}
-              value={profile} maxLength={200} placeholder="예: 남편 직장인(연 급여 6,700만 원) · 아내 프리랜서"
-              onChange={e => { setProfileText(e.target.value); setProfileQuote(null) }} />
-          </div>
-          {profileQuote && <p className="meta" style={{ margin: '8px 0 0', fontSize: 12 }}><span className="meta">원문</span> “{profileQuote}”</p>}
-        </div>
-
-        </>)}
 
         {!firstLoad && THEMES.map(t => {
           const cat = CATEGORIES[t.category]
