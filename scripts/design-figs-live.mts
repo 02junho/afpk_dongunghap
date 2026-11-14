@@ -62,9 +62,11 @@ const realUrl = () => d.evaluate(() => {
   for (let n: Node | null; (n = w.nextNode());) if (n.nodeValue?.includes('localhost:5174')) n.nodeValue = n.nodeValue.replace('http://localhost:5174', 'https://afpk-dongunghap.vercel.app')
 })
 const hideTest = () => d.evaluate(() => document.querySelectorAll('button').forEach(b => { if (b.textContent?.includes('(테스트용)')) b.remove() }))
+// 문서 그림에는 시연 부부만 (팀원 연습 부부는 뺀다 — 11.14 예슬님 의견)
+const onlyDemo = () => d.evaluate(() => document.querySelectorAll('.qcard').forEach(c => { if (!c.textContent?.includes('이도윤 · 한서연')) c.remove() }))
 const dshot = async (name: string, url: string) => {
   await d.goto(B + url, { waitUntil: 'networkidle' }); await d.waitForTimeout(1500)
-  await hideTest(); await realUrl()
+  await hideTest(); await realUrl(); if (url === '/p/couples') await onlyDemo()
   await d.screenshot({ path: `${OUT}/${name}.png` })
 }
 await dshot('p-couples', '/p/couples')
