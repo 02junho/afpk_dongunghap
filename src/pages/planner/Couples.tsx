@@ -55,7 +55,9 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
       setRows(remember('couples', items)); setErr('')
       // 이 노트북이 기억하는 '보는 중' 부부의 이름이 DB 와 다르면(이름 고치기·데이터 정리 뒤) 최신으로
       const cur = items.find(r => r.id === p.couple.id)
-      if (cur && (cur.label !== p.couple.label || cur.husband !== p.couple.husband || cur.wife !== p.couple.wife)) p.setCouple(cur)
+      if (cur && !cur.archivedAt && (cur.label !== p.couple.label || cur.husband !== p.couple.husband || cur.wife !== p.couple.wife)) p.setCouple(cur)
+      // 처음 쓰는 노트북(고른 부부 없음)이거나 보던 부부가 지워졌으면 첫 부부를 고른다 — 왼쪽 메뉴가 빈 '남편 · 아내'로 남지 않게 (11.14)
+      if (!cur || cur.archivedAt) { const first = items.find(r => !r.archivedAt); if (first) p.setCouple(first) }
     }
     catch (e) { setErr((e as Error).message) }
   }
