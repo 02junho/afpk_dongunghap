@@ -7,7 +7,7 @@ import type { Card, Judgment, RedKind } from '../../judge/index'
 
 /** 부부는 계획을 보지 않고 답한다 (11.05 목표 질문) — 설계사에겐 답과 "계획과 같음 / 다름"을 나란히 */
 const asSaid = (c: Card, raw: string) => answerLine(showAnswer(c, raw), raw, String(c.plannedValue))
-import { remember, remembered, usePlanner } from './planner'
+import { apiKey, remember, remembered, usePlanner } from './planner'
 import { THEMES } from '../../data/template'
 import { REVIEW } from '../../data/review'
 
@@ -49,10 +49,24 @@ interface Item {
  * live: /api/planner (service_role, 설계사 코드 — Rail 이 받는다). 데모: 고정 데이터 또는 한 기기 데모 결과.
  * "이건 같은 뜻이에요"(AI 오판 표시)는 부부가 아니라 설계사가 누른다 — 부부는 판정을 보지 않으므로.
  */
+/** 서버 응답 → 화면 항목. 부부는 계획을 보지 않고 답한다 (11.05) — 답 옆에 계획과 같은지만 붙인다 */
+function toItems(rows: any[]): Item[] {
+  const show = (r: any, ans: string) => {
+    const raw = String(ans ?? '')
+    const v = showPlanned(r.type, r.unit, raw, r.key)
+    return answerLine(v, raw, String(r.planned ?? ''))
+  }
+  return rows.map(r => ({
+    ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? ''), r.key),
+    roundLabel: '주간 질문',
+  }))
+}
+
 export default function Queue() {
   const p = usePlanner()
-  const qkey = `queue:${p.couple.id}`
-  const [items, setItems] = useState<Item[] | null>(() => (p.live && p.pass ? remembered<Item[]>(qkey) ?? null : null))
+  const qkey = apiKey('queue', p.couple.id)
+  const cachedItems = () => { const r = remembered<{ items: any[] }>(qkey); return r ? toItems(r.items) : null }
+  const [items, setItems] = useState<Item[] | null>(() => (p.live && p.pass ? cachedItems() : null))
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
   const [done, setDone] = useState<Record<string, Resolution>>({})
@@ -62,20 +76,11 @@ export default function Queue() {
   async function load() {
     setErr('')
     try {
-      const { items } = await p.call<{ items: any[] }>('queue')
-      // 부부는 계획을 보지 않고 답한다 (11.05) — 답 옆에 계획과 같은지만 붙인다
-      const show = (r: any, ans: string) => {
-        const raw = String(ans ?? '')
-        const v = showPlanned(r.type, r.unit, raw, r.key)
-        return answerLine(v, raw, String(r.planned ?? ''))
-      }
-      setItems(remember(qkey, items.map(r => ({
-        ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? ''), r.key),
-        roundLabel: '주간 질문',
-      }))))
+      const r = remember(qkey, await p.call<{ items: any[] }>('queue'))
+      setItems(toItems(r.items))
     } catch (e) { setErr((e as Error).message) }
   }
-  useEffect(() => { if (p.live && p.pass) { setItems(remembered<Item[]>(qkey) ?? null); void load() } else setItems(null) }, [p.live, p.pass, p.couple.id])
+  useEffect(() => { if (p.live && p.pass) { setItems(cachedItems()); void load() } else setItems(null) }, [p.live, p.pass, p.couple.id])
 
   async function resolve(it: Item, r: Resolution) {
     if (p.live && p.pass) {

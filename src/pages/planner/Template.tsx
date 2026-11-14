@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Rail from './Rail'
-import { remember, remembered, usePlanner } from './planner'
+import { apiKey, remember, remembered, usePlanner } from './planner'
 import { CATEGORIES, showPlanned } from '../../data/demo'
 import { NA, SLOTS, THEMES, type Slot } from '../../data/template'
 import { planValue } from '../../lib/plan-values'
@@ -33,8 +33,9 @@ export default function Template() {
   const p = usePlanner()
   const liveMode = !!(p.live && p.pass)
   // 화면을 옮겨 다시 열 때 빈 칸이 잠깐 보이지 않게, 마지막으로 받은 값을 먼저 그린다 (planner.ts remembered)
-  const tkey = `template:${p.couple.id}`
-  const tc = liveMode ? remembered<{ values: Record<string, Saved>; profile: string; brief: CycleBrief | null }>(tkey) : undefined
+  const tkey = apiKey('template', p.couple.id)
+  const tRaw = liveMode ? remembered<{ values: Record<string, Saved>; profile?: string }>(tkey) : undefined
+  const tc = tRaw ? { values: tRaw.values, profile: tRaw.profile ?? '', brief: remembered<CycleBrief>(apiKey('cycle', p.couple.id)) ?? null } : undefined
   const [saved, setSaved] = useState<Record<string, Saved>>(tc?.values ?? {})
   const [input, setInput] = useState<Record<string, string>>(() => (tc ? Object.fromEntries(SLOTS.map(x => [x.key, tc.values[x.key] ? toInput(x, tc.values[x.key].planned) : ''])) : {}))
   const [finds, setFinds] = useState<Record<string, PlanFind>>({})
@@ -70,7 +71,7 @@ export default function Template() {
       setFinds({}); setOk({}); setSource('manual')
       setProfileText(t.profile ?? ''); setProfileSaved(t.profile ?? ''); setProfileQuote(null)
       setBrief(c)
-      remember(tkey, { values: t.values, profile: t.profile ?? '', brief: c })
+      remember(tkey, t); if (c) remember(apiKey('cycle', p.couple.id), c)
     } catch (e) { setErr((e as Error).message) }
     setBusy('')
   }
@@ -193,6 +194,7 @@ export default function Template() {
           </button>
         </div>
 
+        {!firstLoad && (<>
         <div className="qcard" style={{ padding: '12px 16px', marginTop: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, alignItems: 'center' }}>
             <div>
@@ -205,6 +207,8 @@ export default function Template() {
           </div>
           {profileQuote && <p className="meta" style={{ margin: '8px 0 0', fontSize: 12 }}><span className="meta">원문</span> “{profileQuote}”</p>}
         </div>
+
+        </>)}
 
         {!firstLoad && THEMES.map(t => {
           const cat = CATEGORIES[t.category]
@@ -262,7 +266,7 @@ export default function Template() {
           )
         })}
 
-        <div className="editor" style={{ marginTop: 26, maxWidth: 620 }}>
+        {!firstLoad && <div className="editor" style={{ marginTop: 26, maxWidth: 620 }}>
           <p className="editor-title">6주 사이클</p>
           {active ? (
             <p style={{ margin: '6px 0 0' }}>진행 중 · {brief!.cycle!.week}주차. <Link to="/p/cycle">사이클 보기 →</Link></p>
@@ -282,7 +286,7 @@ export default function Template() {
               </div>
             </>
           )}
-        </div>
+        </div>}
       </main>
     </div>
   )

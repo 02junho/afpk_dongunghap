@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Rail from './Rail'
-import { remember, remembered, usePlanner } from './planner'
+import { apiKey, remember, remembered, usePlanner } from './planner'
 import { answerLine, CATEGORIES, chipOf, showPlanned } from '../../data/demo'
 import { THEMES, WEEKS, PER_THEME } from '../../data/template'
 
@@ -40,7 +40,7 @@ const DEMO: CycleRes = (() => {
 export default function Cycle() {
   const p = usePlanner()
   const liveMode = !!(p.live && p.pass)
-  const ckey = `cycle:${p.couple.id}`
+  const ckey = apiKey('cycle', p.couple.id)
   const [data, setData] = useState<CycleRes | null>(liveMode ? (remembered<CycleRes>(ckey) ?? null) : DEMO)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')

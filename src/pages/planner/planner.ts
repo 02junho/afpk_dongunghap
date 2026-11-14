@@ -21,6 +21,16 @@ export function remembered<T>(key: string): T | undefined {
   return m && Date.now() - m.at < FRESH_MS ? (m.v as T) : undefined
 }
 export function remember<T>(key: string, v: T): T { memo.set(key, { v, at: Date.now() }); return v }
+/** 화면마다 받은 응답 그대로 기억한다 — 부부 하나 · 동작 하나에 한 칸 */
+export const apiKey = (action: string, coupleId: string) => `api:${action}:${coupleId}`
+const PREFETCH = ['queue', 'template', 'cycle', 'history'] as const
+/** 설계사 화면에 들어오면 지금 부부의 네 화면 데이터를 미리 받아 둔다 — 메뉴를 처음 누를 때도 바로 보이게 (11.14) */
+export function prefetch(call: <T>(action: string) => Promise<T>, coupleId: string) {
+  for (const a of PREFETCH) {
+    const k = apiKey(a, coupleId)
+    if (remembered(k) === undefined) call(a).then(r => { remember(k, r) }).catch(() => {})
+  }
+}
 
 export interface CoupleRow {
   id: string
@@ -89,13 +99,15 @@ export function usePlanner() {
 /** 사이드바 '처리 대기' 숫자 — live 면 DB, 아니면 데모 */
 export function useQueueCount(p: ReturnType<typeof usePlanner>, fallback: number) {
   const live = p.live && !!p.pass
-  const key = `count:${p.couple.id}`
+  const key = apiKey('queue', p.couple.id)
+  const known = () => remembered<{ items: unknown[] }>(key)?.items.length
   // 실제 화면에서는 예시 숫자를 먼저 보이지 않는다 — 기억한 숫자, 없으면 받을 때까지 비워 둔다
-  const [n, setN] = useState(live ? (remembered<number>(key) ?? 0) : fallback)
+  const [n, setN] = useState(live ? (known() ?? 0) : fallback)
   useEffect(() => {
     if (!live) { setN(fallback); return }
-    setN(remembered<number>(key) ?? 0)
-    p.call<{ items: unknown[] }>('queue').then(q => setN(remember(key, q.items.length))).catch(() => {})
+    setN(known() ?? 0)
+    p.call<{ items: unknown[] }>('queue').then(q => setN(remember(key, q).items.length)).catch(() => {})
+    prefetch(p.call, p.couple.id)
   }, [p.live, p.pass, p.couple.id])
   return n
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Rail from './Rail'
-import { remember, remembered, usePlanner } from './planner'
+import { apiKey, remember, remembered, usePlanner } from './planner'
 import { showPlanned } from '../../data/demo'
 import type { Card } from '../../judge/index'
 
@@ -16,14 +16,14 @@ const DEMO: Row[] = [
 /** 변경 이력. 카드 값은 덮어쓰지 않으므로 card_versions 가 곧 이력이다. live 면 DB. */
 export default function History() {
   const p = usePlanner()
-  const key = `history:${p.couple.id}`
-  const [rows, setRows] = useState<Row[] | null>(p.live && p.pass ? (remembered<Row[]>(key) ?? null) : DEMO)
+  const key = apiKey('history', p.couple.id)
+  const [rows, setRows] = useState<Row[] | null>(p.live && p.pass ? (remembered<{ items: Row[] }>(key)?.items ?? null) : DEMO)
   const [err, setErr] = useState('')
 
   useEffect(() => {
     if (!p.live || !p.pass) { setRows(DEMO); return }
-    setRows(remembered<Row[]>(key) ?? null)
-    p.call<{ items: Row[] }>('history').then(r => { setRows(remember(key, r.items)); setErr('') }).catch(e => setErr((e as Error).message))
+    setRows(remembered<{ items: Row[] }>(key)?.items ?? null)
+    p.call<{ items: Row[] }>('history').then(r => { setRows(remember(key, r).items); setErr('') }).catch(e => setErr((e as Error).message))
   }, [p.live, p.pass, p.couple.id])
 
   const fmt = (iso: string) => new Date(iso).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
