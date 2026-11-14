@@ -37,9 +37,8 @@ export default function History() {
             <div className="qcard" key={l.id}>
               <div className="queue-top">
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{l.label}</span>
-                <span className="meta">v{l.version}</span>
                 <span className={`chip ${l.active ? 'chip-agree' : l.awaiting ? 'chip-talk' : 'chip-escalate'}`}>{l.active ? '반영됨' : l.awaiting ? '동의 대기' : '동의 안 됨'}</span>
-                <span className="queue-couple">{fmt(l.at)} · 박성훈 AFPK</span>
+                <span className="queue-couple">{fmt(l.at)}</span>
               </div>
               <dl className="pair" style={{ gridTemplateColumns: '60px 1fr' }}>
                 <dt className="meta">이전</dt><dd style={{ color: 'var(--muted)' }}>{showPlanned(l.type, l.unit, l.from)}</dd>
