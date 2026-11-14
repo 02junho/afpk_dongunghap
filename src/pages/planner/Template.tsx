@@ -210,7 +210,7 @@ export default function Template() {
                         : r.v && !r.v.ok ? <span style={{ color: 'var(--escalate)' }}>{r.v.error}</span>
                         : r.waiting ? <span style={{ color: 'var(--talk)' }}>원문 확인 필요</span>
                         : r.changed ? <span style={{ color: 'var(--agree)' }}>{r.cur ? '바뀜' : '새로'} · {showPlanned(r.s.type, r.s.unit, (r.v as { value: string }).value, r.s.key)}</span>
-                        : r.cur ? `저장됨 v${r.cur.version}` : '비어 있음'}
+                        : r.cur ? '저장됨' : '비어 있음'}
                     </span>
                   </div>
                   {r.fromWord && (
