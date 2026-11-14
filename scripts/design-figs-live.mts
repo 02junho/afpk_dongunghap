@@ -1,9 +1,10 @@
 /**
- * 앱설계서 그림 6장 — 실제 DB 의 시연 부부(이도윤 · 한서연)로 찍는다 (11.14).
+ * 앱설계서 그림 6장 — 실제 DB 의 시연 부부로 찍는다 (11.14). scripts/make-report-couples.mts 로 만든 두 쌍:
+ *   설계사 화면은 보고서 사례 이도윤 · 한서연(818793, 6주 끝 · 처리 대기 1건), 부부 폰은 직접 답해 보기 정우진 · 최하은(1주차).
  * 로컬 dev 서버(실제 DB 연결, /api 미들웨어)가 떠 있어야 한다:  npm run dev -- --port 5174
  *   node --env-file=.env --import tsx scripts/design-figs-live.mts
  * 설계사 코드는 .env 에서 읽어 브라우저 저장소에 넣는다 (출력하지 않는다).
- * 3주차를 열어 두고, 남편 역할로 들어가 화면만 찍는다 (답은 제출하지 않는다).
+ * 부부 폰은 남편 역할로 들어가 화면만 찍는다 (답은 제출하지 않는다).
  */
 import { chromium } from 'playwright'
 import { mkdirSync, readFileSync } from 'node:fs'
@@ -19,8 +20,8 @@ const call = async (b: object) => (await plannerHandler(new Request('http://l/ap
 const cs = await call({ action: 'couples' })
 const row = (cs.couples ?? cs.items ?? cs).find((x: any) => x.code === CODE && !x.archivedAt)
 if (!row) throw new Error('시연 부부 없음')
-const cy = await call({ action: 'cycle', coupleId: row.id })
-if ((cy.cycle?.week ?? 0) < 3) console.log('3주차 열기:', (await call({ action: 'cycle_skip_week', coupleId: row.id })).week)
+const tryout = (cs.couples ?? cs.items ?? cs).find((x: any) => x.label === '정우진 · 최하은' && !x.archivedAt)
+if (!tryout) throw new Error('직접 답해 보기 부부 없음')
 
 const br = await chromium.launch({ args: ['--lang=ko-KR'] })
 
@@ -32,7 +33,7 @@ const phone = await br.newContext({
 const p = await phone.newPage()
 const pshot = async (name: string) => { await p.waitForTimeout(700); await p.screenshot({ path: `${OUT}/${name}.png` }) }
 await p.goto(`${B}/c/join`, { waitUntil: 'networkidle' })
-await p.fill('input.code-field', CODE)
+await p.fill('input.code-field', tryout.code)
 await p.click('button.role:has-text("남편")')
 await p.click('button:has-text("시작하기")')
 await p.waitForURL(/\/c\/home/, { timeout: 20000 })
@@ -41,10 +42,10 @@ await pshot('c-home')
 await p.click('button:has-text("시작하기")')
 await p.waitForURL(/\/c\/round\//, { timeout: 15000 })
 await p.waitForTimeout(800)
-await p.fill('input.field', '60')
-await pshot('c-number')
+await p.locator('button.pick').first().click()
+await pshot('c-choice')
 await p.click('button.pick-other')
-await p.fill('textarea.field', '회사 사정을 보고 55세쯤 그만둘 수도 있어요')
+await p.fill('textarea.field', '청약도 넣어 보고, 안 되면 기존 집을 사고 싶어요')
 await pshot('c-other')
 await p.goto(`${B}/c/home`, { waitUntil: 'networkidle' })
 await p.click('button[role=tab]:has-text("내 설계")')
@@ -63,7 +64,7 @@ const realUrl = () => d.evaluate(() => {
 })
 const hideTest = () => d.evaluate(() => document.querySelectorAll('button').forEach(b => { if (b.textContent?.includes('(테스트용)')) b.remove() }))
 // 문서 그림에는 시연 부부만 (팀원 연습 부부는 뺀다 — 11.14 예슬님 의견)
-const onlyDemo = () => d.evaluate(() => document.querySelectorAll('.qcard').forEach(c => { if (!c.textContent?.includes('이도윤 · 한서연')) c.remove() }))
+const onlyDemo = () => d.evaluate(() => document.querySelectorAll('.qcard').forEach(c => { if (!/이도윤 · 한서연|정우진 · 최하은/.test(c.textContent ?? '')) c.remove() }))
 const dshot = async (name: string, url: string) => {
   await d.goto(B + url, { waitUntil: 'networkidle' }); await d.waitForTimeout(1500)
   await hideTest(); await realUrl(); if (url === '/p/couples') await onlyDemo()
@@ -83,9 +84,7 @@ async function cardTop(name: string, label: string) {
   const box = (await el.boundingBox())!, dl = (await el.locator('dl.pair').boundingBox())!
   await d.screenshot({ path: `${OUT}/${name}.png`, clip: { x: box.x, y: box.y, width: box.width, height: dl.y + dl.height - box.y + 18 } })
 }
-await cardTop('q-a', '목표 집값')
-await cardTop('q-b', '쉰 뒤 일')
-await cardTop('q-c', '자녀 수')
+await cardTop('q-a', '은퇴 후 월 생활비')
 
 // ── 그림 합치기 (설명 글 없이 화면만) ──
 const img = (n: string) => `data:image/png;base64,${readFileSync(`${OUT}/${n}.png`).toString('base64')}`
@@ -104,8 +103,8 @@ async function fig(name: string, body: string) {
 }
 await fig('fig1', dk('p-couples', 900) + ph('c-home', 270))
 await fig('fig2', dk('p-template', 1100))
-await fig('fig3', ph('c-home') + ph('c-number') + ph('c-other') + ph('c-plan'))
+await fig('fig3', ph('c-home') + ph('c-choice') + ph('c-other') + ph('c-plan'))
 await fig('fig4', dk('p-queue', 1100))
 await fig('fig5', dk('p-cycle', 1100))
-await fig('fig6', `<div class="col">${dk('q-a', 900)}${dk('q-c', 900)}${dk('q-b', 900)}</div>`)
+await fig('fig6', dk('q-a', 900))
 await br.close()
