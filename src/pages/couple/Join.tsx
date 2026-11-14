@@ -58,7 +58,6 @@ export default function Join() {
           </button>
         </div>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
-        <p className="meta" style={{ textAlign: 'center', fontSize: 11, marginTop: 24, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
       </div>
       <button className="btn btn-wide" disabled={code.length !== 6 || !role || busy} onClick={start}>
         {busy ? '연결 중…' : '시작하기'}

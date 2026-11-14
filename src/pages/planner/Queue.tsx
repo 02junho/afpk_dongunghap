@@ -144,7 +144,7 @@ export default function Queue() {
                   <span className="chip" style={{ background: cat.bg, color: cat.fg }}>{cat.label}</span>
                   <span style={{ fontSize: 16, fontWeight: 700 }}>{it.label}</span>
                   <span className={`chip ${chip.cls}`}>{chip.text}</span>
-                  <span className="meta">{it.method === 'llm' ? `AI 판별 · ${it.promptVersion ?? '-'}` : '규칙 판별'}</span>
+                  <span className="meta">{it.method === 'llm' ? 'AI 판별' : '규칙 판별'}</span>
                   <span className="queue-couple">{p.couple.label} · {it.roundLabel}</span>
                 </div>
                 <dl className="pair" style={{ gridTemplateColumns: '72px 1fr' }}>
@@ -165,7 +165,7 @@ export default function Queue() {
                 </p>
                 {REVIEW[it.key] && (
                   <p className="summary" style={{ whiteSpace: 'pre-line' }}>
-                    <span className="summary-by">수정 방향 검토 기준 (팀이 정한 기준 · AI 아님)</span>
+                    <span className="summary-by">수정 방향 검토 기준</span>
                     {`함께 다시 볼 질문: ${REVIEW[it.key].related.map(slotNo).join(' · ')}\n${REVIEW[it.key].check}`}
                   </p>
                 )}

@@ -29,7 +29,7 @@ export default function Rail({ count }: { count?: number }) {
     <nav className="rail">
       <div className="rail-top">
         <p className="rail-title"><span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>돈궁합</p>
-        <p className="rail-sub">설계사 콘솔 · 박성훈 AFPK</p>
+        <p className="rail-sub">재무설계사 화면</p>
       </div>
 
       {p.live && !p.pass ? (
@@ -63,7 +63,6 @@ export default function Rail({ count }: { count?: number }) {
           {pushErr && <p className="meta" style={{ padding: '0 20px', color: 'var(--escalate)' }}>{pushErr}</p>}
         </>
       )}
-      <p className="meta" style={{ padding: '24px 20px 0', fontSize: 11, opacity: 0.6 }}>버전 {__BUILD_ID__}</p>
     </nav>
   )
 }
