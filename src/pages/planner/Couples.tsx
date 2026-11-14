@@ -181,10 +181,12 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
         <div style={{ marginTop: 22 }}>
           {loading && <p className="note">불러오는 중…</p>}
           {visible.map(r => (
-            <div className="qcard" key={r.id} style={r.id === p.couple.id ? { outline: '2px solid var(--ink)' } : undefined}>
+            // 카드 아무 곳이나 누르면 그 부부를 '보는 중'으로 — 왼쪽 메뉴도 그 부부 기준으로 바뀐다 (11.14). 화면은 그대로
+            <div className="qcard" key={r.id} style={{ cursor: 'pointer', ...(r.id === p.couple.id ? { outline: '2px solid var(--ink)' } : {}) }}
+              onClick={() => { if (r.id !== p.couple.id) p.setCouple(r) }}>
               <div className="queue-top">
                 <span className="pair-mark"><span className="p p-him" /><span className="p p-her" /></span>
-                <button onClick={() => open(r, '/p/queue')} style={{ font: 'inherit', fontSize: 15, fontWeight: 700, color: 'var(--ink)', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>{r.label}</button>
+                <button title="이 부부 보기" style={{ font: 'inherit', fontSize: 15, fontWeight: 700, color: 'var(--ink)', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>{r.label}</button>
                 {r.pending > 0 && <span className="chip chip-escalate">처리 대기 {r.pending}</span>}
                 {r.id === p.couple.id && <span className="chip chip-agree">보는 중</span>}
                 <span className="queue-couple">{r.lastAt ? `마지막 판정 ${new Date(r.lastAt).toLocaleDateString('ko-KR')}` : '아직 판정 없음'}</span>
