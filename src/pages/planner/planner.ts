@@ -12,10 +12,15 @@ const COUPLE_KEY = 'planner:couple'
 /**
  * 화면을 옮길 때 예시 데이터나 빈 화면이 잠깐 보였다가 바뀌지 않게 (11.14 직접 써 보다 발견).
  * 마지막으로 받은 값을 기억해 두었다가 먼저 그리고, 새로 받은 값으로 조용히 바꾼다. 새로고침하면 비워진다.
+ * 1분이 지난 값은 쓰지 않는다 — 오래된 화면(예: 몇 분 전 진행 상황)이 보였다가 바뀌는 것도 '이전 내용'처럼 보이므로.
  */
-const memo = new Map<string, unknown>()
-export function remembered<T>(key: string): T | undefined { return memo.get(key) as T | undefined }
-export function remember<T>(key: string, v: T): T { memo.set(key, v); return v }
+const FRESH_MS = 60_000
+const memo = new Map<string, { v: unknown; at: number }>()
+export function remembered<T>(key: string): T | undefined {
+  const m = memo.get(key)
+  return m && Date.now() - m.at < FRESH_MS ? (m.v as T) : undefined
+}
+export function remember<T>(key: string, v: T): T { memo.set(key, { v, at: Date.now() }); return v }
 
 export interface CoupleRow {
   id: string
