@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Rail from './Rail'
-import { usePlanner } from './planner'
+import { remember, remembered, usePlanner } from './planner'
 import { CATEGORIES, showPlanned } from '../../data/demo'
 import { NA, SLOTS, THEMES, type Slot } from '../../data/template'
 import { planValue } from '../../lib/plan-values'
@@ -32,16 +32,19 @@ const DEMO_PROFILE = '남편: 대기업 직장인(연 급여 6,700만 원) · �
 export default function Template() {
   const p = usePlanner()
   const liveMode = !!(p.live && p.pass)
-  const [saved, setSaved] = useState<Record<string, Saved>>({})
-  const [input, setInput] = useState<Record<string, string>>({})
+  // 화면을 옮겨 다시 열 때 빈 칸이 잠깐 보이지 않게, 마지막으로 받은 값을 먼저 그린다 (planner.ts remembered)
+  const tkey = `template:${p.couple.id}`
+  const tc = liveMode ? remembered<{ values: Record<string, Saved>; profile: string; brief: CycleBrief | null }>(tkey) : undefined
+  const [saved, setSaved] = useState<Record<string, Saved>>(tc?.values ?? {})
+  const [input, setInput] = useState<Record<string, string>>(() => (tc ? Object.fromEntries(SLOTS.map(x => [x.key, tc.values[x.key] ? toInput(x, tc.values[x.key].planned) : ''])) : {}))
   const [finds, setFinds] = useState<Record<string, PlanFind>>({})
   const [ok, setOk] = useState<Record<string, boolean>>({})
   // 부부 기본 정보 한 줄 (11.14) — AI 요약이 재무설계 결과에 있는 사실을 되묻지 않게. 부부 화면에는 안 나온다
-  const [profile, setProfileText] = useState('')
-  const [profileSaved, setProfileSaved] = useState('')
+  const [profile, setProfileText] = useState(tc?.profile ?? '')
+  const [profileSaved, setProfileSaved] = useState(tc?.profile ?? '')
   const [profileQuote, setProfileQuote] = useState<string | null>(null)        // Word 에서 온 값: 설계사가 원문과 맞다고 확인
   const [source, setSource] = useState<'manual' | 'word' | 'example'>('manual')
-  const [brief, setBrief] = useState<CycleBrief | null>(null)
+  const [brief, setBrief] = useState<CycleBrief | null>(tc?.brief ?? null)
   const [period, setPeriod] = useState<3 | 6>(3)
   const [busy, setBusy] = useState<'' | 'load' | 'word' | 'save' | 'start'>('')
   const [msg, setMsg] = useState('')
@@ -67,6 +70,7 @@ export default function Template() {
       setFinds({}); setOk({}); setSource('manual')
       setProfileText(t.profile ?? ''); setProfileSaved(t.profile ?? ''); setProfileQuote(null)
       setBrief(c)
+      remember(tkey, { values: t.values, profile: t.profile ?? '', brief: c })
     } catch (e) { setErr((e as Error).message) }
     setBusy('')
   }

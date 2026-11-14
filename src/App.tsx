@@ -1,5 +1,5 @@
-import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
-import type { ReactElement } from 'react'
+import { Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useEffect, type ReactElement } from 'react'
 import { isLive } from './lib/db'
 import { loadMe } from './lib/session'
 import Join from './pages/couple/Join'
@@ -27,8 +27,17 @@ function JoinOrHome() {
   return isLive() && loadMe().live && !params.get('code') ? <Navigate to="/c/home" replace /> : <Join />
 }
 
+/** 메뉴를 옮기면 맨 위부터 보이게 — 이전 화면의 스크롤 위치가 남아 화면 중간부터 보이지 않도록 (11.14) */
+function ScrollTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 export default function App() {
   return (
+    <>
+    <ScrollTop />
     <Routes>
       <Route path="/" element={<Navigate to="/c/join" replace />} />
       <Route path="/c/join" element={<JoinOrHome />} />
@@ -45,5 +54,6 @@ export default function App() {
       <Route path="/p/cards" element={<Navigate to="/p/template" replace />} />
       <Route path="/p/history" element={<History />} />
     </Routes>
+    </>
   )
 }

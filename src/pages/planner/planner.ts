@@ -9,6 +9,14 @@ import { isLive } from '../../lib/db'
 
 const COUPLE_KEY = 'planner:couple'
 
+/**
+ * 화면을 옮길 때 예시 데이터나 빈 화면이 잠깐 보였다가 바뀌지 않게 (11.14 직접 써 보다 발견).
+ * 마지막으로 받은 값을 기억해 두었다가 먼저 그리고, 새로 받은 값으로 조용히 바꾼다. 새로고침하면 비워진다.
+ */
+const memo = new Map<string, unknown>()
+export function remembered<T>(key: string): T | undefined { return memo.get(key) as T | undefined }
+export function remember<T>(key: string, v: T): T { memo.set(key, v); return v }
+
 export interface CoupleRow {
   id: string
   label: string
@@ -75,10 +83,14 @@ export function usePlanner() {
 
 /** 사이드바 '처리 대기' 숫자 — live 면 DB, 아니면 데모 */
 export function useQueueCount(p: ReturnType<typeof usePlanner>, fallback: number) {
-  const [n, setN] = useState(fallback)
+  const live = p.live && !!p.pass
+  const key = `count:${p.couple.id}`
+  // 실제 화면에서는 예시 숫자를 먼저 보이지 않는다 — 기억한 숫자, 없으면 받을 때까지 비워 둔다
+  const [n, setN] = useState(live ? (remembered<number>(key) ?? 0) : fallback)
   useEffect(() => {
-    if (!p.live || !p.pass) { setN(fallback); return }
-    p.call<{ items: unknown[] }>('queue').then(q => setN(q.items.length)).catch(() => {})
+    if (!live) { setN(fallback); return }
+    setN(remembered<number>(key) ?? 0)
+    p.call<{ items: unknown[] }>('queue').then(q => setN(remember(key, q.items.length))).catch(() => {})
   }, [p.live, p.pass, p.couple.id])
   return n
 }

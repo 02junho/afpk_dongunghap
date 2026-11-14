@@ -7,7 +7,7 @@ import type { Card, Judgment, RedKind } from '../../judge/index'
 
 /** 부부는 계획을 보지 않고 답한다 (11.05 목표 질문) — 설계사에겐 답과 "계획과 같음 / 다름"을 나란히 */
 const asSaid = (c: Card, raw: string) => answerLine(showAnswer(c, raw), raw, String(c.plannedValue))
-import { usePlanner } from './planner'
+import { remember, remembered, usePlanner } from './planner'
 import { THEMES } from '../../data/template'
 import { REVIEW } from '../../data/review'
 
@@ -51,7 +51,8 @@ interface Item {
  */
 export default function Queue() {
   const p = usePlanner()
-  const [items, setItems] = useState<Item[] | null>(null)
+  const qkey = `queue:${p.couple.id}`
+  const [items, setItems] = useState<Item[] | null>(() => (p.live && p.pass ? remembered<Item[]>(qkey) ?? null : null))
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
   const [done, setDone] = useState<Record<string, Resolution>>({})
@@ -68,13 +69,13 @@ export default function Queue() {
         const v = showPlanned(r.type, r.unit, raw, r.key)
         return answerLine(v, raw, String(r.planned ?? ''))
       }
-      setItems(items.map(r => ({
+      setItems(remember(qkey, items.map(r => ({
         ...r, a: show(r, r.a), b: show(r, r.b), planned: showPlanned(r.type, r.unit, String(r.planned ?? ''), r.key),
         roundLabel: '주간 질문',
-      })))
+      }))))
     } catch (e) { setErr((e as Error).message) }
   }
-  useEffect(() => { if (p.live && p.pass) void load(); else setItems(null) }, [p.live, p.pass, p.couple.id])
+  useEffect(() => { if (p.live && p.pass) { setItems(remembered<Item[]>(qkey) ?? null); void load() } else setItems(null) }, [p.live, p.pass, p.couple.id])
 
   async function resolve(it: Item, r: Resolution) {
     if (p.live && p.pass) {

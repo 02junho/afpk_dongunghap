@@ -15,12 +15,15 @@ import type { Card } from '../../judge/index'
  */
 type RoundBrief = { id: string; kind: string; week: number | null; count: number; category: Card['category'] }
 
+// 실제 폰에서는 예시 카드를 먼저 보이지 않는다 — 이 화면에 다시 올 때는 마지막으로 받은 계획을 먼저 그린다 (11.14)
+const cardsMemo = new Map<string, Card[]>()
+
 export default function Home() {
   const nav = useNavigate()
   const [me, setMe] = useState(loadMe)
   const him = me.role !== 'wife'
   const [tab, setTab] = useState<'plan' | 'match'>('match')
-  const [cards, setCards] = useState<Card[]>(CARDS)
+  const [cards, setCards] = useState<Card[] | null>(me.live ? (cardsMemo.get(me.coupleId ?? '') ?? null) : CARDS)
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({})
   // 내가 답할 질문 / 배우자를 기다리는 질문 / 열린 질문 수
   const [round, setRound] = useState<RoundBrief | null | 'loading'>(me.live ? 'loading' : { id: 'baseline', kind: 'baseline', week: 1, count: 5, category: 'housing' })
@@ -39,7 +42,10 @@ export default function Home() {
   useEffect(() => {
     if (!me.live || !me.coupleId) return
     loadActiveCardRows(me.coupleId)
-      .then(rs => setCards(rs.map(r => r.card).sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key))))
+      .then(rs => {
+        const cs = rs.map(r => r.card).sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category) || a.key.localeCompare(b.key))
+        cardsMemo.set(me.coupleId!, cs); setCards(cs)
+      })
       .catch(() => {})
     // 이번 주 질문이 열릴 때가 됐나 먼저 서버에 물어본 뒤 (6주 사이클), 내가 답할 질문을 찾는다
     ;(async () => {
@@ -64,7 +70,7 @@ export default function Home() {
   const waiting = !canStart && round !== 'loading' && !!waitingId
   const theme = canStart ? (round.week ? themeOfWeek(round.week).label : CATEGORIES[round.category].label) : ''
   const carried = canStart && openCount > 1   // 지난주 질문이 아직 남아 있다
-  const groups = THEMES.map(t => ({ k: t.category, cards: cards.filter(c => c.category === t.category) })).filter(g => g.cards.length)
+  const groups = THEMES.map(t => ({ k: t.category, cards: (cards ?? []).filter(c => c.category === t.category) })).filter(g => g.cards.length)
   const isOpen = (k: string) => openCats[k] ?? false
 
   return (
@@ -102,7 +108,7 @@ export default function Home() {
                 </div>
               )
             })}
-            {!groups.length && <p className="note">설계사님이 계획을 정리하고 있어요.</p>}
+            {cards === null ? <p className="note">불러오는 중…</p> : !groups.length && <p className="note">설계사님이 계획을 정리하고 있어요.</p>}
           </>
         ) : (
           <>

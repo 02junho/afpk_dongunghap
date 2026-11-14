@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Rail from './Rail'
-import { usePlanner } from './planner'
+import { remember, remembered, usePlanner } from './planner'
 import { showPlanned } from '../../data/demo'
 import type { Card } from '../../judge/index'
 
@@ -16,12 +16,14 @@ const DEMO: Row[] = [
 /** 변경 이력. 카드 값은 덮어쓰지 않으므로 card_versions 가 곧 이력이다. live 면 DB. */
 export default function History() {
   const p = usePlanner()
-  const [rows, setRows] = useState<Row[]>(DEMO)
+  const key = `history:${p.couple.id}`
+  const [rows, setRows] = useState<Row[] | null>(p.live && p.pass ? (remembered<Row[]>(key) ?? null) : DEMO)
   const [err, setErr] = useState('')
 
   useEffect(() => {
     if (!p.live || !p.pass) { setRows(DEMO); return }
-    p.call<{ items: Row[] }>('history').then(r => { setRows(r.items); setErr('') }).catch(e => setErr((e as Error).message))
+    setRows(remembered<Row[]>(key) ?? null)
+    p.call<{ items: Row[] }>('history').then(r => { setRows(remember(key, r.items)); setErr('') }).catch(e => setErr((e as Error).message))
   }, [p.live, p.pass, p.couple.id])
 
   const fmt = (iso: string) => new Date(iso).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -33,7 +35,8 @@ export default function History() {
         <h1 className="work-title">변경 이력 · {p.couple.label}</h1>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         <div style={{ marginTop: 22 }}>
-          {rows.map(l => (
+          {rows === null && !err && <p className="note">불러오는 중…</p>}
+          {(rows ?? []).map(l => (
             <div className="qcard" key={l.id}>
               <div className="queue-top">
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{l.label}</span>
@@ -47,7 +50,7 @@ export default function History() {
               </dl>
             </div>
           ))}
-          {!rows.length && <p className="note">아직 변경이 없습니다.</p>}
+          {rows !== null && !rows.length && <p className="note">아직 변경이 없습니다.</p>}
         </div>
       </main>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Rail from './Rail'
-import { usePlanner } from './planner'
+import { remember, remembered, usePlanner } from './planner'
 import { answerLine, CATEGORIES, chipOf, showPlanned } from '../../data/demo'
 import { THEMES, WEEKS, PER_THEME } from '../../data/template'
 
@@ -40,14 +40,16 @@ const DEMO: CycleRes = (() => {
 export default function Cycle() {
   const p = usePlanner()
   const liveMode = !!(p.live && p.pass)
-  const [data, setData] = useState<CycleRes | null>(liveMode ? null : DEMO)
+  const ckey = `cycle:${p.couple.id}`
+  const [data, setData] = useState<CycleRes | null>(liveMode ? (remembered<CycleRes>(ckey) ?? null) : DEMO)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
 
   async function load() {
     if (!liveMode) { setData(DEMO); return }
-    try { setData(await p.call<CycleRes>('cycle')); setErr('') } catch (e) { setErr((e as Error).message) }
+    setData(remembered<CycleRes>(ckey) ?? null)
+    try { setData(remember(ckey, await p.call<CycleRes>('cycle'))); setErr('') } catch (e) { setErr((e as Error).message) }
   }
   useEffect(() => { void load() }, [liveMode, p.couple.id])
 

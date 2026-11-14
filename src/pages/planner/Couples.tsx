@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { copyText } from '../../lib/copy'
 import { useNavigate } from 'react-router-dom'
 import Rail from './Rail'
-import { DEMO_COUPLE, usePlanner, type CoupleRow } from './planner'
+import { DEMO_COUPLE, remember, remembered, usePlanner, type CoupleRow } from './planner'
 import { inviteMessage } from '../../lib/install'
 import QrView from './QrView'
 import { setPendingWord } from './pendingImport'
@@ -24,7 +24,7 @@ const DEMO_ROWS: CoupleRow[] = [
 export default function Couples({ archivedView = false }: { archivedView?: boolean }) {
   const nav = useNavigate()
   const p = usePlanner()
-  const [rows, setRows] = useState<CoupleRow[]>(DEMO_ROWS)
+  const [rows, setRows] = useState<CoupleRow[] | null>(p.live && p.pass ? (remembered<CoupleRow[]>('couples') ?? null) : DEMO_ROWS)
   const [err, setErr] = useState('')
   const [form, setForm] = useState({ label: '', husband: '', wife: '' })
   // 10.25: 새 부부는 빈 카드로 시작할 수 있다 — 연습용 카드와 엑셀로 만든 카드가 두 벌 되지 않게
@@ -52,7 +52,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
     if (!p.live || !p.pass) { setRows(DEMO_ROWS); return }
     try {
       const items = (await p.call<{ items: CoupleRow[] }>('couples')).items
-      setRows(items); setErr('')
+      setRows(remember('couples', items)); setErr('')
       // 이 노트북이 기억하는 '보는 중' 부부의 이름이 DB 와 다르면(이름 고치기·데이터 정리 뒤) 최신으로
       const cur = items.find(r => r.id === p.couple.id)
       if (cur && (cur.label !== p.couple.label || cur.husband !== p.couple.husband || cur.wife !== p.couple.wife)) p.setCouple(cur)
@@ -71,7 +71,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
     if (needPass) { setErr('왼쪽에 설계사 코드를 넣어야 발급됩니다.'); return }
     if (!p.live) {
       const code = String(100000 + Math.floor(Math.random() * 900000))
-      setRows(r => [...r, { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '질문 틀 0 / 30', lastAt: null, pending: 0 }])
+      setRows(r => [...(r ?? []), { id: `demo-${Date.now()}`, label, code, husband: form.husband || '남편', wife: form.wife || '아내', state: '질문 틀 0 / 30', lastAt: null, pending: 0 }])
       setIssued({ label, code, husband: form.husband.trim() || '남편', wife: form.wife.trim() || '아내' }); setForm({ label: '', husband: '', wife: '' })
       return
     }
@@ -116,7 +116,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
       catch (e) { setErr((e as Error).message); setBusy(false); return }
       setBusy(false)
     }
-    setRows(rs => rs.map(r => (r.id === edit.id ? { ...r, label, husband, wife } : r)))
+    setRows(rs => (rs ?? []).map(r => (r.id === edit.id ? { ...r, label, husband, wife } : r)))
     // 지금 보고 있는 부부면 레일·다른 화면 제목도 바로 바뀌게
     if (p.couple.id === edit.id) p.setCouple({ ...p.couple, label, husband, wife })
     setErr(''); setEdit(null)
@@ -132,17 +132,18 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
       setBusy(false)
     }
     const at = archive ? new Date().toISOString() : null
-    setRows(rs => rs.map(x => (x.id === r.id ? { ...x, archivedAt: at } : x)))
+    setRows(rs => (rs ?? []).map(x => (x.id === r.id ? { ...x, archivedAt: at } : x)))
     // 지금 보고 있던 부부를 지우면 남은 첫 부부로 옮긴다
     if (archive && p.couple.id === r.id) {
-      const next = rows.find(x => x.id !== r.id && !x.archivedAt)
+      const next = (rows ?? []).find(x => x.id !== r.id && !x.archivedAt)
       if (next) p.setCouple(next)
     }
     setConfirmDel(null); setErr('')
     if (p.live && p.pass) await load()
   }
-  const visible = rows.filter(r => !r.archivedAt)
-  const archived = rows.filter(r => r.archivedAt)
+  const loading = rows === null
+  const visible = (rows ?? []).filter(r => !r.archivedAt)
+  const archived = (rows ?? []).filter(r => r.archivedAt)
 
   return (
     <div className="console">
@@ -170,7 +171,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
                   </div>
                 </div>
               ))}
-              {!archived.length && <p className="note">지운 부부가 없습니다.</p>}
+              {loading ? <p className="note">불러오는 중…</p> : !archived.length && <p className="note">지운 부부가 없습니다.</p>}
             </div>
           </>
         ) : (<>
@@ -178,6 +179,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
 
         <div style={{ marginTop: 22 }}>
+          {loading && <p className="note">불러오는 중…</p>}
           {visible.map(r => (
             <div className="qcard" key={r.id} style={r.id === p.couple.id ? { outline: '2px solid var(--ink)' } : undefined}>
               <div className="queue-top">
