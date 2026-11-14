@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NA, KNOW, NON_VALUE, SLOTS, slotByKey, slotCard } from '../../data/template'
 import { formatValue } from '../answer-options'
+import { REVIEW } from '../../data/review'
 import { answerValue, EMPTY_ANSWER, numValue } from '../answer-input'
 import { judge, OTHER_PREFIX } from '../../judge/index'
 import { mockLlm } from '../../judge/text-llm'
@@ -33,6 +34,10 @@ describe('목표 질문 답 칸 (11.05 밤) — 계획을 보여 주지 않고 �
     for (const s of SLOTS) {
       for (const x of NON_VALUE) expect(s.options, s.key).toContain(x)
       if (s.type === 'choice') expect(s.options!.filter(o => !NON_VALUE.includes(o)).length, s.key).toBeGreaterThanOrEqual(2)
+      // 수정 방향 검토 기준 (11.14) — 30칸 모두, 함께 볼 질문은 틀 안의 다른 칸
+      const r = REVIEW[s.key]
+      expect(r?.check, s.key).toBeTruthy()
+      for (const k of r.related) { expect(slotByKey(k), `${s.key} → ${k}`).toBeTruthy(); expect(k).not.toBe(s.key) }
     }
   })
   it('계획 값 글 (설계사 화면)', () => {

@@ -8,7 +8,15 @@ import type { Card, Judgment, RedKind } from '../../judge/index'
 /** 부부는 계획을 보지 않고 답한다 (11.05 목표 질문) — 설계사에겐 답과 "계획과 같음 / 다름"을 나란히 */
 const asSaid = (c: Card, raw: string) => answerLine(showAnswer(c, raw), raw, String(c.plannedValue))
 import { usePlanner } from './planner'
-import { THEMES } from '../../data/template'
+import { SLOTS, THEMES } from '../../data/template'
+import { REVIEW } from '../../data/review'
+
+/** "1-5 집 마련 월 적립액" — 질문 번호는 주차-순서 */
+const slotNo = (key: string) => {
+  const s = SLOTS.find(x => x.key === key)
+  if (!s) return key
+  return `${s.week}-${SLOTS.filter(x => x.week === s.week).indexOf(s) + 1} ${s.label}`
+}
 
 /**
  * 큐를 닫는 버튼 = judgments.resolution 값 그대로.
@@ -155,6 +163,12 @@ export default function Queue() {
                   </span>
                   {summary}
                 </p>
+                {REVIEW[it.key] && (
+                  <p className="summary" style={{ whiteSpace: 'pre-line' }}>
+                    <span className="summary-by">수정 방향 검토 기준 (팀이 정한 기준 · AI 아님)</span>
+                    {`함께 다시 볼 질문: ${REVIEW[it.key].related.map(slotNo).join(' · ')}\n${REVIEW[it.key].check}`}
+                  </p>
+                )}
                 {!res && (
                   <>
                     {liveMode && (
