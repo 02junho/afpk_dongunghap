@@ -202,6 +202,7 @@ export default function Couples({ archivedView = false }: { archivedView?: boole
               <div className="actions">
                 <button className="btn btn-small" onClick={() => open(r, '/p/queue')}>처리 대기</button>
                 <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/template')}>질문 틀</button>
+                <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/cycle')}>사이클</button>
                 <button className="btn btn-quiet btn-small" onClick={() => open(r, '/p/history')}>변경 이력</button>
                 <button className="btn btn-quiet btn-small" style={{ marginLeft: 'auto' }}
                   onClick={() => setEdit(edit?.id === r.id ? null : { id: r.id, label: r.label, husband: r.husband, wife: r.wife })}>

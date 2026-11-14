@@ -76,7 +76,8 @@ export default function Cycle() {
 
         {data && !c && (
           <p className="note" style={{ marginTop: 18 }}>
-            아직 시작하지 않았습니다. 질문 틀 {data.total}칸을 채운 뒤 시작합니다 (지금 {data.filled}칸). <Link to="/p/template">질문 틀로 →</Link>
+            {p.couple.label} 부부는 아직 사이클을 시작하지 않았습니다. 질문 틀 {data.total}칸을 채운 뒤 질문 틀 화면에서 시작합니다 (지금 {data.filled}칸). <Link to="/p/template">질문 틀로 →</Link>
+            <br />다른 부부의 사이클을 보려면 <Link to="/p/couples">부부 목록</Link>에서 그 부부의 [사이클]을 누르세요.
           </p>
         )}
 
