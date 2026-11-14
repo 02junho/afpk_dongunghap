@@ -172,12 +172,15 @@ export default function Template() {
     setBusy('')
   }
 
+  // 처음 여는 부부의 질문 틀: 받기 전에는 빈 칸 30개 대신 '불러오는 중…'
+  const firstLoad = liveMode && busy === 'load' && !Object.keys(saved).length
   const active = brief?.cycle && !brief.cycle.closedAt
   return (
     <div className="console">
       <Rail />
       <main className="work">
-        <h1 className="work-title">질문 틀 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{savedCount} / {SLOTS.length}칸</span></h1>
+        <h1 className="work-title">질문 틀 · {p.couple.label} {!firstLoad && <span className="meta" style={{ fontSize: 15 }}>{savedCount} / {SLOTS.length}칸</span>}</h1>
+        {firstLoad && <p className="note">불러오는 중…</p>}
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
 
@@ -203,7 +206,7 @@ export default function Template() {
           {profileQuote && <p className="meta" style={{ margin: '8px 0 0', fontSize: 12 }}><span className="meta">원문</span> “{profileQuote}”</p>}
         </div>
 
-        {THEMES.map(t => {
+        {!firstLoad && THEMES.map(t => {
           const cat = CATEGORIES[t.category]
           return (
             <div key={t.week} style={{ marginTop: 22 }}>

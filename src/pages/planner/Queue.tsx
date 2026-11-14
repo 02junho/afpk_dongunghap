@@ -122,7 +122,7 @@ export default function Queue() {
     <div className="console">
       <Rail count={open.length} />
       <main className="work">
-        <h1 className="work-title">처리 대기 · {p.couple.label} <span className="meta" style={{ fontSize: 15 }}>{open.length}건</span></h1>
+        <h1 className="work-title">처리 대기 · {p.couple.label} {!(liveMode && items === null) && <span className="meta" style={{ fontSize: 15 }}>{open.length}건</span>}</h1>
         {err && <p className="note" style={{ color: 'var(--escalate)' }}>{err}</p>}
         {msg && <p className="note" style={{ color: 'var(--agree)' }}>{msg}</p>}
         {liveMode && items === null && !err && <p className="note">불러오는 중…</p>}
