@@ -49,7 +49,9 @@ describe('계획 값 규칙 — 숫자는 AI 가 아니라 규칙이 바꾼다',
     expect(planValue(slotByKey('t2_child_when')!, '해당 없음')).toEqual({ ok: true, value: '해당 없음' })
   })
   it('나이 · 비율 · 개월', () => {
-    expect(planValue(age, '만 60세')).toMatchObject({ ok: false })   // "만"이 붙으면 못 읽는다 → 설계사가 60
+    expect(planValue(age, '만 60세')).toEqual({ ok: true, value: '60' })   // 만 나이 (11.14 팀 보고서)
+    expect(planValue(months, '약 6개월')).toEqual({ ok: true, value: '6' })
+    expect(planValue(slotByKey('t2_child_count')!, '만 2명')).toMatchObject({ ok: false })   // 나이 칸이 아니면 '만'을 떼지 않는다
     expect(planValue(age, '60세')).toEqual({ ok: true, value: '60' })
     expect(planValue(pct, '20%')).toEqual({ ok: true, value: '20' })
     expect(planValue(pct, '120%')).toMatchObject({ ok: false })

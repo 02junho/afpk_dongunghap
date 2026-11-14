@@ -51,7 +51,11 @@ export function planValue(slot: Pick<Slot, 'type' | 'unit' | 'options' | 'label'
         if (isNaN(n) || n < 0) return { ok: false, error: '금액을 읽을 수 없습니다 (예: 3억, 8천만원, 1,260,000)' }
         return { ok: true, value: String(Math.round(n)) }
       }
-      const n = parseCount(t.replace(/개월|달/g, ''))
+      // "약 6개월" · "만 60세" — 재무설계 결과에 흔한 표기 (11.14 팀 보고서로 찾기 점검에서 발견).
+      // 돈 단위 '만'과 헷갈리지 않게, 띄어 쓴 '만 '은 나이 칸에서만 뗀다
+      let bare = t.replace(/^약\s*/, '')
+      if (slot.unit === 'age') bare = bare.replace(/^만\s+/, '')
+      const n = parseCount(bare.replace(/개월|달/g, ''))
       if (isNaN(n) || n < 0) return { ok: false, error: '숫자를 읽을 수 없습니다' }
       if (slot.unit === 'percent' && n > 100) return { ok: false, error: '비율은 0~100' }
       return { ok: true, value: String(n) }
