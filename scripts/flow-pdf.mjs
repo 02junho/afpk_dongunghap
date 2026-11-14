@@ -17,7 +17,7 @@ import { resolve } from 'node:path'
 const B = process.env.SHOTS_BASE ?? 'http://127.0.0.1:5180'
 const OUT = resolve('build/flow')
 const PDF = resolve('docs/11_화면흐름도.pdf')
-const TODAY = '2026-11-11'
+const TODAY = '2026-11-14'
 mkdirSync(OUT, { recursive: true })
 
 const br = await chromium.launch({ args: ['--lang=ko-KR'], ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}) })
@@ -228,7 +228,7 @@ pre.msg { white-space: pre-wrap; font-family: inherit; font-size: 8.2pt; backgro
     <img src="${img('p4-queue')}" style="width:100%;max-height:150mm;object-fit:cover;object-position:top left;border-radius:3mm;border:0.3mm solid #e4dcd6">
     <div class="side">
       <div class="box">${step(6, '처리 대기 열기')}<p style="margin-top:1.5mm">"○○ 부부 · 처리 대기 N건" 알림이 오거나, 부부 목록에서 본다</p></div>
-      <div class="box">${step(7, '한 건씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히 보이고, 답마다 계획과 같은지 붙는다. 🔴 건은 AI가 세 줄로 요약해 둔다</p></div>
+      <div class="box">${step(7, '한 건씩 읽기')}<p style="margin-top:1.5mm">계획 · 남편 답 · 아내 답이 나란히 보이고, 답마다 계획과 같은지 붙는다. 🔴 건은 AI가 세 줄로 요약하고, 함께 다시 볼 질문과 수정 방향 검토 기준(팀이 정한 기준)이 같이 보인다</p></div>
       <div class="box">${step(8, '확인함')}<p style="margin-top:1.5mm">봤다는 표시와 메모가 사이클 정리에 남는다. 판정은 바뀌지 않는다</p></div>
       <div class="box">${step('+', '이건 같은 뜻이에요')}<p style="margin-top:1.5mm">AI가 판정한 건(말로 적은 답)에만. AI 오판으로 기록해 판단 규칙을 고칠 때 시험 사례로 쓴다</p></div>
     </div>
