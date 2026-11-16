@@ -83,12 +83,14 @@ export function usePlanner() {
   const clearPass = useCallback(() => setPlannerPass(''), [])
   const setCouple = useCallback((c: CoupleRow) => setPlannerCouple(c), [])
 
-  /** API 호출. 코드가 틀리면 코드를 지워 다시 묻게 한다 */
+  /** API 호출. 코드가 틀리면 코드를 지워 다시 묻게 한다.
+   *  그 사이 새 코드를 넣었으면 지우지 않는다 — 서버가 느릴 때(첫 호출) 틀린 코드의 늦은 응답이 맞는 코드를 지우던 문제 (11.16) */
   const call = useCallback(async <T = any>(action: string, params: Record<string, unknown> = {}) => {
+    const sent = readPass()
     try {
       return await plannerApi<T>(action, { coupleId: couple.id, ...params })
     } catch (e) {
-      if ((e as Error).message.includes('틀립니다')) setPlannerPass('')
+      if ((e as Error).message.includes('틀립니다') && readPass() === sent) setPlannerPass('')
       throw e
     }
   }, [couple.id])
