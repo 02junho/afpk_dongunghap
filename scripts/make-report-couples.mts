@@ -69,6 +69,7 @@ console.log(`처리 대기 ${q.items.length}건: ${q.items.map((i: any) => i.lab
 const { data: old } = await sb.from('couples').select('id').eq('invite_code', REPORT_CODE).maybeSingle()
 if (old) {
   await planner('archive_couple', { coupleId: old.id })
+  await planner('hide_couple', { coupleId: old.id })   // 같은 이름이 지운 부부 보기에 남아 헷갈리지 않게
   let spare = ''
   for (;;) {
     spare = String(100000 + Math.floor(Math.random() * 900000))

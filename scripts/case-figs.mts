@@ -131,4 +131,5 @@ await br.close()
 
 // ── 5) 촬영용 부부 보관 ──
 await planner('archive_couple', { coupleId })
+await planner('hide_couple', { coupleId })
 console.log('촬영용 부부 보관함')

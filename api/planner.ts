@@ -8,6 +8,7 @@
  *   couples                                   담당 부부 목록 (진행 상태 · 대기 건수)
  *   new_couple { label, husband, wife }       부부 + 입장 코드 발급 (질문 틀은 비어 있음)
  *   archive_couple / restore_couple           지우기(보관) · 되돌리기. 기록은 지우지 않는다
+ *   hide_couple                               지운 부부를 "지운 부부 보기"에서도 숨김 (시험용 부부 정리 · 화면 버튼 없음 · api/_hidden.ts)
  *   rename_couple { husband, wife, label? }   이름 고치기
  *   template                                  질문 틀 30칸의 지금 계획 값
  *   template_save { values: {key: 값}, source } 계획 값 저장 — 처음이면 v1, 바뀌면 새 버전(덮어쓰지 않음). 묻는 중인 칸은 건너뜀
@@ -24,6 +25,7 @@ import { EXACT, SLOTS, WEEKS, PER_THEME, themeOfWeek } from '../src/data/templat
 import { planValue } from '../src/lib/plan-values'
 import { notify } from './_notify'
 import { setProfile } from './_profile'
+import { hiddenCoupleIds, hideCouple } from './_hidden'
 import { CYCLE_PATCH, cycleEndsAt, latestCycle, nextCycleAt, noCycleTable, tickCouple, weekOf } from './_cycle'
 
 export const config = { runtime: 'edge' }
@@ -105,8 +107,9 @@ export default async function handler(req: Request): Promise<Response> {
           sb.from('active_cards').select('couple_id, key').in('key', SLOTS.map(s => s.key)),
           sb.from('cycles').select('couple_id, started_at, closed_at, period_months').order('started_at', { ascending: false }),
         ])
+        const hidden = await hiddenCoupleIds(sb)   // 시험용으로 만들었다 지운 부부는 목록에 내지 않는다 (api/_hidden.ts)
         const now = Date.now()
-        const items = (couples ?? []).map(c => {
+        const items = (couples ?? []).filter(c => !hidden.has(c.id)).map(c => {
           const ms = (members ?? []).filter(m => m.couple_id === c.id)
           const filled = (cardRows ?? []).filter(x => x.couple_id === c.id).length
           const cy = (cyc.data ?? []).find(x => x.couple_id === c.id)
@@ -155,6 +158,11 @@ export default async function handler(req: Request): Promise<Response> {
           await sb.from('cycles').update({ closed_at: new Date().toISOString() }).eq('couple_id', coupleId).is('closed_at', null)
         }
         return Response.json({ ok: true, archived: archive })
+      }
+      case 'hide_couple': {
+        // 지운 부부를 "지운 부부 보기"에서도 숨긴다. 시험 스크립트 정리용 — 화면 버튼은 없다. 기록은 그대로
+        try { await hideCouple(sb, coupleId) } catch (e) { return bad((e as Error).message, 400) }
+        return Response.json({ ok: true, hidden: true })
       }
       case 'rename_couple': {
         const husband = String(body.husband ?? '').trim()

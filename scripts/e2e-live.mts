@@ -175,6 +175,7 @@ try {
   check('부부 목록 상태: 상담 요청함', /상담 요청함/.test(list.body.items.find((c: any) => c.id === coupleId)?.state ?? ''), list.body.items.find((c: any) => c.id === coupleId)?.state)
 } finally {
   const a = await planner('archive_couple', { coupleId })
+  await planner('hide_couple', { coupleId })   // 지운 부부 보기에도 남기지 않는다 (11.16)
   console.log(`\n· 테스트 부부 지움 (${a.status === 200 ? 'ok' : a.body.error})`)
 }
 
